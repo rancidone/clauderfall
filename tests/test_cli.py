@@ -99,7 +99,7 @@ def test_show_skill_cli_returns_discovery_instructions(runner) -> None:
     payload = json.loads(result.stdout)
     assert payload["found"] is True
     assert payload["name"] == "discovery"
-    assert "validate-discovery" in payload["instructions"]
+    assert "discovery.next_turn" in payload["instructions"]
     assert "references/toolchain_workflow.md" in payload["instructions"]
 
 
@@ -116,13 +116,21 @@ def test_start_discovery_session_cli_returns_skill_context(runner, tmp_path: Pat
     assert payload["current_artifact"] is None
 
 
-def test_prepare_discovery_turn_cli_returns_packaged_skill_material(runner, tmp_path: Path) -> None:
+def test_next_discovery_turn_cli_reviews_skill_authored_turn(
+    runner,
+    discovery_json_path: Path,
+    tmp_path: Path,
+) -> None:
     result = runner.invoke(
         app,
         [
-            "prepare-discovery-turn",
+            "next-discovery-turn",
             "disc-1",
-            "We need measurable success criteria.",
+            "We need measurable success criteria and explicit scope.",
+            "--assistant-reply",
+            "I tightened the draft around measurable outcomes and explicit scope boundaries.",
+            "--artifact-path",
+            str(discovery_json_path),
             "--db-path",
             str(tmp_path / "cli.db"),
         ],
@@ -131,8 +139,8 @@ def test_prepare_discovery_turn_cli_returns_packaged_skill_material(runner, tmp_
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["session"]["artifact_id"] == "disc-1"
-    assert "You are the Discovery driver for Clauderfall." in payload["skill_instructions"]
-    assert payload["skill_references"][0]["path"].startswith("references/")
+    assert payload["assistant_reply"].startswith("I tightened the draft")
+    assert payload["review"]["persistable"] is True
 
 
 def test_review_discovery_draft_cli_reports_review(
@@ -170,19 +178,21 @@ def test_save_discovery_revision_cli_rejects_invalid_candidate(
     assert "not persistable" in result.stdout
 
 
-def test_propose_discovery_revision_cli_returns_proposal_and_review(
+def test_next_discovery_turn_cli_returns_review_and_candidate(
     runner,
-    discovery_proposal_path: Path,
+    discovery_json_path: Path,
     tmp_path: Path,
 ) -> None:
     result = runner.invoke(
         app,
         [
-            "propose-discovery-revision",
+            "next-discovery-turn",
             "disc-1",
             "We need explicit scope and measurable outcomes.",
-            "--proposal-path",
-            str(discovery_proposal_path),
+            "--assistant-reply",
+            "I tightened the discovery draft and left readiness at ready because the success criteria are explicit.",
+            "--artifact-path",
+            str(discovery_json_path),
             "--db-path",
             str(tmp_path / "cli.db"),
         ],
@@ -190,6 +200,7 @@ def test_propose_discovery_revision_cli_returns_proposal_and_review(
 
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["proposal"]["assistant_reply"].startswith("I tightened the discovery draft")
+    assert payload["assistant_reply"].startswith("I tightened the discovery draft")
     assert payload["review"]["persistable"] is True
-    assert payload["turn_payload"]["session"]["skill_name"] == "discovery"
+    assert payload["candidate_artifact"]["success_criteria"]
+    assert payload["session"]["skill_name"] == "discovery"

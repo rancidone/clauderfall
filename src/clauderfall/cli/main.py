@@ -22,7 +22,6 @@ from clauderfall.persistence.repositories import (
     SqlAlchemyTaskArtifactRepository,
 )
 from clauderfall.services.artifact_service import ArtifactService
-from clauderfall.services.discovery_draft_service import DiscoveryProposal, StaticDiscoveryProposalProvider
 from clauderfall.skills.loader import list_skills, load_skill
 
 
@@ -177,23 +176,6 @@ def start_discovery_session(
     typer.echo(session.model_dump_json(indent=2))
 
 
-@app.command("prepare-discovery-turn")
-def prepare_discovery_turn(
-    artifact_id: str,
-    user_turn: str,
-    version: int | None = typer.Option(None, "--version"),
-    db_path: Path | None = typer.Option(None, "--db-path"),
-) -> None:
-    """Prepare a Discovery turn payload for a conversational driver."""
-
-    payload = build_artifact_service(db_path=db_path).prepare_discovery_turn(
-        artifact_id=artifact_id,
-        user_turn=user_turn,
-        version=version,
-    )
-    typer.echo(payload.model_dump_json(indent=2))
-
-
 @app.command("review-discovery-draft")
 def review_discovery_draft(
     input_path: Path,
@@ -206,22 +188,23 @@ def review_discovery_draft(
     typer.echo(review.model_dump_json(indent=2))
 
 
-@app.command("propose-discovery-revision")
-def propose_discovery_revision(
+@app.command("next-discovery-turn")
+def next_discovery_turn(
     artifact_id: str,
     user_turn: str,
-    proposal_path: Path = typer.Option(..., "--proposal-path"),
+    assistant_reply: str = typer.Option(..., "--assistant-reply"),
+    artifact_path: Path = typer.Option(..., "--artifact-path"),
     version: int | None = typer.Option(None, "--version"),
     db_path: Path | None = typer.Option(None, "--db-path"),
 ) -> None:
-    """Run the proposal/review loop using a file-backed proposal provider."""
+    """Review one skill-authored Discovery turn against the current lineage."""
 
-    proposal = DiscoveryProposal.model_validate_json(proposal_path.read_text())
-    provider = StaticDiscoveryProposalProvider(proposal=proposal)
-    result = build_artifact_service(db_path=db_path).propose_discovery_revision(
+    artifact = DiscoveryArtifact.model_validate_json(artifact_path.read_text())
+    result = build_artifact_service(db_path=db_path).next_discovery_turn(
         artifact_id=artifact_id,
         user_turn=user_turn,
-        provider=provider,
+        assistant_reply=assistant_reply,
+        candidate_artifact=artifact,
         version=version,
     )
     typer.echo(result.model_dump_json(indent=2))

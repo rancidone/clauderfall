@@ -37,6 +37,24 @@ def test_review_discovery_draft_flags_clarification_when_not_ready(
     assert "Ask a targeted clarification question" in review.recommended_next_action
 
 
+def test_next_turn_reviews_skill_authored_candidate(
+    tmp_path: Path,
+    valid_discovery_artifact,
+) -> None:
+    service = build_artifact_service(db_path=tmp_path / "draft.db")
+
+    result = service.next_discovery_turn(
+        artifact_id="disc-1",
+        user_turn="We need the scope boundaries made explicit.",
+        assistant_reply="I tightened the scope boundaries and left readiness at ready.",
+        candidate_artifact=valid_discovery_artifact,
+    )
+
+    assert result.session.artifact_id == "disc-1"
+    assert result.assistant_reply.startswith("I tightened the scope boundaries")
+    assert result.review.persistable is True
+
+
 def test_save_discovery_revision_rejects_invalid_candidate(
     tmp_path: Path,
     valid_discovery_artifact,

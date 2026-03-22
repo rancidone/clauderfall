@@ -76,6 +76,5 @@ It currently exposes deterministic artifact operations plus the Discovery conver
 * `context.assemble_from_refs`
 * `traceability.get_links`
 * `discovery.start_session`
-* `discovery.prepare_turn`
-* `discovery.propose_revision`
+* `discovery.next_turn`
 * `discovery.save_revision`

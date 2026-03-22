@@ -29,6 +29,7 @@ from clauderfall.services.discovery_draft_service import (
     DiscoveryProposalProvider,
     DiscoveryProposalResult,
     DiscoveryDraftService,
+    DiscoveryTurnResult,
     DiscoveryTurnPayload,
 )
 
@@ -215,6 +216,22 @@ class ArtifactService:
 
     def review_discovery_draft(self, artifact: DiscoveryArtifact) -> DiscoveryDraftReview:
         return self._discovery_draft_service.review_candidate(artifact)
+
+    def next_discovery_turn(
+        self,
+        artifact_id: str,
+        user_turn: str,
+        assistant_reply: str,
+        candidate_artifact: DiscoveryArtifact,
+        version: int | None = None,
+    ) -> DiscoveryTurnResult:
+        return self._discovery_draft_service.next_turn(
+            artifact_id=artifact_id,
+            user_turn=user_turn,
+            assistant_reply=assistant_reply,
+            candidate_artifact=candidate_artifact,
+            version=version,
+        )
 
     def propose_discovery_revision(
         self,

@@ -65,6 +65,16 @@ class DiscoveryProposalResult(ArtifactBase):
     review: DiscoveryDraftReview
 
 
+class DiscoveryTurnResult(ArtifactBase):
+    """Reviewed result for one skill-driven Discovery turn."""
+
+    session: DiscoveryConversationSession
+    user_turn: str
+    assistant_reply: str
+    candidate_artifact: DiscoveryArtifact
+    review: DiscoveryDraftReview
+
+
 class DiscoveryProposalProvider(Protocol):
     """Provider interface for model-backed Discovery proposals."""
 
@@ -141,6 +151,24 @@ class DiscoveryDraftService:
         return DiscoveryProposalResult(
             turn_payload=turn_payload,
             proposal=proposal,
+            review=review,
+        )
+
+    def next_turn(
+        self,
+        artifact_id: str,
+        user_turn: str,
+        assistant_reply: str,
+        candidate_artifact: DiscoveryArtifact,
+        version: int | None = None,
+    ) -> DiscoveryTurnResult:
+        session = self.start_session(artifact_id=artifact_id, version=version)
+        review = self.review_candidate(candidate_artifact)
+        return DiscoveryTurnResult(
+            session=session,
+            user_turn=user_turn,
+            assistant_reply=assistant_reply,
+            candidate_artifact=candidate_artifact,
             review=review,
         )
 

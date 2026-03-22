@@ -15,15 +15,20 @@ from clauderfall.artifacts.discovery import DiscoveryArtifact
 from clauderfall.artifacts.task import TaskArtifact
 from clauderfall.cli.main import build_artifact_service
 from clauderfall.services.artifact_service import ArtifactService
-from clauderfall.services.discovery_draft_service import DiscoveryProposal, StaticDiscoveryProposalProvider
-
 
 class MCPToolDefinition(ArtifactBase):
     """Definition of one MCP-exposed tool."""
 
     name: str
     description: str
-    input_schema: dict[str, Any]
+    inputSchema: dict[str, Any]
+
+
+SUPPORTED_PROTOCOL_VERSIONS = (
+    "2025-11-25",
+    "2025-06-18",
+    "2025-03-26",
+)
 
 
 class ClauderfallMCPServer:
@@ -37,7 +42,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="artifact.validate",
                 description="Validate a candidate artifact body for one artifact kind.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["artifact_kind", "artifact_body"],
                     "properties": {
@@ -49,7 +54,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="artifact.get",
                 description="Load an exact or latest persisted artifact version.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["artifact_kind", "artifact_id"],
                     "properties": {
@@ -62,7 +67,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="contract.check_handoff",
                 description="Check the next-stage handoff contract for a candidate artifact body.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["artifact_kind", "artifact_body"],
                     "properties": {
@@ -74,7 +79,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="context.assemble_from_refs",
                 description="Assemble a context packet from persisted task and supporting artifact refs.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["task_ref", "supporting_refs"],
                     "properties": {
@@ -88,7 +93,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="traceability.get_links",
                 description="Query persisted trace-link index rows.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["trace_link"],
                     "properties": {"trace_link": {"type": "string"}},
@@ -97,7 +102,7 @@ class ClauderfallMCPServer:
             MCPToolDefinition(
                 name="discovery.start_session",
                 description="Load Discovery session state for an artifact lineage.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["artifact_id"],
                     "properties": {
@@ -107,36 +112,24 @@ class ClauderfallMCPServer:
                 },
             ),
             MCPToolDefinition(
-                name="discovery.prepare_turn",
-                description="Prepare Discovery skill material plus current artifact state for one conversational turn.",
-                input_schema={
+                name="discovery.next_turn",
+                description="Review one skill-authored Discovery turn against the current artifact lineage.",
+                inputSchema={
                     "type": "object",
-                    "required": ["artifact_id", "user_turn"],
+                    "required": ["artifact_id", "user_turn", "assistant_reply", "artifact_body"],
                     "properties": {
                         "artifact_id": {"type": "string"},
                         "user_turn": {"type": "string"},
+                        "assistant_reply": {"type": "string"},
+                        "artifact_body": {"type": "object"},
                         "version": {"type": "integer"},
-                    },
-                },
-            ),
-            MCPToolDefinition(
-                name="discovery.propose_revision",
-                description="Run the Discovery proposal and deterministic review loop with a provider-supplied proposal payload.",
-                input_schema={
-                    "type": "object",
-                    "required": ["artifact_id", "user_turn", "proposal"],
-                    "properties": {
-                        "artifact_id": {"type": "string"},
-                        "user_turn": {"type": "string"},
-                        "version": {"type": "integer"},
-                        "proposal": {"type": "object"},
                     },
                 },
             ),
             MCPToolDefinition(
                 name="discovery.save_revision",
                 description="Persist a reviewed Discovery Artifact revision through the shared service layer.",
-                input_schema={
+                inputSchema={
                     "type": "object",
                     "required": ["artifact_id", "artifact_body"],
                     "properties": {
@@ -156,8 +149,7 @@ class ClauderfallMCPServer:
             "context.assemble_from_refs": self._assemble_context_from_refs,
             "traceability.get_links": self._get_trace_links,
             "discovery.start_session": self._start_discovery_session,
-            "discovery.prepare_turn": self._prepare_discovery_turn,
-            "discovery.propose_revision": self._propose_discovery_revision,
+            "discovery.next_turn": self._next_discovery_turn,
             "discovery.save_revision": self._save_discovery_revision,
         }
         try:
@@ -258,21 +250,12 @@ class ClauderfallMCPServer:
         )
         return session.model_dump(mode="json")
 
-    def _prepare_discovery_turn(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        payload = self._artifact_service.prepare_discovery_turn(
+    def _next_discovery_turn(self, arguments: dict[str, Any]) -> dict[str, Any]:
+        result = self._artifact_service.next_discovery_turn(
             artifact_id=arguments["artifact_id"],
             user_turn=arguments["user_turn"],
-            version=arguments.get("version"),
-        )
-        return payload.model_dump(mode="json")
-
-    def _propose_discovery_revision(self, arguments: dict[str, Any]) -> dict[str, Any]:
-        proposal = DiscoveryProposal.model_validate(arguments["proposal"])
-        provider = StaticDiscoveryProposalProvider(proposal=proposal)
-        result = self._artifact_service.propose_discovery_revision(
-            artifact_id=arguments["artifact_id"],
-            user_turn=arguments["user_turn"],
-            provider=provider,
+            assistant_reply=arguments["assistant_reply"],
+            candidate_artifact=DiscoveryArtifact.model_validate(arguments["artifact_body"]),
             version=arguments.get("version"),
         )
         return result.model_dump(mode="json")
@@ -325,8 +308,10 @@ class ClauderfallMCPJSONRPCServer:
         self._input_stream = input_stream
         self._output_stream = output_stream
         self._error_stream = error_stream
-        self._initialized = False
+        self._initialize_responded = False
+        self._client_initialized = False
         self._shutdown_requested = False
+        self._protocol_version = SUPPORTED_PROTOCOL_VERSIONS[0]
 
     def serve_forever(self) -> None:
         """Process newline-delimited JSON-RPC requests from stdio."""
@@ -361,37 +346,50 @@ class ClauderfallMCPJSONRPCServer:
             try:
                 response = self._dispatch(method, params)
             except ValueError as exc:
-                self._write_error_response(request_id, -32602, str(exc))
+                if request_id is not None:
+                    self._write_error_response(request_id, -32602, str(exc))
                 continue
             except Exception as exc:  # noqa: BLE001
                 self._error_stream.write(f"clauderfall-mcp internal error: {exc}\n")
                 self._error_stream.flush()
-                self._write_error_response(request_id, -32000, "internal server error")
+                if request_id is not None:
+                    self._write_error_response(request_id, -32000, "internal server error")
                 continue
 
-            if request_id is not None:
+            if request_id is not None and response is not None:
                 self._write_response(request_id, response)
 
             if method == "exit":
                 return
 
-    def _dispatch(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
+    def _dispatch(self, method: str, params: dict[str, Any]) -> dict[str, Any] | None:
         if method == "initialize":
-            self._initialized = True
+            requested_version = params.get("protocolVersion")
+            self._protocol_version = self._negotiate_protocol_version(requested_version)
+            self._initialize_responded = True
             return {
-                "protocolVersion": "2026-03-22",
-                "serverInfo": {"name": "clauderfall", "version": "0.1.0"},
+                "protocolVersion": self._protocol_version,
+                "serverInfo": {"name": "clauderfall", "title": "Clauderfall", "version": "0.1.0"},
                 "capabilities": {"tools": {}},
             }
         if method == "ping":
             return {"pong": True}
+        if method == "notifications/initialized":
+            if not self._initialize_responded:
+                raise ValueError("server must respond to 'initialize' before 'notifications/initialized'")
+            self._client_initialized = True
+            return None
+        if method.startswith("notifications/"):
+            return None
         if method == "shutdown":
             self._shutdown_requested = True
             return {"shutdown": True}
         if method == "exit":
             return {"exit": True}
-        if not self._initialized:
+        if not self._initialize_responded:
             raise ValueError("server must be initialized before calling other methods")
+        if not self._client_initialized:
+            raise ValueError("client must send 'notifications/initialized' before calling other methods")
         if self._shutdown_requested and method != "exit":
             raise ValueError("server is shut down; only 'exit' is allowed")
         if method == "tools/list":
@@ -403,8 +401,18 @@ class ClauderfallMCPJSONRPCServer:
                 raise ValueError("tools/call requires string field 'name'")
             if not isinstance(arguments, dict):
                 raise ValueError("tools/call requires object field 'arguments'")
-            return {"content": self._mcp_server.call_tool(tool_name, arguments)}
+            result = self._mcp_server.call_tool(tool_name, arguments)
+            return {
+                "content": [{"type": "text", "text": json.dumps(result, sort_keys=True)}],
+                "structuredContent": result,
+                "isError": False,
+            }
         raise ValueError(f"unknown method '{method}'")
+
+    def _negotiate_protocol_version(self, requested_version: Any) -> str:
+        if isinstance(requested_version, str) and requested_version in SUPPORTED_PROTOCOL_VERSIONS:
+            return requested_version
+        return SUPPORTED_PROTOCOL_VERSIONS[0]
 
     def _write_response(self, request_id: Any, result: dict[str, Any]) -> None:
         payload = {"jsonrpc": "2.0", "id": request_id, "result": result}

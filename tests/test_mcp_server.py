@@ -15,8 +15,7 @@ def test_mcp_server_lists_expected_tools(tmp_path: Path) -> None:
     assert "artifact.validate" in tool_names
     assert "artifact.get" in tool_names
     assert "contract.check_handoff" in tool_names
-    assert "discovery.prepare_turn" in tool_names
-    assert "discovery.propose_revision" in tool_names
+    assert "discovery.next_turn" in tool_names
     assert "context.assemble_from_refs" in tool_names
     assert "traceability.get_links" in tool_names
 
@@ -56,32 +55,25 @@ def test_mcp_server_can_validate_and_get_discovery_artifact(
     assert get_result["artifact_body"]["problem_definition"] == valid_discovery_artifact.problem_definition
 
 
-def test_mcp_server_supports_discovery_turn_and_proposal(
+def test_mcp_server_supports_reviewing_skill_authored_discovery_turn(
     tmp_path: Path,
-    discovery_proposal,
+    valid_discovery_artifact,
 ) -> None:
     server = build_mcp_server(db_path=tmp_path / "mcp.db")
 
-    prepare_result = server.call_tool(
-        "discovery.prepare_turn",
+    turn_result = server.call_tool(
+        "discovery.next_turn",
         {
             "artifact_id": "disc-1",
             "user_turn": "We need measurable success criteria and explicit scope.",
-        },
-    )
-    proposal_result = server.call_tool(
-        "discovery.propose_revision",
-        {
-            "artifact_id": "disc-1",
-            "user_turn": "We need measurable success criteria and explicit scope.",
-            "proposal": discovery_proposal.model_dump(mode="json"),
+            "assistant_reply": "I tightened the discovery draft and kept readiness at ready because the success criteria are explicit.",
+            "artifact_body": valid_discovery_artifact.model_dump(mode="json"),
         },
     )
 
-    assert prepare_result["session"]["skill_name"] == "discovery"
-    assert "You are the Discovery driver for Clauderfall." in prepare_result["skill_instructions"]
-    assert proposal_result["proposal"]["assistant_reply"].startswith("I tightened the discovery draft")
-    assert proposal_result["review"]["persistable"] is True
+    assert turn_result["session"]["skill_name"] == "discovery"
+    assert turn_result["assistant_reply"].startswith("I tightened the discovery draft")
+    assert turn_result["review"]["persistable"] is True
 
 
 def test_mcp_server_can_query_trace_links_and_assemble_context_from_refs(
@@ -212,7 +204,15 @@ def test_mcp_jsonrpc_stdio_handles_initialize_list_and_call(
     input_stream = io.StringIO(
         "\n".join(
             [
-                json.dumps({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}),
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "test"}},
+                    }
+                ),
+                json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}}),
                 json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
                 json.dumps(
                     {
@@ -242,8 +242,12 @@ def test_mcp_jsonrpc_stdio_handles_initialize_list_and_call(
 
     responses = [json.loads(line) for line in output_stream.getvalue().splitlines() if line.strip()]
     assert responses[0]["result"]["serverInfo"]["name"] == "clauderfall"
+    assert responses[0]["result"]["protocolVersion"] == "2025-06-18"
     assert any(tool["name"] == "artifact.validate" for tool in responses[1]["result"]["tools"])
-    assert responses[2]["result"]["content"] == {"valid": True, "issues": []}
+    assert "inputSchema" in responses[1]["result"]["tools"][0]
+    assert responses[2]["result"]["structuredContent"] == {"valid": True, "issues": []}
+    assert responses[2]["result"]["content"][0]["type"] == "text"
+    assert responses[2]["result"]["isError"] is False
     assert responses[3]["result"] == {"shutdown": True}
     assert responses[4]["result"] == {"exit": True}
     assert error_stream.getvalue() == ""
@@ -263,3 +267,33 @@ def test_mcp_jsonrpc_stdio_rejects_calls_before_initialize(tmp_path: Path) -> No
     response = json.loads(output_stream.getvalue().strip())
     assert response["error"]["code"] == -32602
     assert "initialized" in response["error"]["message"]
+
+
+def test_mcp_jsonrpc_stdio_requires_initialized_notification(tmp_path: Path) -> None:
+    server = build_mcp_server(db_path=tmp_path / "mcp.db")
+    input_stream = io.StringIO(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "initialize",
+                        "params": {"protocolVersion": "2025-11-25", "capabilities": {}, "clientInfo": {"name": "test"}},
+                    }
+                ),
+                json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}),
+                "",
+            ]
+        )
+    )
+    output_stream = io.StringIO()
+    error_stream = io.StringIO()
+
+    transport = ClauderfallMCPJSONRPCServer(server, input_stream, output_stream, error_stream)
+    transport.serve_forever()
+
+    responses = [json.loads(line) for line in output_stream.getvalue().splitlines() if line.strip()]
+    assert responses[0]["result"]["protocolVersion"] == "2025-11-25"
+    assert responses[1]["error"]["code"] == -32602
+    assert "notifications/initialized" in responses[1]["error"]["message"]
