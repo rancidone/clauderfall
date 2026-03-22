@@ -1,0 +1,25 @@
+[project]
+name = "clauderfall"
+version = "0.1.0"
+description = "Precision context system for code-generating agents."
+readme = "docs/README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.11,<3",
+  "sqlalchemy>=2.0,<3",
+  "typer>=0.16,<1",
+]
+
+[project.scripts]
+clauderfall = "clauderfall.cli.main:app"
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clauderfall"]
+
