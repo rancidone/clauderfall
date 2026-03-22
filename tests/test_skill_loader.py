@@ -11,7 +11,7 @@ def test_load_discovery_skill_returns_instructions() -> None:
     skill = load_skill("discovery")
 
     assert skill.name == "discovery"
-    assert "grounded Discovery Artifact" in skill.description
-    assert "validate-discovery" in skill.instructions
-    assert "references/artifact_contract.md" in skill.instructions
+    assert "visible, narrative brief" in skill.description
+    assert "visible evolving draft" in skill.instructions
+    assert "references/product_brief.md" in skill.instructions
     assert "docs/design/" not in skill.instructions

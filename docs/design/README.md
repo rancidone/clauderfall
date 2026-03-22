@@ -1,54 +1,29 @@
 ---
-title: Clauderfall - Design Docs Index
+title: Clauderfall V2 Design Docs Index
 doc_type: index
 status: active
 updated: 2026-03-22
-summary: Canonical index for Clauderfall design-level architecture, artifact, contract, and implementation documents.
+summary: Canonical index for the active Clauderfall v2 product and engine-level documentation set.
 ---
 
-# Design Docs Index
+# Clauderfall V2 Docs Index
 
-This folder contains the design-level documents that define the Clauderfall MVP.
+This folder contains the active v2 documentation set.
 
 ## Purpose
 
-These documents define:
+These docs define:
 
-- the system brief and MVP boundary
-- the responsibilities of each engine
-- the required artifact schemas
-- the boundary contracts between engines
-- the deferred future-state components that remain outside the MVP
+- the Clauderfall v2 product brief
+- the behavior expected from the Discovery engine
+- the starting point for the new v2 doc set, independent of the archived MVP docs
 
 ## Read Order
 
-1. `clauderfall.md`
-2. `discovery_engine.md`
-3. `design_engine.md`
-4. `task_engine.md`
-5. `context_engine.md`
-6. `future_state.md`
-7. `implementation_strategy.md`
-8. `persistence_semantics.md`
-9. `conversational_drafting_loop.md`
-
-Use the artifact specs and contracts while refining or implementing a specific layer.
+1. `clauderfall_v2_product_brief.md`
+2. `discovery_engine_v2.md`
 
 ## Files
 
-- `clauderfall.md` - Project brief, architecture, workflow, and MVP boundary.
-- `discovery_engine.md` - Discovery engine purpose, capabilities, operating model, and exit condition.
-- `design_engine.md` - Design engine purpose, capabilities, operating model, and exit condition.
-- `task_engine.md` - Task engine purpose, capabilities, operating model, and exit condition.
-- `context_engine.md` - Context engine purpose, capabilities, operating model, and exit condition.
-- `discovery_artifact.md` - Normative structure and validity rules for Discovery Artifacts.
-- `design_artifact.md` - Normative structure and validity rules for Design Artifacts.
-- `task_artifact.md` - Normative structure and validity rules for Task Artifacts.
-- `context_packet.md` - Normative structure and validity rules for Context Packets.
-- `discovery_design_contract.md` - Boundary contract between Discovery and Design.
-- `design_task_contract.md` - Boundary contract between Design and Task.
-- `task_context_contract.md` - Boundary contract between Task and Context.
-- `future_state.md` - Deferred post-MVP architecture for execution, validation, and harvest.
-- `implementation_strategy.md` - Concrete MVP implementation decisions for package shape, storage, access, and MCP layering.
-- `persistence_semantics.md` - Canonical MVP rules for artifact identity, versioning, mutability, and retrieval.
-- `conversational_drafting_loop.md` - Draft design for artifact-grounded conversational discovery and design loops.
+- `clauderfall_v2_product_brief.md` - Product brief for Clauderfall v2.
+- `discovery_engine_v2.md` - Discovery engine brief derived from the product brief.

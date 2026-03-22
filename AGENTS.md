@@ -9,15 +9,16 @@ Assume high standards, direct communication, and low tolerance for fuzzy reasoni
 
 Start here:
 - `docs/README.md` - top-level docs index.
-- `docs/design/README.md` - canonical index for the design-level doc set.
+- `docs/design/README.md` - canonical index for the active v2 doc set.
 
 Doc loading policy:
 - Do not read the full doc set up front.
 - Lazy-load docs based on the current task.
 - Read frontmatter first to identify doc type, status, updated date, and summary before reading the body.
 - Frontmatter is generally short; read only the header first, generally fewer than 10 lines.
-- Read the project brief and the relevant engine/spec/contract docs only when they are needed for the current task.
-- Always read `docs/design/future_state.md` before proposing MVP work that could drift into deferred components.
+- Read the active product brief and the relevant engine/spec docs only when they are needed for the current task.
+- Treat `docs/legacy/` as archived reference material, not active product truth.
+- Do not import legacy MVP boundaries, schemas, or implementation choices into v2 work unless they are explicitly re-validated in the current docs or discussion.
 
 How to work:
 - Read the relevant docs before proposing or making changes.
@@ -31,7 +32,7 @@ How to work:
 - Update `docs/design/README.md` when changing or renaming design docs.
 
 When editing docs:
-- Keep terminology consistent with the current architecture.
+- Keep terminology consistent with the active v2 documentation set.
 - Update `docs/README.md` when adding or renaming docs.
 - Update `docs/design/README.md` when adding or renaming design docs.
-- Keep MVP and future-state concerns separated.
+- Keep active v2 docs and archived legacy docs clearly separated.

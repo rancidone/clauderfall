@@ -12,7 +12,6 @@ dependencies = [
 
 [project.scripts]
 clauderfall = "clauderfall.cli.main:app"
-clauderfall-mcp = "clauderfall.mcp.server:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]

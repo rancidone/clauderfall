@@ -22,20 +22,8 @@ from clauderfall.validation.design import validate_design_artifact
 from clauderfall.validation.discovery import validate_discovery_artifact
 from clauderfall.validation.task import validate_task_artifact
 from clauderfall.services.context_service import ContextService
-from clauderfall.services.discovery_draft_service import (
-    DiscoveryConversationSession,
-    DiscoveryDraftReview,
-    DiscoveryProposal,
-    DiscoveryProposalProvider,
-    DiscoveryProposalResult,
-    DiscoveryDraftService,
-    DiscoveryTurnResult,
-    DiscoveryTurnPayload,
-)
-
-
 class ArtifactService:
-    """High-level operations over artifacts for CLI and MCP adapters."""
+    """High-level operations over artifacts for CLI workflows."""
 
     def __init__(
         self,
@@ -51,11 +39,6 @@ class ArtifactService:
         self._context_repository = context_repository
         self._artifact_index_repository = artifact_index_repository
         self._context_service = ContextService()
-        self._discovery_draft_service = DiscoveryDraftService(
-            load_artifact=self.load_discovery,
-            save_artifact=self.save_discovery,
-            load_latest_version=self._load_latest_discovery_version,
-        )
 
     def validate_discovery(self, artifact: DiscoveryArtifact) -> list[str]:
         return validate_discovery_artifact(artifact)
@@ -194,70 +177,6 @@ class ArtifactService:
 
     def query_trace_link(self, trace_link: str) -> list[TraceLinkMatch]:
         return self._artifact_index_repository.find_by_trace_link(trace_link)
-
-    def start_discovery_session(
-        self,
-        artifact_id: str,
-        version: int | None = None,
-    ) -> DiscoveryConversationSession:
-        return self._discovery_draft_service.start_session(artifact_id=artifact_id, version=version)
-
-    def prepare_discovery_turn(
-        self,
-        artifact_id: str,
-        user_turn: str,
-        version: int | None = None,
-    ) -> DiscoveryTurnPayload:
-        return self._discovery_draft_service.prepare_turn(
-            artifact_id=artifact_id,
-            user_turn=user_turn,
-            version=version,
-        )
-
-    def review_discovery_draft(self, artifact: DiscoveryArtifact) -> DiscoveryDraftReview:
-        return self._discovery_draft_service.review_candidate(artifact)
-
-    def next_discovery_turn(
-        self,
-        artifact_id: str,
-        user_turn: str,
-        assistant_reply: str,
-        candidate_artifact: DiscoveryArtifact,
-        version: int | None = None,
-    ) -> DiscoveryTurnResult:
-        return self._discovery_draft_service.next_turn(
-            artifact_id=artifact_id,
-            user_turn=user_turn,
-            assistant_reply=assistant_reply,
-            candidate_artifact=candidate_artifact,
-            version=version,
-        )
-
-    def propose_discovery_revision(
-        self,
-        artifact_id: str,
-        user_turn: str,
-        provider: DiscoveryProposalProvider,
-        version: int | None = None,
-    ) -> DiscoveryProposalResult:
-        return self._discovery_draft_service.propose_revision(
-            artifact_id=artifact_id,
-            user_turn=user_turn,
-            provider=provider,
-            version=version,
-        )
-
-    def save_discovery_revision(
-        self,
-        artifact_id: str,
-        artifact: DiscoveryArtifact,
-        version: int | None = None,
-    ) -> tuple[int, DiscoveryDraftReview]:
-        return self._discovery_draft_service.save_candidate(
-            artifact_id=artifact_id,
-            candidate_artifact=artifact,
-            version=version,
-        )
 
     def check_discovery_handoff(self, artifact: DiscoveryArtifact) -> DiscoveryDesignGateResult:
         return check_discovery_to_design_handoff(artifact)
