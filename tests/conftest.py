@@ -13,6 +13,7 @@ from clauderfall.artifacts.common import (
     Grounding,
     ReadinessState,
     SourceClassification,
+    TaskElementClassification,
 )
 from clauderfall.artifacts.design import (
     ConstraintEncoding,
@@ -29,6 +30,7 @@ from clauderfall.artifacts.discovery import (
     ScopeBoundaries,
     SourceRegisterEntry,
 )
+from clauderfall.artifacts.task import TaskArtifact, TaskTraceabilityRecord
 
 
 @pytest.fixture
@@ -175,4 +177,67 @@ def valid_design_artifact() -> DesignArtifact:
 def design_json_path(tmp_path: Path, valid_design_artifact: DesignArtifact) -> Path:
     path = tmp_path / "design.json"
     path.write_text(json.dumps(valid_design_artifact.model_dump(mode="json"), indent=2))
+    return path
+
+
+@pytest.fixture
+def valid_task_artifact() -> TaskArtifact:
+    return TaskArtifact(
+        objective=["Implement the append-only task repository and handoff checks."],
+        scope=ScopeBoundaries(
+            in_scope=["Task artifact modeling", "Context handoff gate"],
+            out_of_scope=["Execution runtime"],
+        ),
+        inputs=[
+            "Design repository API for append-only artifact versions.",
+            "Design contract requirements for bounded task execution inputs.",
+        ],
+        outputs=[
+            "A persisted task artifact version.",
+            "A deterministic Task-to-Context handoff result.",
+        ],
+        constraints=[
+            "Task artifacts must not introduce new design requirements.",
+            "Persistence must remain append-only and auditable.",
+        ],
+        invariants=[
+            "Task acceptance criteria remain explicit and testable.",
+            "Context handoff does not proceed from not_ready tasks.",
+        ],
+        acceptance_criteria=[
+            "A valid task artifact passes deterministic validation.",
+            "The task handoff gate rejects not_ready artifacts.",
+        ],
+        dependencies=[
+            "Design artifact validation must already be implemented.",
+            "Artifact repositories must support exact and latest version reads.",
+        ],
+        traceability=[
+            TaskTraceabilityRecord(
+                target_ref=target_ref,
+                classification=TaskElementClassification.GROUNDED,
+                supports=["bounded execution contract", "context-safe handoff"],
+                trace_links=["design.system_structure[0]"],
+            )
+            for target_ref in [
+                "objective",
+                "inputs",
+                "constraints",
+                "invariants",
+                "acceptance_criteria",
+            ]
+        ],
+        completion_status=CompletionStatus(
+            readiness_state=ReadinessState.READY,
+            blocking_gaps=[],
+            non_blocking_gaps=["Task dependency modeling may become richer later."],
+            justification="The task is bounded and explicit enough for context assembly.",
+        ),
+    )
+
+
+@pytest.fixture
+def task_json_path(tmp_path: Path, valid_task_artifact: TaskArtifact) -> Path:
+    path = tmp_path / "task.json"
+    path.write_text(json.dumps(valid_task_artifact.model_dump(mode="json"), indent=2))
     return path

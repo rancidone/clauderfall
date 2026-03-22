@@ -4,11 +4,18 @@ from __future__ import annotations
 
 from clauderfall.artifacts.design import DesignArtifact
 from clauderfall.artifacts.discovery import DiscoveryArtifact
+from clauderfall.artifacts.task import TaskArtifact
 from clauderfall.contracts.design_task import DesignTaskGateResult, check_design_to_task_handoff
 from clauderfall.contracts.discovery_design import DiscoveryDesignGateResult, check_discovery_to_design_handoff
-from clauderfall.persistence.repositories import DesignArtifactRepository, DiscoveryArtifactRepository
+from clauderfall.contracts.task_context import TaskContextGateResult, check_task_to_context_handoff
+from clauderfall.persistence.repositories import (
+    DesignArtifactRepository,
+    DiscoveryArtifactRepository,
+    TaskArtifactRepository,
+)
 from clauderfall.validation.design import validate_design_artifact
 from clauderfall.validation.discovery import validate_discovery_artifact
+from clauderfall.validation.task import validate_task_artifact
 
 
 class ArtifactService:
@@ -18,15 +25,20 @@ class ArtifactService:
         self,
         discovery_repository: DiscoveryArtifactRepository,
         design_repository: DesignArtifactRepository,
+        task_repository: TaskArtifactRepository,
     ) -> None:
         self._discovery_repository = discovery_repository
         self._design_repository = design_repository
+        self._task_repository = task_repository
 
     def validate_discovery(self, artifact: DiscoveryArtifact) -> list[str]:
         return validate_discovery_artifact(artifact)
 
     def validate_design(self, artifact: DesignArtifact) -> list[str]:
         return validate_design_artifact(artifact)
+
+    def validate_task(self, artifact: TaskArtifact) -> list[str]:
+        return validate_task_artifact(artifact)
 
     def save_discovery(self, artifact_id: str, artifact: DiscoveryArtifact, version: int | None = None) -> int:
         return self._discovery_repository.create(artifact_id=artifact_id, artifact=artifact, version=version)
@@ -44,8 +56,19 @@ class ArtifactService:
             return self._design_repository.get_latest(artifact_id)
         return self._design_repository.get_version(artifact_id, version)
 
+    def save_task(self, artifact_id: str, artifact: TaskArtifact, version: int | None = None) -> int:
+        return self._task_repository.create(artifact_id=artifact_id, artifact=artifact, version=version)
+
+    def load_task(self, artifact_id: str, version: int | None = None) -> TaskArtifact | None:
+        if version is None:
+            return self._task_repository.get_latest(artifact_id)
+        return self._task_repository.get_version(artifact_id, version)
+
     def check_discovery_handoff(self, artifact: DiscoveryArtifact) -> DiscoveryDesignGateResult:
         return check_discovery_to_design_handoff(artifact)
 
     def check_design_handoff(self, artifact: DesignArtifact) -> DesignTaskGateResult:
         return check_design_to_task_handoff(artifact)
+
+    def check_task_handoff(self, artifact: TaskArtifact) -> TaskContextGateResult:
+        return check_task_to_context_handoff(artifact)

@@ -38,6 +38,12 @@ class DesignElementClassification(StrEnum):
     UNRESOLVED = "unresolved"
 
 
+class TaskElementClassification(StrEnum):
+    GROUNDED = "grounded"
+    INFERRED = "inferred"
+    UNRESOLVED = "unresolved"
+
+
 class ArtifactBase(BaseModel):
     """Base config shared by all normative artifact models."""
 
