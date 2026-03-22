@@ -20,6 +20,11 @@ build-backend = "hatchling.build"
 [tool.uv]
 package = true
 
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-cov>=6.1,<7",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/clauderfall"]
-
