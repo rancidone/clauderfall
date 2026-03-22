@@ -29,6 +29,7 @@ These documents define:
 5. `context_engine.md`
 6. `future_state.md`
 7. `implementation_strategy.md`
+8. `persistence_semantics.md`
 
 Use the artifact specs and contracts while refining or implementing a specific layer.
 
@@ -48,3 +49,4 @@ Use the artifact specs and contracts while refining or implementing a specific l
 - `task_context_contract.md` - Boundary contract between Task and Context.
 - `future_state.md` - Deferred post-MVP architecture for execution, validation, and harvest.
 - `implementation_strategy.md` - Concrete MVP implementation decisions for package shape, storage, access, and MCP layering.
+- `persistence_semantics.md` - Canonical MVP rules for artifact identity, versioning, mutability, and retrieval.

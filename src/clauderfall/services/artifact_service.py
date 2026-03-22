@@ -17,12 +17,13 @@ class ArtifactService:
     def validate_discovery(self, artifact: DiscoveryArtifact) -> list[str]:
         return validate_discovery_artifact(artifact)
 
-    def save_discovery(self, artifact_id: str, artifact: DiscoveryArtifact, version: int = 1) -> None:
-        self._discovery_repository.upsert(artifact_id=artifact_id, artifact=artifact, version=version)
+    def save_discovery(self, artifact_id: str, artifact: DiscoveryArtifact, version: int | None = None) -> int:
+        return self._discovery_repository.create(artifact_id=artifact_id, artifact=artifact, version=version)
 
-    def load_discovery(self, artifact_id: str) -> DiscoveryArtifact | None:
-        return self._discovery_repository.get(artifact_id)
+    def load_discovery(self, artifact_id: str, version: int | None = None) -> DiscoveryArtifact | None:
+        if version is None:
+            return self._discovery_repository.get_latest(artifact_id)
+        return self._discovery_repository.get_version(artifact_id, version)
 
     def check_discovery_handoff(self, artifact: DiscoveryArtifact) -> DiscoveryDesignGateResult:
         return check_discovery_to_design_handoff(artifact)
-

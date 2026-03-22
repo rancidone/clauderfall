@@ -29,4 +29,5 @@ Core docs use the same frontmatter fields:
 
 - `design/README.md` - Canonical index for the architecture and specification set.
 - `design/implementation_strategy.md` - Implementation-facing decisions for the MVP codebase.
+- `design/persistence_semantics.md` - Versioning and mutability rules for persisted artifact storage.
 - `handoffs/` - Recent continuity notes.

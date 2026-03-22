@@ -19,15 +19,9 @@ class ArtifactRecord(Base):
 
     artifact_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     artifact_kind: Mapped[str] = mapped_column(String(64), index=True)
-    version: Mapped[int] = mapped_column(Integer, default=1)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
     readiness_state: Mapped[str] = mapped_column(String(32), index=True)
     status: Mapped[str] = mapped_column(String(32), default="active")
     body_json: Mapped[dict] = mapped_column(JSON)
-    source_artifact_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    upstream_artifact_refs: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
