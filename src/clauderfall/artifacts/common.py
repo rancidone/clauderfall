@@ -31,6 +31,13 @@ class Grounding(StrEnum):
     FLOATING = "floating"
 
 
+class DesignElementClassification(StrEnum):
+    GROUNDED = "grounded"
+    INFERRED = "inferred"
+    IMPORTED = "imported"
+    UNRESOLVED = "unresolved"
+
+
 class ArtifactBase(BaseModel):
     """Base config shared by all normative artifact models."""
 
@@ -44,4 +51,3 @@ class CompletionStatus(ArtifactBase):
     blocking_gaps: list[str] = Field(default_factory=list)
     non_blocking_gaps: list[str] = Field(default_factory=list)
     justification: str = Field(min_length=1)
-

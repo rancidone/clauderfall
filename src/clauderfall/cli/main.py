@@ -7,10 +7,14 @@ from pathlib import Path
 
 import typer
 
+from clauderfall.artifacts.design import DesignArtifact
 from clauderfall.artifacts.discovery import DiscoveryArtifact
 from clauderfall.persistence.db import create_session_factory
 from clauderfall.persistence.models import Base
-from clauderfall.persistence.repositories import SqlAlchemyDiscoveryArtifactRepository
+from clauderfall.persistence.repositories import (
+    SqlAlchemyDesignArtifactRepository,
+    SqlAlchemyDiscoveryArtifactRepository,
+)
 from clauderfall.services.artifact_service import ArtifactService
 
 
@@ -23,8 +27,12 @@ def build_artifact_service(db_path: Path | None = None) -> ArtifactService:
     session_factory = create_session_factory(db_path=db_path)
     session = session_factory()
     Base.metadata.create_all(bind=session.get_bind())
-    repository = SqlAlchemyDiscoveryArtifactRepository(session=session)
-    return ArtifactService(discovery_repository=repository)
+    discovery_repository = SqlAlchemyDiscoveryArtifactRepository(session=session)
+    design_repository = SqlAlchemyDesignArtifactRepository(session=session)
+    return ArtifactService(
+        discovery_repository=discovery_repository,
+        design_repository=design_repository,
+    )
 
 
 @app.command("validate-discovery")
@@ -72,6 +80,54 @@ def check_discovery_handoff(
 
     artifact = DiscoveryArtifact.model_validate_json(input_path.read_text())
     result = build_artifact_service(db_path=db_path).check_discovery_handoff(artifact)
+    typer.echo(result.model_dump_json(indent=2))
+
+
+@app.command("validate-design")
+def validate_design(
+    input_path: Path,
+    db_path: Path | None = typer.Option(None, "--db-path"),
+) -> None:
+    """Validate a Design Artifact JSON file."""
+
+    artifact = DesignArtifact.model_validate_json(input_path.read_text())
+    issues = build_artifact_service(db_path=db_path).validate_design(artifact)
+
+    if issues:
+        typer.echo(json.dumps({"valid": False, "issues": issues}, indent=2))
+        raise typer.Exit(code=1)
+
+    typer.echo(json.dumps({"valid": True, "issues": []}, indent=2))
+
+
+@app.command("save-design")
+def save_design(
+    artifact_id: str,
+    input_path: Path,
+    version: int | None = None,
+    db_path: Path | None = typer.Option(None, "--db-path"),
+) -> None:
+    """Persist a Design Artifact JSON file."""
+
+    artifact = DesignArtifact.model_validate_json(input_path.read_text())
+    service = build_artifact_service(db_path=db_path)
+    try:
+        persisted_version = service.save_design(artifact_id=artifact_id, artifact=artifact, version=version)
+    except ValueError as exc:
+        typer.echo(json.dumps({"saved": False, "error": str(exc)}, indent=2))
+        raise typer.Exit(code=1) from exc
+    typer.echo(json.dumps({"saved": True, "artifact_id": artifact_id, "version": persisted_version}, indent=2))
+
+
+@app.command("check-design-handoff")
+def check_design_handoff(
+    input_path: Path,
+    db_path: Path | None = typer.Option(None, "--db-path"),
+) -> None:
+    """Evaluate Design-to-Task handoff preconditions."""
+
+    artifact = DesignArtifact.model_validate_json(input_path.read_text())
+    result = build_artifact_service(db_path=db_path).check_design_handoff(artifact)
     typer.echo(result.model_dump_json(indent=2))
 
 
