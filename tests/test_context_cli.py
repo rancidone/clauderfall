@@ -18,7 +18,20 @@ def test_validate_context_cli_accepts_valid_packet(runner, context_json_path: Pa
 def test_save_context_cli_persists_packet(runner, context_json_path: Path, tmp_path: Path) -> None:
     db_path = tmp_path / "cli.db"
 
-    result = runner.invoke(app, ["save-context", "context-1", str(context_json_path), "--db-path", str(db_path)])
+    result = runner.invoke(
+        app,
+        [
+            "save-context",
+            "context-1",
+            str(context_json_path),
+            "--upstream-ref",
+            "task:task-1@1",
+            "--upstream-ref",
+            "design:design-1@1",
+            "--db-path",
+            str(db_path),
+        ],
+    )
 
     assert result.exit_code == 0
     assert json.loads(result.stdout) == {"saved": True, "artifact_id": "context-1", "version": 1}
@@ -31,6 +44,7 @@ def test_save_context_cli_persists_packet(runner, context_json_path: Path, tmp_p
     assert record is not None
     assert record.artifact_kind == "context_packet"
     assert record.readiness_state == "ready"
+    assert record.upstream_artifact_refs == ["task:task-1@1", "design:design-1@1"]
 
 
 def test_validate_context_cli_rejects_invalid_packet(runner, context_json_path: Path, tmp_path: Path) -> None:
@@ -95,3 +109,94 @@ def test_assemble_context_cli_can_persist_packet(
     assert payload["saved"] is True
     assert payload["artifact_id"] == "context-assembled-1"
     assert payload["version"] == 1
+
+
+def test_assemble_context_from_refs_cli_loads_persisted_artifacts(
+    runner,
+    design_json_path: Path,
+    task_json_path: Path,
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cli.db"
+
+    runner.invoke(
+        app,
+        [
+            "save-design",
+            "design-1",
+            str(design_json_path),
+            "--upstream-ref",
+            "discovery:disc-1@2",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+    runner.invoke(
+        app,
+        [
+            "save-task",
+            "task-1",
+            str(task_json_path),
+            "--upstream-ref",
+            "design:design-1@1",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "assemble-context-from-refs",
+            "task:task-1@1",
+            "design:design-1@1",
+            "--artifact-id",
+            "context-assembled-2",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["assembled"] is True
+    assert payload["saved"] is True
+    assert payload["upstream_artifact_refs"] == ["task:task-1@1", "design:design-1@1"]
+    assert payload["packet"]["included_context"][0]["source_origin"] == "design:design-1@1"
+
+
+def test_query_trace_link_cli_returns_indexed_matches(
+    runner,
+    design_json_path: Path,
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cli.db"
+
+    runner.invoke(
+        app,
+        [
+            "save-design",
+            "design-1",
+            str(design_json_path),
+            "--upstream-ref",
+            "discovery:disc-1@2",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "query-trace-link",
+            "discovery.problem_definition[0]",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["trace_link"] == "discovery.problem_definition[0]"
+    assert payload["matches"][0]["artifact_id"] == "design-1"
+    assert payload["matches"][0]["artifact_kind"] == "design"

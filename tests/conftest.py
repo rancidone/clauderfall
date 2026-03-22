@@ -43,6 +43,7 @@ from clauderfall.artifacts.discovery import (
     SourceRegisterEntry,
 )
 from clauderfall.artifacts.task import TaskArtifact, TaskTraceabilityRecord
+from clauderfall.services.discovery_draft_service import DiscoveryProposal
 
 
 @pytest.fixture
@@ -358,4 +359,19 @@ def context_assembly_items() -> list[ContextAssemblyItem]:
 def context_assembly_items_path(tmp_path: Path, context_assembly_items: list[ContextAssemblyItem]) -> Path:
     path = tmp_path / "supporting-items.json"
     path.write_text(json.dumps([item.model_dump(mode="json") for item in context_assembly_items], indent=2))
+    return path
+
+
+@pytest.fixture
+def discovery_proposal(valid_discovery_artifact: DiscoveryArtifact) -> DiscoveryProposal:
+    return DiscoveryProposal(
+        assistant_reply="I tightened the discovery draft and left readiness at ready because the success criteria are explicit.",
+        candidate_artifact=valid_discovery_artifact,
+    )
+
+
+@pytest.fixture
+def discovery_proposal_path(tmp_path: Path, discovery_proposal: DiscoveryProposal) -> Path:
+    path = tmp_path / "discovery-proposal.json"
+    path.write_text(discovery_proposal.model_dump_json(indent=2))
     return path

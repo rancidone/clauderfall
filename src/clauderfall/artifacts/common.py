@@ -12,6 +12,13 @@ class ReadinessState(StrEnum):
     NOT_READY = "not_ready"
 
 
+class ArtifactKind(StrEnum):
+    DISCOVERY = "discovery"
+    DESIGN = "design"
+    TASK = "task"
+    CONTEXT_PACKET = "context_packet"
+
+
 class SourceClassification(StrEnum):
     EXPLICIT = "explicit"
     DERIVED = "derived"
@@ -73,3 +80,24 @@ class CompletionStatus(ArtifactBase):
     blocking_gaps: list[str] = Field(default_factory=list)
     non_blocking_gaps: list[str] = Field(default_factory=list)
     justification: str = Field(min_length=1)
+
+
+class ArtifactVersionRef(ArtifactBase):
+    """Version-qualified persisted artifact reference."""
+
+    artifact_kind: ArtifactKind
+    artifact_id: str = Field(min_length=1)
+    version: int = Field(ge=1)
+
+    def to_ref_string(self) -> str:
+        return f"{self.artifact_kind}:{self.artifact_id}@{self.version}"
+
+
+class TraceLinkMatch(ArtifactBase):
+    """Indexed trace-link match against a persisted artifact version."""
+
+    artifact_kind: ArtifactKind
+    artifact_id: str = Field(min_length=1)
+    version: int = Field(ge=1)
+    trace_link: str = Field(min_length=1)
+    target_ref: str | None = None

@@ -22,7 +22,11 @@ def test_design_repository_round_trip_persists_artifact_body_and_metadata(
     db_path = tmp_path / "clauderfall.db"
     session, repository = build_repository(db_path)
 
-    persisted_version = repository.create("design-1", valid_design_artifact)
+    persisted_version = repository.create(
+        "design-1",
+        valid_design_artifact,
+        upstream_artifact_refs=["discovery:disc-1@2"],
+    )
     reloaded = repository.get_latest("design-1")
     exact = repository.get_version("design-1", 1)
     record = session.get(ArtifactRecord, {"artifact_id": "design-1", "version": 1})
@@ -34,6 +38,7 @@ def test_design_repository_round_trip_persists_artifact_body_and_metadata(
     assert record.artifact_kind == "design"
     assert record.version == 1
     assert record.readiness_state == "ready"
+    assert record.upstream_artifact_refs == ["discovery:disc-1@2"]
 
 
 def test_design_repository_appends_new_versions_without_overwriting(

@@ -22,7 +22,11 @@ def test_context_repository_round_trip_persists_packet_body_and_metadata(
     db_path = tmp_path / "clauderfall.db"
     session, repository = build_repository(db_path)
 
-    persisted_version = repository.create("context-1", valid_context_packet)
+    persisted_version = repository.create(
+        "context-1",
+        valid_context_packet,
+        upstream_artifact_refs=["task:task-1@1", "design:design-1@1"],
+    )
     reloaded = repository.get_latest("context-1")
     exact = repository.get_version("context-1", 1)
     record = session.get(ArtifactRecord, {"artifact_id": "context-1", "version": 1})
@@ -34,6 +38,7 @@ def test_context_repository_round_trip_persists_packet_body_and_metadata(
     assert record.artifact_kind == "context_packet"
     assert record.version == 1
     assert record.readiness_state == "ready"
+    assert record.upstream_artifact_refs == ["task:task-1@1", "design:design-1@1"]
 
 
 def test_context_repository_appends_new_versions_without_overwriting(

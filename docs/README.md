@@ -13,6 +13,7 @@ This folder is the top-level index for Clauderfall documentation.
 ## Structure
 
 - `design/` - Core product-design and architecture documents for the MVP.
+- `codex_mcp.md` - Codex-specific setup for running Clauderfall as a stdio MCP server.
 - `handoffs/` - Session handoffs and short continuity notes.
 
 ## Standard Frontmatter
@@ -29,5 +30,7 @@ Core docs use the same frontmatter fields:
 
 - `design/README.md` - Canonical index for the architecture and specification set.
 - `design/implementation_strategy.md` - Implementation-facing decisions for the MVP codebase.
+- `design/conversational_drafting_loop.md` - Draft design for LLM-driven discovery and design loops over persisted artifacts.
 - `design/persistence_semantics.md` - Versioning and mutability rules for persisted artifact storage.
+- `codex_mcp.md` - Codex MCP registration and verification steps.
 - `handoffs/` - Recent continuity notes.

@@ -25,3 +25,16 @@ class ArtifactRecord(Base):
     body_json: Mapped[dict] = mapped_column(JSON)
     upstream_artifact_refs: Mapped[list[str]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ArtifactTraceLinkRecord(Base):
+    """Trace-link index rows for persisted artifact versions."""
+
+    __tablename__ = "artifact_trace_links"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    artifact_id: Mapped[str] = mapped_column(String(128), index=True)
+    artifact_kind: Mapped[str] = mapped_column(String(64), index=True)
+    version: Mapped[int] = mapped_column(Integer, index=True)
+    trace_link: Mapped[str] = mapped_column(String(512), index=True)
+    target_ref: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)

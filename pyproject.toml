@@ -12,6 +12,7 @@ dependencies = [
 
 [project.scripts]
 clauderfall = "clauderfall.cli.main:app"
+clauderfall-mcp = "clauderfall.mcp.server:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]
@@ -28,3 +29,8 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/clauderfall"]
+
+[tool.hatch.build]
+include = [
+  "src/clauderfall/skills/**/*.md",
+]

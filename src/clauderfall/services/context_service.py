@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from clauderfall.artifacts.common import ReadinessState
+import json
+
+from clauderfall.artifacts.common import ArtifactVersionRef, IncludedItemType, ReadinessState
 from clauderfall.artifacts.context import (
     BudgetSummary,
     ContextAssemblyItem,
@@ -109,3 +111,25 @@ class ContextService:
             raise ValueError(f"context packet assembly failed validation: {'; '.join(issues)}")
 
         return packet
+
+    def build_supporting_items_from_artifact_refs(
+        self,
+        artifact_refs: list[ArtifactVersionRef],
+        artifact_payloads: list[dict],
+    ) -> list[ContextAssemblyItem]:
+        """Build deterministic context inputs from persisted artifact bodies."""
+
+        supporting_items: list[ContextAssemblyItem] = []
+        for artifact_ref, artifact_payload in zip(artifact_refs, artifact_payloads, strict=True):
+            supporting_items.append(
+                ContextAssemblyItem(
+                    item_id=artifact_ref.to_ref_string(),
+                    included_material=json.dumps(artifact_payload, indent=2, sort_keys=True),
+                    item_type=IncludedItemType.ARTIFACT,
+                    source_origin=artifact_ref.to_ref_string(),
+                    justification="Explicit persisted artifact selected for task-scoped packet assembly.",
+                    supports=["task-scoped packet assembly", "traceable artifact inclusion"],
+                    trace_links=[artifact_ref.to_ref_string()],
+                )
+            )
+        return supporting_items

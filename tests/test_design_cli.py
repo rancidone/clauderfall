@@ -18,7 +18,18 @@ def test_validate_design_cli_accepts_valid_artifact(runner, design_json_path: Pa
 def test_save_design_cli_persists_artifact(runner, design_json_path: Path, tmp_path: Path) -> None:
     db_path = tmp_path / "cli.db"
 
-    result = runner.invoke(app, ["save-design", "design-1", str(design_json_path), "--db-path", str(db_path)])
+    result = runner.invoke(
+        app,
+        [
+            "save-design",
+            "design-1",
+            str(design_json_path),
+            "--upstream-ref",
+            "discovery:disc-1@2",
+            "--db-path",
+            str(db_path),
+        ],
+    )
 
     assert result.exit_code == 0
     assert json.loads(result.stdout) == {"saved": True, "artifact_id": "design-1", "version": 1}
@@ -31,6 +42,7 @@ def test_save_design_cli_persists_artifact(runner, design_json_path: Path, tmp_p
     assert record is not None
     assert record.artifact_kind == "design"
     assert record.readiness_state == "ready"
+    assert record.upstream_artifact_refs == ["discovery:disc-1@2"]
 
 
 def test_check_design_handoff_cli_reports_failure(runner, design_json_path: Path, tmp_path: Path) -> None:
