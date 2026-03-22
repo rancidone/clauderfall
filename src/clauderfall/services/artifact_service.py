@@ -19,6 +19,7 @@ from clauderfall.validation.context import validate_context_packet
 from clauderfall.validation.design import validate_design_artifact
 from clauderfall.validation.discovery import validate_discovery_artifact
 from clauderfall.validation.task import validate_task_artifact
+from clauderfall.services.context_service import ContextService
 
 
 class ArtifactService:
@@ -35,6 +36,7 @@ class ArtifactService:
         self._design_repository = design_repository
         self._task_repository = task_repository
         self._context_repository = context_repository
+        self._context_service = ContextService()
 
     def validate_discovery(self, artifact: DiscoveryArtifact) -> list[str]:
         return validate_discovery_artifact(artifact)
@@ -79,6 +81,18 @@ class ArtifactService:
         if version is None:
             return self._context_repository.get_latest(artifact_id)
         return self._context_repository.get_version(artifact_id, version)
+
+    def assemble_context(
+        self,
+        task_artifact: TaskArtifact,
+        supporting_items,
+        exclusions=None,
+    ) -> ContextPacket:
+        return self._context_service.assemble_packet(
+            task_artifact=task_artifact,
+            supporting_items=supporting_items,
+            exclusions=exclusions,
+        )
 
     def check_discovery_handoff(self, artifact: DiscoveryArtifact) -> DiscoveryDesignGateResult:
         return check_discovery_to_design_handoff(artifact)

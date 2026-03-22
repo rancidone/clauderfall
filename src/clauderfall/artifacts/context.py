@@ -17,6 +17,18 @@ class IncludedContextItem(ArtifactBase):
     source_origin: str = Field(min_length=1)
 
 
+class ContextAssemblyItem(ArtifactBase):
+    """Explicit supporting input used to assemble a context packet."""
+
+    item_id: str = Field(min_length=1)
+    included_material: str = Field(min_length=1)
+    item_type: IncludedItemType
+    source_origin: str = Field(min_length=1)
+    justification: str = Field(min_length=1)
+    supports: list[str] = Field(default_factory=list)
+    trace_links: list[str] = Field(default_factory=list)
+
+
 class InclusionJustification(ArtifactBase):
     """Justification for including a context item."""
 

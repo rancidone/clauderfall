@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from clauderfall.artifacts.context import ContextPacket
+from clauderfall.artifacts.context import ContextAssemblyItem, ContextPacket, ExclusionRecord
 from clauderfall.artifacts.design import DesignArtifact
 from clauderfall.artifacts.discovery import DiscoveryArtifact
 from clauderfall.artifacts.task import TaskArtifact
@@ -221,6 +221,42 @@ def save_context(
         typer.echo(json.dumps({"saved": False, "error": str(exc)}, indent=2))
         raise typer.Exit(code=1) from exc
     typer.echo(json.dumps({"saved": True, "artifact_id": artifact_id, "version": persisted_version}, indent=2))
+
+
+@app.command("assemble-context")
+def assemble_context(
+    task_path: Path,
+    supporting_items_path: Path,
+    exclusions_path: Path | None = typer.Option(None, "--exclusions-path"),
+    artifact_id: str | None = typer.Option(None, "--artifact-id"),
+    db_path: Path | None = typer.Option(None, "--db-path"),
+) -> None:
+    """Assemble a Context Packet from a Task Artifact and explicit supporting inputs."""
+
+    task_artifact = TaskArtifact.model_validate_json(task_path.read_text())
+    supporting_items = [ContextAssemblyItem.model_validate(item) for item in json.loads(supporting_items_path.read_text())]
+    exclusions = None
+    if exclusions_path is not None:
+        exclusions = [ExclusionRecord.model_validate(item) for item in json.loads(exclusions_path.read_text())]
+
+    service = build_artifact_service(db_path=db_path)
+    try:
+        packet = service.assemble_context(
+            task_artifact=task_artifact,
+            supporting_items=supporting_items,
+            exclusions=exclusions,
+        )
+    except ValueError as exc:
+        typer.echo(json.dumps({"assembled": False, "error": str(exc)}, indent=2))
+        raise typer.Exit(code=1) from exc
+
+    payload = packet.model_dump(mode="json")
+    if artifact_id is not None:
+        version = service.save_context(artifact_id=artifact_id, packet=packet)
+        typer.echo(json.dumps({"assembled": True, "saved": True, "artifact_id": artifact_id, "version": version, "packet": payload}, indent=2))
+        return
+
+    typer.echo(json.dumps({"assembled": True, "saved": False, "packet": payload}, indent=2))
 
 
 if __name__ == "__main__":

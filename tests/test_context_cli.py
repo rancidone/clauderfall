@@ -46,3 +46,52 @@ def test_validate_context_cli_rejects_invalid_packet(runner, context_json_path: 
     payload = json.loads(result.stdout)
     assert payload["valid"] is False
     assert "included_context must not be empty" in payload["issues"]
+
+
+def test_assemble_context_cli_outputs_packet(
+    runner,
+    task_json_path: Path,
+    context_assembly_items_path: Path,
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cli.db"
+
+    result = runner.invoke(
+        app,
+        ["assemble-context", str(task_json_path), str(context_assembly_items_path), "--db-path", str(db_path)],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["assembled"] is True
+    assert payload["saved"] is False
+    assert len(payload["packet"]["included_context"]) == 2
+
+
+def test_assemble_context_cli_can_persist_packet(
+    runner,
+    task_json_path: Path,
+    context_assembly_items_path: Path,
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "cli.db"
+
+    result = runner.invoke(
+        app,
+        [
+            "assemble-context",
+            str(task_json_path),
+            str(context_assembly_items_path),
+            "--artifact-id",
+            "context-assembled-1",
+            "--db-path",
+            str(db_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["assembled"] is True
+    assert payload["saved"] is True
+    assert payload["artifact_id"] == "context-assembled-1"
+    assert payload["version"] == 1

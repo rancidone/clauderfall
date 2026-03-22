@@ -19,6 +19,7 @@ from clauderfall.artifacts.common import (
 )
 from clauderfall.artifacts.context import (
     BudgetSummary,
+    ContextAssemblyItem,
     ConflictSignal,
     ContextPacket,
     ContextTraceabilityRecord,
@@ -326,4 +327,35 @@ def valid_context_packet(valid_task_artifact: TaskArtifact) -> ContextPacket:
 def context_json_path(tmp_path: Path, valid_context_packet: ContextPacket) -> Path:
     path = tmp_path / "context.json"
     path.write_text(json.dumps(valid_context_packet.model_dump(mode="json"), indent=2))
+    return path
+
+
+@pytest.fixture
+def context_assembly_items() -> list[ContextAssemblyItem]:
+    return [
+        ContextAssemblyItem(
+            item_id="ctx-1",
+            included_material="Task repository implementation surface",
+            item_type=IncludedItemType.SOURCE_SURFACE,
+            source_origin="src/clauderfall/persistence/repositories.py",
+            justification="Needed to implement append-only task persistence correctly.",
+            supports=["correctness", "dependency handling"],
+            trace_links=["src/clauderfall/persistence/repositories.py"],
+        ),
+        ContextAssemblyItem(
+            item_id="ctx-2",
+            included_material="Task validation rules for readiness and traceability",
+            item_type=IncludedItemType.ARTIFACT,
+            source_origin="docs/design/task_artifact.md",
+            justification="Needed to preserve task constraints and acceptance semantics during execution.",
+            supports=["constraint preservation", "acceptance evaluation"],
+            trace_links=["docs/design/task_artifact.md"],
+        ),
+    ]
+
+
+@pytest.fixture
+def context_assembly_items_path(tmp_path: Path, context_assembly_items: list[ContextAssemblyItem]) -> Path:
+    path = tmp_path / "supporting-items.json"
+    path.write_text(json.dumps([item.model_dump(mode="json") for item in context_assembly_items], indent=2))
     return path
