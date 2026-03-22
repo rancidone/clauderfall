@@ -47,6 +47,23 @@ Rationale:
 * Python has mature libraries for typed schema handling, SQLite access, and CLI tooling
 * `uv` keeps local setup and iteration simple
 
+### 2.1.1 Testing
+
+The Python codebase should use `pytest` as the test runner.
+
+Rationale:
+
+* the MVP runtime is Python, not TypeScript
+* the project needs strong support for model, validator, repository, and CLI tests
+* `pytest` has the right fixture model and ecosystem for this system shape
+
+Recommended initial additions:
+
+* `pytest`
+* `pytest-cov`
+
+`vitest` is only relevant if the project later grows a real TypeScript surface such as a web UI, TS SDK, or TS-native MCP client.
+
 ### 2.2 Representation
 
 The MVP should use both:
@@ -506,3 +523,36 @@ The first code milestone should prove:
 * the Discovery-to-Design gate can accept or reject it correctly
 
 That is enough to validate the implementation direction before building later engines.
+
+---
+
+## 11. Where Implementation Details Live
+
+Implementation details should live in three places, with different levels of authority:
+
+### 11.1 Design-Level Implementation Decisions
+
+High-level implementation decisions belong in this document:
+
+* language and tooling choices
+* package layout
+* persistence approach
+* service boundaries
+* MCP layering
+* testing strategy
+
+### 11.2 Code-Adjacent Technical Detail
+
+Concrete code behavior belongs in the codebase itself:
+
+* typed models
+* validators
+* repository and service interfaces
+* tests
+* narrow docstrings where intent is not obvious
+
+### 11.3 Follow-On Implementation Docs
+
+If an area gains enough complexity that it needs its own durable writeup, add a focused design doc under `docs/design/`.
+
+The next likely candidate is a persistence schema document once the MVP tables and migration strategy stabilize.
