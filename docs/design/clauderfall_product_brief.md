@@ -1,12 +1,12 @@
 ---
-title: Clauderfall V2 Product Brief
+title: Clauderfall Product Brief
 doc_type: brief
 status: active
 updated: 2026-03-22
-summary: Product brief for Clauderfall v2 focused on Discovery and Design for a single senior engineer.
+summary: Product brief for Clauderfall focused on Discovery and Design for a single senior engineer.
 ---
 
-# Clauderfall V2 Product Brief
+# Clauderfall Product Brief
 
 ## Product Definition
 
@@ -17,7 +17,7 @@ Its primary outputs are:
 - discovery briefs
 - design artifacts
 
-Task artifacts and context artifacts are not part of the v2 product boundary. They are later-stage product directions, likely for v3.
+Task artifacts and context artifacts are not part of the current product boundary. They are possible later-stage product directions.
 
 The product's purpose is to improve problem framing and design quality before execution begins.
 
@@ -27,7 +27,7 @@ Traceability and rigor matter, but they are not the primary promise. They are pa
 
 ## Primary User
 
-The primary user for v2 is a single senior engineer.
+The primary user is a single senior engineer.
 
 This user commonly starts with:
 
@@ -53,7 +53,7 @@ That causes predictable downstream failures:
 
 ## Desired Product Outcome
 
-Clauderfall v2 should help a senior engineer arrive at a clear problem brief and a strong design artifact without collapsing too early into implementation structure or execution planning.
+Clauderfall should help a senior engineer arrive at a clear problem brief and a strong design artifact without collapsing too early into implementation structure or execution planning.
 
 Early stages should prevent:
 
@@ -72,7 +72,7 @@ Early stages should prevent:
 
 ## Product Model
 
-Clauderfall v2 is a two-stage system:
+Clauderfall is a two-stage system:
 
 - Discovery: an interview-driven stage that turns rough intent into a visible problem-framing brief
 - Design: an interview-driven stage that turns that brief into a stronger design artifact without skipping review or hiding assumptions
@@ -136,19 +136,19 @@ Important assumptions do not all need to be resolved before Design begins, but t
 
 External uncertainties should be called out as risks.
 
-Transition into Design should be consensus-based:
+The normal transition into Design should be consensus-based:
 
 - the interviewer may recommend moving on
 - the operator may suggest moving on
-- the handoff should happen only when both agree the discovery brief is strong enough
+- the handoff should happen when both agree the discovery brief is strong enough
 
-Clauderfall v2 should not treat Discovery as an absolute hard gate. However, it should require an explicit operator override to begin Design when Discovery is still meaningfully incomplete. That override should make clear that proceeding now increases the risk of design revision and reframing.
+Clauderfall should not treat Discovery as an absolute hard gate. However, it should require an explicit operator override to begin Design when Discovery is still meaningfully incomplete. That override is a separate weaker path from the normal consensus handoff and should make clear that proceeding now increases the risk of design revision and reframing.
 
 ## Design Role In The Product
 
 Design is the stage where solution structure becomes concrete.
 
-Design is responsible for turning the discovery brief into a design artifact that is specific enough to drive later decomposition into machine-readable tasks.
+Design is responsible for turning the discovery brief into a design artifact that makes the solution concrete enough for downstream implementation planning without forcing later stages to invent core design decisions.
 
 Design may include:
 
@@ -158,22 +158,22 @@ Design may include:
 - implementation-relevant design detail
 - important tradeoffs and constraints
 
-The point is not to force one fixed template. The point is to make the solution concrete enough that later decomposition is grounded rather than invented.
+The point is not to force one fixed template. The point is to make the solution concrete enough that later implementation planning is grounded rather than invented.
 
 ## Design Output
 
-The v2 Design output should be a hybrid artifact.
+The Design output should be a hybrid artifact.
 
-It should remain readable as an engineering design document, but it should also carry enough explicit structure that later decomposition is straightforward.
+It should remain readable as an engineering design document, but it should also carry enough explicit structure that downstream planning and refinement are straightforward.
 
-Design artifacts in v2 should be separate documents, not just sections inside one large shared design doc.
+Design artifacts should be separate documents, not just sections inside one large shared design doc.
 
 The primary unit of design is a design unit. A design unit represents a specific system, subsystem, or other concrete design boundary being worked through in Design.
 
 Each design unit should have its own:
 
 - readable design document
-- structured fields needed for later decomposition
+- structured fields needed for downstream planning and refinement
 - readiness rating
 - brief readiness justification
 
@@ -203,7 +203,7 @@ Sometimes that decomposition should create explicit parent-child relationships b
 
 If a design unit has children, its readiness is not independent of them. Parent readiness should depend in part on the readiness of the child units it relies on.
 
-When Design begins, Clauderfall should try to lead work in a logical dependency order. In v2, that sequencing should stay heuristic and conversational rather than being driven by a formal dependency graph.
+When Design begins, Clauderfall should try to lead work in a logical dependency order. That sequencing should stay heuristic and conversational rather than being driven by a formal dependency graph.
 
 ## Artifact Persistence
 
@@ -213,13 +213,13 @@ Within an active session, stage artifacts may be maintained in session context a
 
 However, the system should explicitly flush that working state to persisted artifacts before context compaction risks losing important stage progress.
 
-The preferred model for v2 is:
+The preferred model is:
 
 - maintain the evolving artifact in session while the interview is active
 - avoid unnecessary persistence churn on every small turn
 - flush explicitly at meaningful checkpoints and before context pressure makes loss likely
 
-A practical trigger is to flush before context compaction, for example around 60% context usage.
+A practical trigger is to flush well before context compaction risk, with a threshold such as around 60% context usage as implementation guidance rather than a strict product rule.
 
 ## Draft Advancement
 

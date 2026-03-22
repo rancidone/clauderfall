@@ -1,10 +1,10 @@
-## Clauderfall V2 Product Brief Reference
+## Clauderfall Product Brief Reference
 
 Use this reference when you need the product-level framing for Discovery.
 
 Core product:
 
-* Clauderfall helps a single senior engineer turn rough software ideas into high-quality design, task, and context artifacts for coding agents.
+* Clauderfall helps a single senior engineer turn rough software ideas into strong discovery briefs and design artifacts.
 * The product's primary promise is artifact quality, not traceability for its own sake.
 
 Main failure mode to prevent:
@@ -18,12 +18,12 @@ Important downstream failures:
 * architectural realities are missed
 * business rules are misunderstood or omitted
 * non-functional constraints are under-specified
-* later task and context artifacts become unsafe, vague, noisy, or incomplete
+* later design work becomes unsafe, vague, noisy, or incomplete
 
 Product principles:
 
 * problem framing must stay ahead of solution structure
 * assumptions must be explicit and operator-visible
 * human review of evolving artifacts is required
-* machine-consumable artifacts are the product, but readable drafts are necessary to make them trustworthy
+* readable drafts are necessary to make artifacts trustworthy
 * existing repos or docs are optional evidence sources, not required inputs

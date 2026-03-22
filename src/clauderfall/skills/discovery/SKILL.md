@@ -1,6 +1,6 @@
 ---
 name: discovery
-description: Use when the user is framing a software problem for Clauderfall v2 discovery and needs a rigorous, visible, narrative brief without drifting into design.
+description: Use when the user is framing a software problem for Clauderfall Discovery and needs a rigorous, visible, narrative brief without drifting into design.
 ---
 
 # Discovery Skill

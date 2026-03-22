@@ -3,16 +3,16 @@ title: Clauderfall Docs Index
 doc_type: index
 status: active
 updated: 2026-03-22
-summary: Top-level index for the fresh Clauderfall v2 documentation set and archived legacy material.
+summary: Top-level index for the active Clauderfall documentation set and archived legacy material.
 ---
 
 # Docs Index
 
-This folder contains the active Clauderfall v2 documentation set.
+This folder contains the active Clauderfall documentation set.
 
 ## Structure
 
-- `design/` - Active v2 product and engine-level discovery/design docs.
+- `design/` - Active product and engine-level discovery/design docs.
 - `handoffs/` - Active short session handoffs for continuity across sessions.
 - `legacy/` - Archived MVP-era docs retained as input material, not current truth.
 
@@ -28,8 +28,9 @@ Core docs use the same frontmatter fields:
 
 ## Primary Entry Points
 
-- `design/README.md` - Canonical index for the active v2 documentation set.
-- `design/clauderfall_v2_product_brief.md` - Product brief for Clauderfall v2.
-- `design/discovery_engine_v2.md` - Discovery engine brief derived from the v2 product brief.
-- `handoffs/` - Short active continuity notes for the current v2 discovery effort.
+- `design/README.md` - Canonical index for the active documentation set.
+- `design/clauderfall_product_brief.md` - Product brief for Clauderfall.
+- `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
+- `design/design_engine.md` - Design engine brief derived from the product brief.
+- `handoffs/` - Short active continuity notes for the current discovery/design effort.
 - `legacy/README.md` - Index for archived MVP-era docs.

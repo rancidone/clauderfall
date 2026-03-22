@@ -1,12 +1,12 @@
 ---
-title: Clauderfall V2 Discovery Engine Brief
+title: Clauderfall Discovery Engine Brief
 doc_type: engine-brief
 status: active
 updated: 2026-03-22
-summary: Discovery engine brief for Clauderfall v2 focused on interviewer-led problem framing.
+summary: Discovery engine brief for Clauderfall focused on interviewer-led problem framing.
 ---
 
-# Clauderfall V2 Discovery Engine Brief
+# Clauderfall Discovery Engine Brief
 
 ## Purpose
 
@@ -50,7 +50,7 @@ Discovery may allow:
 Discovery should call out design drift when the discussion moves into:
 
 - concrete interfaces
-- components
+- concrete component definitions or responsibilities
 - implementation detail
 - task decomposition
 
@@ -101,7 +101,7 @@ Discovery should recommend handoff to Design only when:
 - important assumptions are explicit
 - key risks and constraints are visible
 
-Readiness should be a consensus decision between the operator and the interviewer, not a silent stage transition.
+The normal readiness path should be a consensus decision between the operator and the interviewer, not a silent stage transition.
 
 Discovery should prefer broadly complete framing before Design begins. Starting Design early is allowed, but it is a weaker workflow that increases churn and should require an explicit operator override when Discovery is still meaningfully incomplete.
 
@@ -109,7 +109,7 @@ Discovery should prefer broadly complete framing before Design begins. Starting 
 
 Discovery should let the working brief advance by default during the interview rather than requiring explicit approval on every revision.
 
-Within an active session, the working brief may live in session context. The engine should still flush the current artifact explicitly before context compaction risks losing important progress, for example around 60% context usage.
+Within an active session, the working brief may live in session context. The engine should still flush the current artifact explicitly before context compaction risks losing important progress. A threshold such as around 60% context usage is useful implementation guidance, not a strict rule.
 
 ## Open Engine Questions
 

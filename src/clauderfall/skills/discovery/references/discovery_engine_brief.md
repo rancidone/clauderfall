@@ -1,4 +1,4 @@
-## Clauderfall V2 Discovery Engine Reference
+## Clauderfall Discovery Engine Reference
 
 Use this reference when you need the Discovery-stage operating rules.
 
@@ -14,14 +14,15 @@ Allowed in Discovery:
 * high-level approach categories
 * tradeoff dimensions
 * examples of previous failures
+* high-level system architecture when needed to clarify the problem or expose constraints
 
 Design drift boundary:
 
 Call out drift when the conversation moves into:
 
-* concrete architecture
-* components
-* interfaces
+* concrete interfaces
+* concrete component definitions or responsibilities
+* implementation detail
 
 When drift happens:
 
