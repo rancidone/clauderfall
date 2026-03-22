@@ -3,22 +3,20 @@ title: Clauderfall - Design Artifact
 doc_type: artifact-spec
 status: active
 updated: 2026-03-22
-summary: Normative schema and validation rules for design outputs consumed by Task.
+summary: Normative schema and validation rules for Design Artifacts.
 ---
 
 # Clauderfall - Design Artifact
 
 ## 1. Scope
 
-This document defines the required structure, metadata, and validation rules for a Design Artifact.
-
-This document is normative.
+This document defines the normative structure and validity rules for a Design Artifact.
 
 ---
 
-## 2. Artifact Contract
+## 2. Required Sections
 
-A valid Design Artifact MUST contain these top-level sections:
+A valid Design Artifact MUST contain:
 
 1. `objective`
 2. `scope`
@@ -36,17 +34,11 @@ If any required section is missing, the artifact is invalid.
 
 ---
 
-## 3. Section Requirements
+## 3. Section Rules
 
 ### 3.1 `objective`
 
-MUST define:
-
-* the intended outcome
-* the user or system effect
-* the connection to the discovery problem definition
-
-MUST describe the designed result.
+MUST define the intended outcome, the user or system effect, and the connection to the discovery problem definition.
 
 MUST NOT describe task sequencing or implementation steps.
 
@@ -54,14 +46,11 @@ MUST NOT describe task sequencing or implementation steps.
 
 ### 3.2 `scope`
 
-MUST contain:
-
-* `in_scope`
-* `out_of_scope`
+MUST contain `in_scope` and `out_of_scope`.
 
 MAY contain boundary notes.
 
-Scope MUST be specific enough to constrain downstream Task generation.
+Scope MUST be specific enough to constrain interpretation.
 
 ---
 
@@ -78,7 +67,7 @@ MUST include, where applicable:
 * data models or state models
 * core workflows
 
-`system_structure` MUST be specific enough that downstream Task formation does not require new architecture.
+`system_structure` MUST be specific enough that the design is structurally complete.
 
 ---
 
@@ -146,13 +135,9 @@ Each item MAY identify:
 
 MUST list unresolved questions that remain after design.
 
-Each question MUST be:
+Each question MUST be explicit, bounded, and tied to affected design areas.
 
-* explicit
-* bounded
-* tied to affected design areas
-
-Open design questions MUST NOT block task generation unless they are also recorded as blocking gaps.
+Open design questions MUST NOT affect readiness unless they are also recorded as blocking gaps.
 
 ---
 
@@ -191,14 +176,9 @@ If a major design element has no traceability entry, the artifact is invalid.
 
 ### 3.11 `completion_status`
 
-MUST contain:
+MUST contain `readiness_state`, `blocking_gaps`, `non_blocking_gaps`, and `justification`.
 
-* `readiness_state`
-* `blocking_gaps`
-* `non_blocking_gaps`
-* `justification`
-
-`completion_status` is the authoritative handoff gate for Task.
+`completion_status` is the artifact readiness record.
 
 ---
 
@@ -213,13 +193,6 @@ Allowed values:
 * `imported`
 * `unresolved`
 
-Rules:
-
-* `grounded` means directly supported by Discovery inputs.
-* `inferred` means derived through bounded design reasoning from grounded Discovery inputs.
-* `imported` means taken from an explicit external reference.
-* `unresolved` means not sufficiently determined to be treated as settled design.
-
 `unresolved` MUST NOT appear as settled structure, interfaces, invariants, or task decomposition signals.
 
 ---
@@ -230,11 +203,6 @@ Allowed values:
 
 * `ready`
 * `not_ready`
-
-Rules:
-
-* `not_ready` means one or more blocking gaps exist.
-* `ready` means no blocking gaps remain.
 
 Non-blocking gaps MUST NOT change `readiness_state`.
 
@@ -257,7 +225,7 @@ If traceability cannot be preserved, the design element MUST be removed or moved
 
 ## 6. Decision Rules
 
-A decision record is REQUIRED if any of the following is true:
+A decision record is REQUIRED if:
 
 * multiple viable approaches were considered
 * the chosen structure materially affects task boundaries
@@ -270,7 +238,7 @@ Material design choices MUST NOT remain implicit.
 
 ## 7. Blocking Gap Rules
 
-A gap is blocking if any of the following is true:
+A gap is blocking if:
 
 * `system_structure` is materially incomplete or internally inconsistent
 * interfaces or workflows needed for task formation are missing or unstable
@@ -284,38 +252,21 @@ If any blocking gap exists, `readiness_state` MUST be `not_ready`.
 
 ---
 
-## 8. Non-Blocking Gap Rules
+## 8. Validity Rules
 
-A gap is non-blocking only if it does not materially affect:
+Non-blocking gaps MUST be recorded in `completion_status.non_blocking_gaps` and MUST NOT materially affect:
 
 * design correctness
-* task boundary formation
-* constraint propagation
+* structural completeness
+* constraint encoding
 * invariant preservation
-* task acceptance framing
+* decision clarity
 
-Non-blocking gaps MUST still be recorded in `completion_status.non_blocking_gaps`.
-
----
-
-## 9. Invariants
-
-A valid Design Artifact MUST satisfy all of the following:
+A valid Design Artifact MUST also satisfy:
 
 * all required sections exist
 * all major design elements are traceable
 * all material design choices are explicit
 * no unresolved design-critical content appears as settled design
 * no blocking gap is hidden outside `completion_status`
-* bounded task formation is possible without new design decisions
-
----
-
-## 10. Exit Rule
-
-Design MAY hand off to Task only when:
-
-* the artifact is valid
-* `completion_status.readiness_state` is `ready`
-
-The Design-to-Task boundary is further constrained by `design_task_contract.md`.
+* the design is structurally complete without unresolved design-critical gaps

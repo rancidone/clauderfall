@@ -64,55 +64,7 @@ The Context Engine produces a **Context Packet**.
 
 This packet is the bounded execution input for a stateless agent.
 
-The required packet structure and readiness rules are defined in `context_packet.md`.
-
-### Context Packet Structure
-
-#### 1. Task Contract
-
-The objective, scope, outputs, constraints, invariants, and acceptance criteria for the task.
-
----
-
-#### 2. Included Context
-
-The minimal set of artifacts, excerpts, references, and implementation surfaces required for execution.
-
----
-
-#### 3. Inclusion Justification
-
-An explicit explanation for why each included item is necessary.
-
----
-
-#### 4. Exclusions
-
-Known related material intentionally omitted to prevent scope expansion or noise.
-
----
-
-#### 5. Conflict Signals
-
-Known contradictions, ambiguities, stale references, or unresolved tensions present in the assembled context.
-
----
-
-#### 6. Budget Summary
-
-A summary of packet size, token pressure, and any compression or prioritization decisions.
-
----
-
-#### 7. Traceability
-
-Mapping between packet contents and their task, design, discovery, or harvested origins.
-
----
-
-#### 8. Completion Status
-
-Defines whether the packet is complete enough to be emitted as an execution-context artifact.
+The normative packet schema, validity rules, and handoff gate are defined in `context_packet.md`.
 
 ---
 
@@ -194,14 +146,7 @@ The assembler must reject context that:
 
 Detects when a valid context packet cannot be safely assembled from the available task and upstream artifacts.
 
-Triggers return to the **Task Engine** or upstream layers when:
-
-* required artifacts are missing
-* task references are underspecified
-* conflicts cannot be resolved locally
-* the packet cannot be made both minimal and complete
-
-The authoritative backflow contract, including the required high-backflow payload, is defined in `task_context_contract.md`.
+The engine raises backflow when packet assembly would require inventing task details, tolerating unresolved conflicts, or widening scope to compensate for missing contract inputs. The authoritative backflow contract, including the required high-backflow payload, is defined in `task_context_contract.md`.
 
 ---
 
@@ -239,86 +184,8 @@ Produce the final context packet for downstream execution.
 
 ---
 
-## Context Packet Invariants
-
-All packets must satisfy:
-
-### Minimal
-
-No unnecessary context is included.
-
-### Complete
-
-All information required for execution is present.
-
-### Auditable
-
-Every inclusion is justified and traceable.
-
-### Deterministic
-
-The same task and artifact set produce materially equivalent packets.
-
-### Bounded
-
-The packet does not authorize scope expansion during execution.
-
----
-
-## Boundary Rules
-
-The Context Engine must not:
-
-* perform discovery
-* make design decisions
-* redefine task boundaries
-* implement code
-* silently resolve contradictory requirements
-
-When contradictions or gaps are material, the engine must signal backflow rather than guess.
-
----
-
 ## Exit Condition
 
-Context assembly is complete when:
-
-* the packet is minimal and complete
-* all included material is justified
-* important conflicts are surfaced
-* token budget is within acceptable bounds
-* execution can proceed without reinterpretation or scope expansion
+Context assembly is complete when the produced packet is valid under `context_packet.md` and the Task-to-Context boundary remains satisfied under `task_context_contract.md`.
 
 The packet validity gate is governed by `context_packet.md`.
-
----
-
-## System Relationship
-
-```
-Discovery Artifact
-    ↓
-Design Engine
-    ↓
-Design Artifact
-    ↓
-Task Engine
-    ↓
-Task Artifact
-    ↓
-Context Engine
-    ↓
-Context Packet
-```
-
----
-
-## Summary
-
-The Context Engine ensures that:
-
-* execution context is **selected, not accumulated**
-* inclusion is **justified, not assumed**
-* packets are **minimal, complete, and bounded**
-
-It is the step where explicit work definition becomes executable model context without allowing noise, stale information, or adjacent scope to leak into the agent runtime.

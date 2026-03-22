@@ -10,9 +10,7 @@ summary: Normative handoff and backflow rules between Design and Task.
 
 ## 1. Scope
 
-This document defines the Design-to-Task handoff contract and the Task-to-Design backflow contract.
-
-This document is normative.
+This document defines the normative Design-to-Task handoff and Task-to-Design backflow contract.
 
 ---
 
@@ -28,7 +26,7 @@ Neither layer MAY silently absorb the other's responsibility.
 
 ## 3. Handoff Preconditions
 
-Task generation MAY begin only if all of the following are true:
+Task generation MAY begin only if:
 
 * a Design Artifact is present
 * the artifact satisfies `design_artifact.md`
@@ -38,20 +36,7 @@ If any precondition fails, the handoff is invalid.
 
 ---
 
-## 4. Task Input Assumptions
-
-Given a valid handoff, Task MAY assume:
-
-* core solution structure is explicit
-* blocking design gaps have been resolved
-* interfaces, workflows, and invariants needed for decomposition are settled
-* remaining uncertainty appears only in recorded non-blocking gaps, risks, or open design questions
-
-Task MUST NOT assume that missing design detail is intentionally omitted.
-
----
-
-## 5. Permitted Task Use
+## 4. Permitted Task Use
 
 Task MAY:
 
@@ -69,9 +54,9 @@ Task MUST NOT:
 
 ---
 
-## 6. Backflow Trigger
+## 5. Backflow Trigger
 
-Task MUST raise backflow if any of the following is true:
+Task MUST raise backflow if:
 
 * the Design Artifact is invalid or incomplete
 * task boundaries cannot be formed without making new design decisions
@@ -82,62 +67,13 @@ Task MUST raise backflow if any of the following is true:
 
 Backflow is mandatory when triggered.
 
----
+If the issue is local and non-structural, Task MAY continue while recording it explicitly.
 
-## 7. Backflow Levels
-
-### 7.1 `low`
-
-Conditions:
-
-* task boundaries are clear
-* uncertainty is local and non-structural
-* task formation does not alter design intent
-
-Behavior:
-
-* continue Task generation
-* optionally record local uncertainty
+If valid task formation or acceptance would require missing or unstable design structure, backflow is `high` and Task MUST halt the affected area.
 
 ---
 
-### 7.2 `medium`
-
-Conditions:
-
-* decomposition requires limited interpretation of non-structural detail
-* non-blocking design uncertainty remains visible
-* clarity is affected but task correctness or independence is not
-
-Behavior:
-
-* continue Task generation
-* attach caution to affected task areas
-* preserve the uncertainty explicitly
-
-`medium` does not reopen Design by itself.
-
----
-
-### 7.3 `high`
-
-Conditions:
-
-* valid task boundaries depend on missing or unstable design structure
-* task acceptance depends on undefined interfaces, invariants, or workflows
-* task generation would require invention of new design
-
-Behavior:
-
-* halt affected Task formation
-* emit a backflow payload
-* return control to Design
-
-`high` backflow invalidates continued Task generation on the affected area until Design resolves the gap.
-
----
-
-## 8. Backflow Payload
+## 6. High Backflow Payload
 
 A `high` backflow payload MUST contain:
 
@@ -159,15 +95,15 @@ Rules:
 
 ---
 
-## 9. Backflow Writing Rules
+## 7. Payload Rules
 
-A backflow payload MUST:
+A `high` backflow payload MUST:
 
 * name the exact missing or unstable design input
 * distinguish structural blockers from caution-level uncertainty
 * remain local to the blocked task area where possible
 
-A backflow payload MUST NOT:
+A `high` backflow payload MUST NOT:
 
 * restate the full Design Artifact
 * ask broad exploratory questions without context
@@ -176,20 +112,20 @@ A backflow payload MUST NOT:
 
 ---
 
-## 10. Resolution Rule
+## 8. Resolution Rule
 
-When Design receives a `high` backflow payload, it MUST do one of the following:
+When Design receives a `high` backflow payload, it MUST:
 
-* resolve the blocking gap and issue an updated Design Artifact with `readiness_state = ready`
+* resolve the blocking gap and issue an updated Design Artifact with `readiness_state = ready`, or
 * determine that the solution is not yet sufficiently specified for Task generation
 
 Task MUST consume the updated artifact and MUST NOT rely on prior session memory as the source of truth.
 
 ---
 
-## 11. Invariants
+## 9. Invariants
 
-This contract MUST preserve all of the following:
+This contract MUST preserve:
 
 * Design owns solution structure
 * Task owns work partitioning

@@ -10,9 +10,7 @@ summary: Normative handoff and backflow rules between Discovery and Design.
 
 ## 1. Scope
 
-This document defines the Discovery-to-Design handoff contract and the Design-to-Discovery backflow contract.
-
-This document is normative.
+This document defines the normative Discovery-to-Design handoff and Design-to-Discovery backflow contract.
 
 ---
 
@@ -28,7 +26,7 @@ Neither layer MAY silently absorb the other's responsibility.
 
 ## 3. Handoff Preconditions
 
-Design MAY begin only if all of the following are true:
+Design MAY begin only if:
 
 * a Discovery Artifact is present
 * the artifact satisfies `discovery_artifact.md`
@@ -38,20 +36,7 @@ If any precondition fails, the handoff is invalid.
 
 ---
 
-## 4. Design Input Assumptions
-
-Given a valid handoff, Design MAY assume:
-
-* core problem understanding is explicit
-* blocking discovery gaps have been resolved
-* design-critical facts are anchored
-* remaining uncertainty appears only in recorded non-blocking gaps, risks, unknowns, or open questions
-
-Design MUST NOT assume that missing information is intentionally omitted.
-
----
-
-## 5. Permitted Design Use
+## 4. Permitted Design Use
 
 Design MAY:
 
@@ -69,9 +54,9 @@ Design MUST NOT:
 
 ---
 
-## 6. Backflow Trigger
+## 5. Backflow Trigger
 
-Design MUST raise backflow if any of the following is true:
+Design MUST raise backflow if:
 
 * the Discovery Artifact is invalid or incomplete
 * design-critical inputs are `low`, `assumed`, or `floating`
@@ -82,61 +67,13 @@ Design MUST raise backflow if any of the following is true:
 
 Backflow is mandatory when triggered.
 
----
+If the issue is local and non-structural, Design MAY continue while recording it explicitly.
 
-## 7. Backflow Levels
-
-### 7.1 `low`
-
-Conditions:
-
-* uncertainty is local and non-structural
-* correctness is not affected
-
-Behavior:
-
-* continue Design
-* optionally record local uncertainty
+If the issue affects structural correctness or would require invented requirements, constraints, or success criteria, backflow is `high` and Design MUST halt the affected area.
 
 ---
 
-### 7.2 `medium`
-
-Conditions:
-
-* bounded inference is required
-* non-blocking uncertainty remains visible
-* clarity is affected but correctness is not
-
-Behavior:
-
-* continue Design
-* attach caution to affected design areas
-* preserve the uncertainty explicitly
-
-`medium` does not reopen Discovery by itself.
-
----
-
-### 7.3 `high`
-
-Conditions:
-
-* core discovery inputs are missing, unstable, or insufficiently grounded
-* system structure depends on unresolved problem facts
-* correctness depends on invented requirements, constraints, or success criteria
-
-Behavior:
-
-* halt affected Design progression
-* emit a backflow payload
-* return control to Discovery
-
-`high` backflow invalidates continued Design on the affected area until Discovery resolves the gap.
-
----
-
-## 8. Backflow Payload
+## 6. High Backflow Payload
 
 A `high` backflow payload MUST contain:
 
@@ -158,15 +95,15 @@ Rules:
 
 ---
 
-## 9. Backflow Writing Rules
+## 7. Payload Rules
 
-A backflow payload MUST:
+A `high` backflow payload MUST:
 
 * name the exact missing or unstable input
 * distinguish structural blockers from caution-level uncertainty
 * remain local to the blocked design area where possible
 
-A backflow payload MUST NOT:
+A `high` backflow payload MUST NOT:
 
 * restate the full Discovery Artifact
 * ask broad exploratory questions without context
@@ -175,20 +112,20 @@ A backflow payload MUST NOT:
 
 ---
 
-## 10. Resolution Rule
+## 8. Resolution Rule
 
-When Discovery receives a `high` backflow payload, it MUST do one of the following:
+When Discovery receives a `high` backflow payload, it MUST:
 
-* resolve the blocking gap and issue an updated Discovery Artifact with `readiness_state = ready`
+* resolve the blocking gap and issue an updated Discovery Artifact with `readiness_state = ready`, or
 * determine that the problem is not yet sufficiently grounded for Design
 
 Design MUST consume the updated artifact and MUST NOT rely on prior session memory as the source of truth.
 
 ---
 
-## 11. Invariants
+## 9. Invariants
 
-This contract MUST preserve all of the following:
+This contract MUST preserve:
 
 * Discovery owns problem understanding
 * Design owns solution structure

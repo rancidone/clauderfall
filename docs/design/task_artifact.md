@@ -3,22 +3,20 @@ title: Clauderfall - Task Artifact
 doc_type: artifact-spec
 status: active
 updated: 2026-03-22
-summary: Normative schema and validation rules for task outputs consumed by Context.
+summary: Normative schema and validation rules for Task Artifacts.
 ---
 
 # Clauderfall - Task Artifact
 
 ## 1. Scope
 
-This document defines the required structure, metadata, and validation rules for a Task Artifact.
-
-This document is normative.
+This document defines the normative structure and validity rules for a Task Artifact.
 
 ---
 
-## 2. Artifact Contract
+## 2. Required Sections
 
-A valid Task Artifact MUST contain these top-level sections:
+A valid Task Artifact MUST contain:
 
 1. `objective`
 2. `scope`
@@ -35,13 +33,11 @@ If any required section is missing, the artifact is invalid.
 
 ---
 
-## 3. Section Requirements
+## 3. Section Rules
 
 ### 3.1 `objective`
 
-MUST define the single implementable feature or work unit represented by the task.
-
-MUST describe the result to be produced.
+MUST define a single implementable feature or work unit and the result to be produced.
 
 MUST NOT embed multiple unrelated feature objectives.
 
@@ -49,14 +45,11 @@ MUST NOT embed multiple unrelated feature objectives.
 
 ### 3.2 `scope`
 
-MUST contain:
-
-* `in_scope`
-* `out_of_scope`
+MUST contain `in_scope` and `out_of_scope`.
 
 MAY contain boundary notes.
 
-Scope MUST be specific enough to prevent task-local scope expansion.
+Scope MUST prevent task-local scope expansion.
 
 ---
 
@@ -143,14 +136,9 @@ If a major task element has no traceability entry, the artifact is invalid.
 
 ### 3.10 `completion_status`
 
-MUST contain:
+MUST contain `readiness_state`, `blocking_gaps`, `non_blocking_gaps`, and `justification`.
 
-* `readiness_state`
-* `blocking_gaps`
-* `non_blocking_gaps`
-* `justification`
-
-`completion_status` is the authoritative handoff gate for Context.
+`completion_status` is the artifact readiness record.
 
 ---
 
@@ -164,12 +152,6 @@ Allowed values:
 * `inferred`
 * `unresolved`
 
-Rules:
-
-* `grounded` means directly supported by Design inputs.
-* `inferred` means derived through bounded, non-structural task reasoning from Design.
-* `unresolved` means not sufficiently determined to be treated as settled task contract content.
-
 `inferred` MUST remain minimal and MUST NOT introduce new design.
 
 `unresolved` MUST NOT appear as settled scope, inputs, outputs, constraints, invariants, or acceptance criteria.
@@ -182,11 +164,6 @@ Allowed values:
 
 * `ready`
 * `not_ready`
-
-Rules:
-
-* `not_ready` means one or more blocking gaps exist.
-* `ready` means no blocking gaps remain.
 
 Non-blocking gaps MUST NOT change `readiness_state`.
 
@@ -208,9 +185,7 @@ If traceability cannot be preserved, the task element MUST be removed or moved i
 
 ## 6. Boundary Rules
 
-A Task Artifact MUST represent a bounded unit of work.
-
-A Task Artifact MUST NOT:
+A Task Artifact MUST represent a bounded unit of work and MUST NOT:
 
 * require new architecture
 * require new interface design
@@ -224,7 +199,7 @@ If any of the above is required, the artifact is invalid.
 
 ## 7. Blocking Gap Rules
 
-A gap is blocking if any of the following is true:
+A gap is blocking if:
 
 * task scope is materially incomplete or internally inconsistent
 * required inputs are missing or unstable
@@ -239,9 +214,9 @@ If any blocking gap exists, `readiness_state` MUST be `not_ready`.
 
 ---
 
-## 8. Non-Blocking Gap Rules
+## 8. Validity Rules
 
-A gap is non-blocking only if it does not materially affect:
+Non-blocking gaps MUST be recorded in `completion_status.non_blocking_gaps` and MUST NOT materially affect:
 
 * task executability
 * task acceptance
@@ -249,28 +224,11 @@ A gap is non-blocking only if it does not materially affect:
 * constraint preservation
 * dependency correctness
 
-Non-blocking gaps MUST still be recorded in `completion_status.non_blocking_gaps`.
-
----
-
-## 9. Invariants
-
-A valid Task Artifact MUST satisfy all of the following:
+A valid Task Artifact MUST also satisfy:
 
 * all required sections exist
 * all major task elements are traceable
 * the task is bounded to a single implementable feature or work unit
 * no unresolved task-critical content appears as settled contract content
 * no blocking gap is hidden outside `completion_status`
-* execution can proceed without new design decisions
-
----
-
-## 10. Exit Rule
-
-Task MAY hand off to Context only when:
-
-* the artifact is valid
-* `completion_status.readiness_state` is `ready`
-
-The Task-to-Context boundary is further constrained by `task_context_contract.md`.
+* the task contract is complete without unresolved task-critical gaps

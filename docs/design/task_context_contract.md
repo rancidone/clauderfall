@@ -10,9 +10,7 @@ summary: Normative handoff and backflow rules between Task and Context.
 
 ## 1. Scope
 
-This document defines the Task-to-Context handoff contract and the Context-to-Task backflow contract.
-
-This document is normative.
+This document defines the normative Task-to-Context handoff and Context-to-Task backflow contract.
 
 ---
 
@@ -28,7 +26,7 @@ Neither layer MAY silently absorb the other's responsibility.
 
 ## 3. Handoff Preconditions
 
-Context assembly MAY begin only if all of the following are true:
+Context assembly MAY begin only if:
 
 * a Task Artifact is present
 * the artifact satisfies `task_artifact.md`
@@ -38,20 +36,7 @@ If any precondition fails, the handoff is invalid.
 
 ---
 
-## 4. Context Input Assumptions
-
-Given a valid handoff, Context MAY assume:
-
-* the task is bounded and executable
-* blocking task gaps have been resolved
-* inputs, outputs, constraints, invariants, and acceptance criteria needed for execution are explicit
-* remaining uncertainty appears only in recorded non-blocking gaps
-
-Context MUST NOT assume that missing task detail is intentionally omitted.
-
----
-
-## 5. Permitted Context Use
+## 4. Permitted Context Use
 
 Context MAY:
 
@@ -69,9 +54,9 @@ Context MUST NOT:
 
 ---
 
-## 6. Backflow Trigger
+## 5. Backflow Trigger
 
-Context MUST raise backflow if any of the following is true:
+Context MUST raise backflow if:
 
 * the Task Artifact is invalid or incomplete
 * required task references are underspecified
@@ -82,62 +67,13 @@ Context MUST raise backflow if any of the following is true:
 
 Backflow is mandatory when triggered.
 
----
+If the issue is local and non-material, Context MAY continue while recording it explicitly.
 
-## 7. Backflow Levels
-
-### 7.1 `low`
-
-Conditions:
-
-* required context is identifiable
-* uncertainty is local and non-material
-* packet assembly does not alter task intent
-
-Behavior:
-
-* continue Context assembly
-* optionally record local uncertainty
+If packet assembly would require missing or unstable task contract content, unresolved execution-critical conditions, or invented scope, backflow is `high` and Context MUST halt the affected area.
 
 ---
 
-### 7.2 `medium`
-
-Conditions:
-
-* bounded context selection judgment is required
-* non-blocking task uncertainty remains visible
-* clarity is affected but execution safety and scope are not
-
-Behavior:
-
-* continue Context assembly
-* attach caution to affected packet areas
-* preserve the uncertainty explicitly
-
-`medium` does not reopen Task by itself.
-
----
-
-### 7.3 `high`
-
-Conditions:
-
-* valid packet assembly depends on missing or unstable task contract content
-* execution safety depends on undefined constraints, invariants, dependencies, or acceptance conditions
-* packet assembly would require invention of task requirements or scope
-
-Behavior:
-
-* halt affected Context assembly
-* emit a backflow payload
-* return control to Task
-
-`high` backflow invalidates continued Context assembly on the affected area until Task resolves the gap.
-
----
-
-## 8. Backflow Payload
+## 6. High Backflow Payload
 
 A `high` backflow payload MUST contain:
 
@@ -159,15 +95,15 @@ Rules:
 
 ---
 
-## 9. Backflow Writing Rules
+## 7. Payload Rules
 
-A backflow payload MUST:
+A `high` backflow payload MUST:
 
 * name the exact missing or unstable task input
 * distinguish structural blockers from caution-level uncertainty
 * remain local to the blocked packet area where possible
 
-A backflow payload MUST NOT:
+A `high` backflow payload MUST NOT:
 
 * restate the full Task Artifact
 * ask broad exploratory questions without context
@@ -176,20 +112,20 @@ A backflow payload MUST NOT:
 
 ---
 
-## 10. Resolution Rule
+## 8. Resolution Rule
 
-When Task receives a `high` backflow payload, it MUST do one of the following:
+When Task receives a `high` backflow payload, it MUST:
 
-* resolve the blocking gap and issue an updated Task Artifact with `readiness_state = ready`
+* resolve the blocking gap and issue an updated Task Artifact with `readiness_state = ready`, or
 * determine that the work cannot yet be specified sufficiently for Context assembly
 
 Context MUST consume the updated artifact and MUST NOT rely on prior session memory as the source of truth.
 
 ---
 
-## 11. Invariants
+## 9. Invariants
 
-This contract MUST preserve all of the following:
+This contract MUST preserve:
 
 * Task owns task contract definition
 * Context owns context selection and packet assembly

@@ -7,25 +7,31 @@ You are designing and building an agent software development tool with the user.
 Operate as a technical collaborator, not as an autonomous product owner.
 Assume high standards, direct communication, and low tolerance for fuzzy reasoning.
 
-Read these docs first:
-- `docs/clauderfall.md` - project brief, architecture, MVP boundary, workflow.
-- `docs/discovery_engine.md` - discovery requirements and grounding rules.
-- `docs/design_engine.md` - design artifact requirements and backflow rules.
-- `docs/task_engine.md` - task artifact structure and task-boundary rules.
-- `docs/context_engine.md` - context packet structure and context-selection rules.
-- `docs/future_state.md` - deferred post-MVP components; do not build these into MVP work.
-- `docs/README.md` - docs index.
+Start here:
+- `docs/README.md` - top-level docs index.
+- `docs/design/README.md` - canonical index for the design-level doc set.
+
+Doc loading policy:
+- Do not read the full doc set up front.
+- Lazy-load docs based on the current task.
+- Read frontmatter first to identify doc type, status, updated date, and summary before reading the body.
+- Frontmatter is generally short; read only the header first, generally fewer than 10 lines.
+- Read the project brief and the relevant engine/spec/contract docs only when they are needed for the current task.
+- Always read `docs/design/future_state.md` before proposing MVP work that could drift into deferred components.
 
 How to work:
 - Read the relevant docs before proposing or making changes.
+- Prefer the smallest sufficient set of docs for the current task.
 - Work with the user as a peer engineer: be direct, concrete, and technically rigorous.
 - Do not make product or architecture assumptions that are not grounded in the docs or current discussion.
 - Raise ambiguities, contradictions, and weak assumptions early.
 - Prefer small, reviewable changes over broad speculative rewrites.
 - Keep terminology consistent across docs and code.
 - When you change or add docs, update `docs/README.md`.
+- Update `docs/design/README.md` when changing or renaming design docs.
 
 When editing docs:
 - Keep terminology consistent with the current architecture.
 - Update `docs/README.md` when adding or renaming docs.
+- Update `docs/design/README.md` when adding or renaming design docs.
 - Keep MVP and future-state concerns separated.

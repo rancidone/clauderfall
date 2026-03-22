@@ -3,22 +3,20 @@ title: Clauderfall - Context Packet
 doc_type: artifact-spec
 status: active
 updated: 2026-03-22
-summary: Normative schema and validation rules for the Context Packet produced at the MVP boundary.
+summary: Normative schema and validation rules for Context Packets.
 ---
 
 # Clauderfall - Context Packet
 
 ## 1. Scope
 
-This document defines the required structure, metadata, and validation rules for a Context Packet.
-
-This document is normative.
+This document defines the normative structure and validity rules for a Context Packet.
 
 ---
 
-## 2. Artifact Contract
+## 2. Required Sections
 
-A valid Context Packet MUST contain these top-level sections:
+A valid Context Packet MUST contain:
 
 1. `task_contract`
 2. `included_context`
@@ -33,7 +31,7 @@ If any required section is missing, the packet is invalid.
 
 ---
 
-## 3. Section Requirements
+## 3. Section Rules
 
 ### 3.1 `task_contract`
 
@@ -49,9 +47,7 @@ MUST contain the task contract content required for execution.
 * acceptance_criteria
 * dependencies when relevant to execution safety or order
 
-`task_contract` MUST remain consistent with the source Task Artifact.
-
-`task_contract` MUST NOT redefine task scope or intent.
+`task_contract` MUST remain consistent with the source Task Artifact and MUST NOT redefine task scope or intent.
 
 ---
 
@@ -65,9 +61,7 @@ Each included item MUST identify:
 * its type
 * its source or origin
 
-Included context MUST be necessary for execution.
-
-Included context MUST NOT be selected solely because it is nearby, historically relevant, or broadly informative.
+Included context MUST be necessary for execution and MUST NOT be selected solely because it is nearby, historically relevant, or broadly informative.
 
 ---
 
@@ -75,7 +69,7 @@ Included context MUST NOT be selected solely because it is nearby, historically 
 
 MUST provide an explicit justification for each entry in `included_context`.
 
-Each justification MUST explain why the included item is necessary for:
+Each justification MUST explain why the item is necessary for:
 
 * correctness
 * constraint preservation
@@ -141,14 +135,9 @@ If a major packet element has no traceability entry, the packet is invalid.
 
 ### 3.8 `completion_status`
 
-MUST contain:
+MUST contain `readiness_state`, `blocking_gaps`, `non_blocking_gaps`, and `justification`.
 
-* `readiness_state`
-* `blocking_gaps`
-* `non_blocking_gaps`
-* `justification`
-
-`completion_status` is the authoritative validity gate for packet completion.
+`completion_status` is the packet readiness record.
 
 ---
 
@@ -166,10 +155,7 @@ Allowed values:
 * `acceptance_reference`
 * `other_explicit_type`
 
-Rules:
-
-* item types MUST reflect the form of included material
-* item types MUST be explicit enough to support auditing and downstream handling
+Item types MUST reflect the form of included material and be explicit enough to support auditing.
 
 ---
 
@@ -180,12 +166,6 @@ Allowed values:
 * `low`
 * `medium`
 * `high`
-
-Rules:
-
-* `low` means visibility is useful but execution safety is not materially affected
-* `medium` means caution is required but execution may remain safe
-* `high` means safe execution is blocked unless the conflict is resolved upstream
 
 If any `high` conflict remains unresolved, `readiness_state` MUST be `not_ready`.
 
@@ -198,18 +178,13 @@ Allowed values:
 * `ready`
 * `not_ready`
 
-Rules:
-
-* `not_ready` means one or more blocking gaps remain
-* `ready` means the packet is minimal, complete, and safe for execution-context handoff
-
 Non-blocking gaps MUST NOT change `readiness_state`.
 
 ---
 
 ## 5. Inclusion Rules
 
-An item MAY be included only if at least one of the following is true:
+An item MAY be included only if:
 
 * it is required to understand or satisfy the task contract
 * it is required to preserve a constraint or invariant
@@ -223,7 +198,7 @@ Context availability alone MUST NOT justify inclusion.
 
 ## 6. Exclusion Rules
 
-An item SHOULD be excluded if any of the following is true:
+An item SHOULD be excluded if:
 
 * it is adjacent but unnecessary
 * it is historically relevant but not execution-relevant
@@ -250,7 +225,7 @@ If traceability cannot be preserved, the packet element MUST be removed or recor
 
 ## 8. Blocking Gap Rules
 
-A gap is blocking if any of the following is true:
+A gap is blocking if:
 
 * execution-critical task contract content is missing or inconsistent
 * required supporting context cannot be identified
@@ -264,9 +239,9 @@ If any blocking gap exists, `readiness_state` MUST be `not_ready`.
 
 ---
 
-## 9. Non-Blocking Gap Rules
+## 9. Validity Rules
 
-A gap is non-blocking only if it does not materially affect:
+Non-blocking gaps MUST be recorded in `completion_status.non_blocking_gaps` and MUST NOT materially affect:
 
 * execution safety
 * task scope protection
@@ -274,29 +249,12 @@ A gap is non-blocking only if it does not materially affect:
 * acceptance evaluation
 * packet auditability
 
-Non-blocking gaps MUST still be recorded in `completion_status.non_blocking_gaps`.
-
----
-
-## 10. Invariants
-
-A valid Context Packet MUST satisfy all of the following:
+A valid Context Packet MUST also satisfy:
 
 * all required sections exist
 * every included item has an explicit justification
 * all major packet elements are traceable
 * the packet is minimal relative to the task contract
-* the packet is complete enough for safe execution-context handoff
+* the packet is complete enough for safe execution use
 * no material conflict is hidden outside `conflict_signals` or `completion_status`
 * the packet does not authorize scope expansion
-
----
-
-## 11. Exit Rule
-
-Context assembly MAY complete only when:
-
-* the packet is valid
-* `completion_status.readiness_state` is `ready`
-
-The Context Packet is the MVP terminal artifact.
