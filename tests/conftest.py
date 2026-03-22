@@ -7,13 +7,24 @@ import pytest
 from typer.testing import CliRunner
 
 from clauderfall.artifacts.common import (
+    ConflictSeverity,
     CompletionStatus,
     ConfidenceLevel,
     DesignElementClassification,
     Grounding,
+    IncludedItemType,
     ReadinessState,
     SourceClassification,
     TaskElementClassification,
+)
+from clauderfall.artifacts.context import (
+    BudgetSummary,
+    ConflictSignal,
+    ContextPacket,
+    ContextTraceabilityRecord,
+    ExclusionRecord,
+    IncludedContextItem,
+    InclusionJustification,
 )
 from clauderfall.artifacts.design import (
     ConstraintEncoding,
@@ -240,4 +251,79 @@ def valid_task_artifact() -> TaskArtifact:
 def task_json_path(tmp_path: Path, valid_task_artifact: TaskArtifact) -> Path:
     path = tmp_path / "task.json"
     path.write_text(json.dumps(valid_task_artifact.model_dump(mode="json"), indent=2))
+    return path
+
+
+@pytest.fixture
+def valid_context_packet(valid_task_artifact: TaskArtifact) -> ContextPacket:
+    return ContextPacket(
+        task_contract=valid_task_artifact,
+        included_context=[
+            IncludedContextItem(
+                item_id="ctx-1",
+                included_material="Task repository implementation surface",
+                item_type=IncludedItemType.SOURCE_SURFACE,
+                source_origin="src/clauderfall/persistence/repositories.py",
+            ),
+            IncludedContextItem(
+                item_id="ctx-2",
+                included_material="Task validation rules for readiness and traceability",
+                item_type=IncludedItemType.ARTIFACT,
+                source_origin="docs/design/task_artifact.md",
+            ),
+        ],
+        inclusion_justification=[
+            InclusionJustification(
+                item_id="ctx-1",
+                justification="Needed to implement append-only task persistence correctly.",
+                supports=["correctness", "dependency handling"],
+            ),
+            InclusionJustification(
+                item_id="ctx-2",
+                justification="Needed to preserve task constraints and acceptance semantics during execution.",
+                supports=["constraint preservation", "acceptance evaluation"],
+            ),
+        ],
+        exclusions=[
+            ExclusionRecord(
+                excluded_material="Unrelated discovery history",
+                reason="Historically relevant but not execution-relevant for the task.",
+            )
+        ],
+        conflict_signals=[
+            ConflictSignal(
+                conflicting_elements=["ctx-1", "ctx-2"],
+                nature_of_conflict="Minor wording mismatch between code and docs.",
+                impact_on_safe_execution="Low; traceability remains intact.",
+                severity=ConflictSeverity.LOW,
+            )
+        ],
+        budget_summary=BudgetSummary(
+            total_budget_measure="2 included items, 1 exclusion",
+            shaping_decisions=[
+                "Included direct implementation surfaces instead of broader repository context.",
+                "Excluded unrelated historical material to protect task scope.",
+            ],
+        ),
+        traceability=[
+            ContextTraceabilityRecord(
+                target_ref=target_ref,
+                supports=["safe execution packet assembly"],
+                trace_links=["task.objective[0]"],
+            )
+            for target_ref in ["task_contract", "included_context", "inclusion_justification"]
+        ],
+        completion_status=CompletionStatus(
+            readiness_state=ReadinessState.READY,
+            blocking_gaps=[],
+            non_blocking_gaps=["Budget measurement may become more formal later."],
+            justification="The packet is minimal, justified, and sufficient for bounded execution.",
+        ),
+    )
+
+
+@pytest.fixture
+def context_json_path(tmp_path: Path, valid_context_packet: ContextPacket) -> Path:
+    path = tmp_path / "context.json"
+    path.write_text(json.dumps(valid_context_packet.model_dump(mode="json"), indent=2))
     return path

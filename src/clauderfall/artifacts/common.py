@@ -44,6 +44,22 @@ class TaskElementClassification(StrEnum):
     UNRESOLVED = "unresolved"
 
 
+class IncludedItemType(StrEnum):
+    ARTIFACT = "artifact"
+    EXCERPT = "excerpt"
+    REFERENCE = "reference"
+    SOURCE_SURFACE = "source_surface"
+    INTERFACE_DEFINITION = "interface_definition"
+    ACCEPTANCE_REFERENCE = "acceptance_reference"
+    OTHER_EXPLICIT_TYPE = "other_explicit_type"
+
+
+class ConflictSeverity(StrEnum):
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+
+
 class ArtifactBase(BaseModel):
     """Base config shared by all normative artifact models."""
 

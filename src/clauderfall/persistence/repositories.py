@@ -7,6 +7,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clauderfall.artifacts.context import ContextPacket
 from clauderfall.artifacts.design import DesignArtifact
 from clauderfall.artifacts.discovery import DiscoveryArtifact
 from clauderfall.artifacts.task import TaskArtifact
@@ -50,6 +51,19 @@ class TaskArtifactRepository(Protocol):
 
     def get_latest(self, artifact_id: str) -> TaskArtifact | None:
         """Load the latest artifact version."""
+
+
+class ContextPacketRepository(Protocol):
+    """Repository protocol for Context Packet persistence."""
+
+    def create(self, artifact_id: str, packet: ContextPacket, version: int | None = None) -> int:
+        """Persist a new append-only packet version."""
+
+    def get_version(self, artifact_id: str, version: int) -> ContextPacket | None:
+        """Load a packet by exact version."""
+
+    def get_latest(self, artifact_id: str) -> ContextPacket | None:
+        """Load the latest packet version."""
 
 
 class SqlAlchemyDiscoveryArtifactRepository:
@@ -242,6 +256,78 @@ class SqlAlchemyTaskArtifactRepository:
         if record is None:
             return None
         return TaskArtifact.model_validate(record.body_json)
+
+    def _next_version(self, artifact_id: str) -> int:
+        statement = (
+            select(ArtifactRecord.version)
+            .where(ArtifactRecord.artifact_id == artifact_id)
+            .order_by(ArtifactRecord.version.desc())
+            .limit(1)
+        )
+        latest_version = self._session.execute(statement).scalar_one_or_none()
+        if latest_version is None:
+            return 1
+        return latest_version + 1
+
+    def _get_artifact_kind(self, artifact_id: str) -> str | None:
+        statement = (
+            select(ArtifactRecord.artifact_kind)
+            .where(ArtifactRecord.artifact_id == artifact_id)
+            .limit(1)
+        )
+        return self._session.execute(statement).scalar_one_or_none()
+
+
+class SqlAlchemyContextPacketRepository:
+    """SQLAlchemy-backed repository for context packets."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def create(self, artifact_id: str, packet: ContextPacket, version: int | None = None) -> int:
+        next_version = self._next_version(artifact_id)
+        if version is None:
+            version = next_version
+        elif version != next_version:
+            raise ValueError(
+                f"version {version} is invalid for artifact '{artifact_id}'; expected next version {next_version}"
+            )
+
+        existing_kind = self._get_artifact_kind(artifact_id)
+        if existing_kind is not None and existing_kind != "context_packet":
+            raise ValueError(
+                f"artifact '{artifact_id}' already exists as kind '{existing_kind}', not 'context_packet'"
+            )
+
+        record = ArtifactRecord(
+            artifact_id=artifact_id,
+            artifact_kind="context_packet",
+            version=version,
+            readiness_state=packet.completion_status.readiness_state.value,
+            body_json=packet.model_dump(mode="json"),
+            upstream_artifact_refs=[],
+        )
+        self._session.add(record)
+        self._session.commit()
+        return version
+
+    def get_version(self, artifact_id: str, version: int) -> ContextPacket | None:
+        record = self._session.get(ArtifactRecord, {"artifact_id": artifact_id, "version": version})
+        if record is None:
+            return None
+        return ContextPacket.model_validate(record.body_json)
+
+    def get_latest(self, artifact_id: str) -> ContextPacket | None:
+        statement = (
+            select(ArtifactRecord)
+            .where(ArtifactRecord.artifact_id == artifact_id)
+            .order_by(ArtifactRecord.version.desc())
+            .limit(1)
+        )
+        record = self._session.execute(statement).scalar_one_or_none()
+        if record is None:
+            return None
+        return ContextPacket.model_validate(record.body_json)
 
     def _next_version(self, artifact_id: str) -> int:
         statement = (
