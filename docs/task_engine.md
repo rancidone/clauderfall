@@ -1,4 +1,12 @@
-# Clauderfall — Task Engine
+---
+title: Clauderfall - Task Engine
+doc_type: engine
+status: active
+updated: 2026-03-22
+summary: Task layer for turning design artifacts into bounded, executable task contracts.
+---
+
+# Clauderfall - Task Engine
 
 ## Purpose
 
@@ -47,6 +55,8 @@ This artifact must include:
 
 All inputs must remain **traceable to design**.
 
+The Design-to-Task handoff contract is defined in `design_task_contract.md`.
+
 ---
 
 ## Outputs
@@ -54,6 +64,8 @@ All inputs must remain **traceable to design**.
 The Task Engine produces a set of **Task Artifacts**.
 
 Each task represents a **single implementable feature**.
+
+The required artifact structure and readiness rules are defined in `task_artifact.md`.
 
 Tasks must be:
 
@@ -146,6 +158,12 @@ Mapping between task elements and their design origins.
 
 ---
 
+### 10. Completion Status
+
+Defines whether Task is complete enough for the Context Engine to proceed.
+
+---
+
 ## Core Capabilities
 
 ### Decomposition
@@ -204,6 +222,8 @@ Triggers return to Design when:
 * task boundaries are ambiguous
 * acceptance criteria cannot be defined
 * constraints or invariants are incomplete
+
+The authoritative backflow contract, including the required high-backflow payload, is defined in `design_task_contract.md`.
 
 ---
 
@@ -294,6 +314,8 @@ Task generation is complete when:
 * dependencies are explicit
 * no tasks require reinterpretation
 * no design gaps block task formation
+
+The handoff gate into Context is governed by `task_context_contract.md`.
 
 ---
 

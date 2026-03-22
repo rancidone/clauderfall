@@ -1,4 +1,12 @@
-# Clauderfall — Discovery Engine
+---
+title: Clauderfall - Discovery Engine
+doc_type: engine
+status: active
+updated: 2026-03-22
+summary: Discovery layer for turning unstructured input into grounded, traceable understanding.
+---
+
+# Clauderfall - Discovery Engine
 
 ## Purpose
 
@@ -86,6 +94,8 @@ Produces a **design-ready artifact** that is:
 * explicit about uncertainty
 * free of hidden assumptions
 
+The required artifact structure and readiness rules are defined in `discovery_artifact.md`.
+
 ---
 
 ## Exit Condition
@@ -93,6 +103,8 @@ Produces a **design-ready artifact** that is:
 Discovery is complete when:
 
 > The artifact is sufficiently clear, constrained, and grounded that design can proceed with minimal backflow.
+
+The handoff gate into Design is governed by `discovery_design_contract.md`.
 
 ---
 

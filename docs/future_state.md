@@ -1,3 +1,11 @@
+---
+title: Clauderfall Future State
+doc_type: future-state
+status: active
+updated: 2026-03-22
+summary: Deferred post-MVP architecture for execution, validation, and harvest.
+---
+
 # Future State
 
 This document captures components that are part of the intended end-state architecture but are **outside the MVP scope**.

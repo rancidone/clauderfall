@@ -1,4 +1,12 @@
-# Clauderfall — Project Brief
+---
+title: Clauderfall - Project Brief
+doc_type: brief
+status: active
+updated: 2026-03-22
+summary: High-level project brief, core thesis, system architecture, MVP boundary, and workflow.
+---
+
+# Clauderfall - Project Brief
 
 ## Core Thesis
 

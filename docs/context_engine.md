@@ -1,3 +1,11 @@
+---
+title: Clauderfall - Context Engine
+doc_type: engine
+status: active
+updated: 2026-03-22
+summary: Context layer for turning task artifacts into minimal, auditable execution packets.
+---
+
 # Clauderfall - Context Engine
 
 ## Purpose
@@ -46,6 +54,8 @@ It may also consume explicitly referenced supporting artifacts, including:
 
 All included inputs must remain **traceable to the task or its upstream artifacts**.
 
+The Task-to-Context handoff contract is defined in `task_context_contract.md`.
+
 ---
 
 ## Outputs
@@ -53,6 +63,8 @@ All included inputs must remain **traceable to the task or its upstream artifact
 The Context Engine produces a **Context Packet**.
 
 This packet is the bounded execution input for a stateless agent.
+
+The required packet structure and readiness rules are defined in `context_packet.md`.
 
 ### Context Packet Structure
 
@@ -95,6 +107,12 @@ A summary of packet size, token pressure, and any compression or prioritization 
 #### 7. Traceability
 
 Mapping between packet contents and their task, design, discovery, or harvested origins.
+
+---
+
+#### 8. Completion Status
+
+Defines whether the packet is complete enough to be emitted as an execution-context artifact.
 
 ---
 
@@ -183,6 +201,8 @@ Triggers return to the **Task Engine** or upstream layers when:
 * conflicts cannot be resolved locally
 * the packet cannot be made both minimal and complete
 
+The authoritative backflow contract, including the required high-backflow payload, is defined in `task_context_contract.md`.
+
 ---
 
 ## Operating Model
@@ -268,6 +288,8 @@ Context assembly is complete when:
 * important conflicts are surfaced
 * token budget is within acceptable bounds
 * execution can proceed without reinterpretation or scope expansion
+
+The packet validity gate is governed by `context_packet.md`.
 
 ---
 

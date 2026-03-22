@@ -1,4 +1,12 @@
-# Clauderfall — Design Engine
+---
+title: Clauderfall - Design Engine
+doc_type: engine
+status: active
+updated: 2026-03-22
+summary: Design layer for converting discovery into structured, implementation-ready solution definitions.
+---
+
+# Clauderfall - Design Engine
 
 ## Purpose
 
@@ -47,6 +55,8 @@ This artifact must include:
 
 Additional reference material may be used, but must remain **explicitly traceable** and must not override discovery-grounded inputs.
 
+The Discovery-to-Design handoff contract is defined in `discovery_design_contract.md`.
+
 ---
 
 ## Outputs
@@ -54,6 +64,8 @@ Additional reference material may be used, but must remain **explicitly traceabl
 The Design Engine produces a **Design Artifact**.
 
 This artifact is durable, structured, and suitable for task generation.
+
+The required artifact structure and readiness rules are defined in `design_artifact.md`.
 
 ### Design Artifact Structure
 
@@ -146,6 +158,10 @@ Mapping between design elements and their origins:
 * external references
 * inferred elements
 
+#### 11. Completion Status
+
+Defines whether Design is complete enough for the Task Engine to proceed.
+
 ---
 
 ## Core Capabilities
@@ -216,6 +232,8 @@ The Design Engine must continuously assess:
 * presence of gaps in constraints, interfaces, or success criteria
 
 Rather than a binary stop/continue decision, the system produces a **backflow signal** that reflects the risk of continuing design.
+
+The authoritative backflow contract, including the required high-backflow payload, is defined in `discovery_design_contract.md`.
 
 ---
 
@@ -401,6 +419,8 @@ Design is complete when:
 * open questions are bounded and visible
 * task decomposition can occur without reinterpretation
 * no high backflow signals remain
+
+The handoff gate into Task is governed by `design_task_contract.md`.
 
 ---
 
