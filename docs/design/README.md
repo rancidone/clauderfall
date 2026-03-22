@@ -6,7 +6,7 @@ updated: 2026-03-22
 summary: Canonical index for the active Clauderfall product and engine-level documentation set.
 ---
 
-# Clauderfall Docs Index
+# Clauderfall Design Docs Index
 
 This folder contains the active documentation set.
 

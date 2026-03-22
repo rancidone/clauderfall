@@ -227,7 +227,18 @@ Within Discovery and Design, drafts should advance by default during the intervi
 
 The system does not need explicit user approval for every substantive revision before treating it as the current working artifact.
 
-The operator remains the final review gate at stage transition.
+## Approval Points
+
+Clauderfall has two meaningful approval points in the current product model:
+
+- Discovery-to-Design handoff approval
+- design-unit build-readiness approval
+
+The first approval point is whether the current discovery brief is strong enough to begin Design, either through the normal consensus handoff or through an explicit operator override.
+
+The second approval point is whether a given design unit is ready enough to treat as buildable, based on its readiness rating and brief rationale.
+
+These are the meaningful review gates. Per-revision draft edits do not require explicit approval.
 
 ## Open Product Questions
 
