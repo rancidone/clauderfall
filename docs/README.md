@@ -32,6 +32,11 @@ Core docs use the same frontmatter fields:
 - `design/clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design/design_engine.md` - Design engine brief derived from the product brief.
+- `design/design_unit_artifact.md` - Design doc for the design-unit artifact shape.
+- `design/design_unit_readiness.md` - Design doc for the meaning of design-unit readiness.
+- `design/design_unit_document_shape.md` - Design doc for the canonical readable design-unit document shape.
+- `design/design_unit_sequencing.md` - Design doc for sequencing and decomposition of design units.
+- `design/design_review_workflow.md` - Design doc for design-unit drafting, review, and build-readiness approval.
 - `handoffs/` - Short active continuity notes for the current discovery/design effort.
 - `handoffs/session_handoff_2026-03-22_design_ready.md` - Latest active handoff into the Design phase.
 - `legacy/README.md` - Index for archived MVP-era docs.

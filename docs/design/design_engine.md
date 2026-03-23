@@ -102,8 +102,12 @@ Within an active session, the working design may live in session context. The en
 
 The operator remains the final review gate for deciding whether a design unit is ready enough to treat as buildable.
 
+The engine should recommend design-unit sequencing heuristically and conversationally rather than through a formal global plan.
+
+Artifact workflow status, design readiness, and explicit build-readiness approval should remain separate concepts.
+
 ## Open Engine Questions
 
-- What is the right structured shape for a design unit without making the artifact feel schema-first?
-- How should design-unit readiness be represented so it is brief but still dependable?
-- When decomposition reveals multiple candidate next units, what is the best operator experience for sequencing recommendations?
+- Should explicit build-readiness approval eventually become a persisted artifact field, or remain a workflow action outside the required design-unit shape?
+- Should assumptions and open questions in the structured side eventually distinguish operator-confirmed items from interviewer-inferred items?
+- When the design concerns behavior-heavy systems, should the readable document shape standardize a stronger examples-or-flows section?

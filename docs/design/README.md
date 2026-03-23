@@ -30,3 +30,8 @@ These docs define:
 - `clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design_engine.md` - Design engine brief derived from the product brief.
+- `design_unit_artifact.md` - Defines the design-unit artifact shape for the Design stage.
+- `design_unit_readiness.md` - Defines the semantics and rating criteria for design-unit readiness.
+- `design_unit_document_shape.md` - Defines the recommended readable structure for a design unit document.
+- `design_unit_sequencing.md` - Defines how the Design engine should choose and decompose design units.
+- `design_review_workflow.md` - Defines the workflow from drafting through review and build-readiness approval.
