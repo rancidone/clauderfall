@@ -33,4 +33,5 @@ Core docs use the same frontmatter fields:
 - `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design/design_engine.md` - Design engine brief derived from the product brief.
 - `handoffs/` - Short active continuity notes for the current discovery/design effort.
+- `handoffs/session_handoff_2026-03-22_design_ready.md` - Latest active handoff into the Design phase.
 - `legacy/README.md` - Index for archived MVP-era docs.
