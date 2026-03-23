@@ -34,11 +34,15 @@ These docs define:
 - `artifact_checkpoint_semantics.md` - Defines artifact identity, flush checkpoints, and revision semantics for persisted artifacts.
 - `artifact_checkpoint_metadata.md` - Defines the required metadata envelope recorded for each artifact checkpoint.
 - `artifact_filesystem_layout.md` - Defines the on-disk layout for latest artifacts and immutable checkpoint history.
+- `discovery_brief_artifact.md` - Defines the canonical Discovery brief artifact as a readable problem-framing document with a small structured sidecar.
+- `discovery_session_flow.md` - Defines the end-to-end interaction flow for an active Discovery session from rough intent through Design Start Context creation.
+- `discovery_readiness_and_transition.md` - Defines the Discovery-stage readiness judgment and transition rules into Design.
+- `design_start_context_generation.md` - Stub for the derivation rules that condense a Discovery brief into a Design Start Context artifact.
 - `design_unit_artifact.md` - Defines the design-unit artifact shape for the Design stage.
 - `design_unit_readiness.md` - Defines the semantics and rating criteria for design-unit readiness.
 - `design_unit_document_shape.md` - Defines the recommended readable structure for a design unit document.
 - `design_unit_sequencing.md` - Defines how the Design engine should choose and decompose design units.
 - `design_review_workflow.md` - Defines the workflow from drafting through review and build-readiness approval.
 - `design_session_flow.md` - Defines the end-to-end interaction flow for an active Design session.
-- `discovery_design_handoff.md` - Defines the condensed handoff artifact between Discovery and Design.
+- `discovery_design_start_context.md` - Defines the condensed Design Start Context artifact between Discovery and Design.
 - `design_discovery_reentry.md` - Defines when Design should resolve ambiguity locally versus return to Discovery.

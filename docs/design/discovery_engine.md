@@ -92,11 +92,11 @@ That metadata should support the brief rather than replacing it.
 
 The operator must not lose visibility into important assumptions.
 
-Discovery should also be able to condense the final ready brief into a small Discovery-to-Design handoff artifact that preserves the most design-relevant framing, confidence, and assumption status.
+Discovery should also be able to condense the final ready brief into a small Design Start Context artifact that preserves the most design-relevant framing, confidence, and assumption status.
 
 ## Readiness Signal
 
-Discovery should recommend handoff to Design only when:
+Discovery should recommend transition to Design only when:
 
 - the problem is framed clearly enough that Design does not need to invent it
 - confidence is strong across the relevant problem areas

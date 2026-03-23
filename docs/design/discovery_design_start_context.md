@@ -1,16 +1,16 @@
 ---
-title: Clauderfall Discovery To Design Handoff
+title: Clauderfall Design Start Context
 doc_type: design
 status: active
 updated: 2026-03-22
-summary: Defines the condensed handoff artifact that carries Discovery output into Design without requiring full brief rereads.
+summary: Defines the condensed Design Start Context artifact that carries Discovery output into Design without requiring full brief rereads.
 ---
 
-# Clauderfall Discovery To Design Handoff
+# Clauderfall Design Start Context
 
 ## Purpose
 
-This document defines the handoff artifact between Discovery and Design.
+This document defines the Design Start Context artifact between Discovery and Design.
 
 The goal is to give Design a clean, fast-loading input that preserves the parts of Discovery that materially affect design, without requiring the engine or operator to reread the full Discovery brief every session.
 
@@ -18,7 +18,7 @@ The goal is to give Design a clean, fast-loading input that preserves the parts 
 
 The Discovery brief remains the canonical readable record of problem framing.
 
-The handoff artifact is a condensed operational view of that brief.
+The Design Start Context artifact is a condensed operational view of that brief.
 
 It exists to support:
 
@@ -27,26 +27,26 @@ It exists to support:
 - preserving problem framing boundaries so Design does not invent the problem
 - carrying forward assumption status and confidence in a usable way
 
-The handoff artifact should not replace the Discovery brief.
+The Design Start Context artifact should not replace the Discovery brief.
 
 ## Relationship To Discovery Brief
 
-The handoff should be derived from the Discovery brief at the point where Discovery is considered ready for Design.
+The Design Start Context should be derived from the Discovery brief at the point where Discovery is considered ready for Design.
 
 The intended relationship is:
 
 - the Discovery brief is the full readable source
-- the handoff is the minimal Design-facing condensation
+- the Design Start Context is the minimal Design-facing condensation
 
-If the handoff and brief drift apart, the brief remains the source of truth for the problem framing itself.
+If the Design Start Context and brief drift apart, the brief remains the source of truth for the problem framing itself.
 
-The handoff should also carry lightweight references back to the canonical Discovery brief at the section-header level.
+The Design Start Context should also carry lightweight references back to the canonical Discovery brief at the section-header level.
 
-The purpose of those references is not full traceability. The purpose is quick ambiguity resolution when Design needs to reopen the source material behind a handoff entry.
+The purpose of those references is not full traceability. The purpose is quick ambiguity resolution when Design needs to reopen the source material behind a Design Start Context entry.
 
-## Handoff Design Goals
+## Design Start Context Goals
 
-The handoff must be small enough to read quickly at the start of a Design session.
+The Design Start Context must be small enough to read quickly at the start of a Design session.
 
 It must still preserve enough structure to let Design:
 
@@ -55,15 +55,15 @@ It must still preserve enough structure to let Design:
 - understand which problem areas are strong versus weak
 - see the constraints and risks that should shape early design choices
 
-If the handoff cannot support those operations, it is too thin.
+If the Design Start Context cannot support those operations, it is too thin.
 
-If the handoff starts duplicating the whole Discovery brief, it is too heavy.
+If the Design Start Context starts duplicating the whole Discovery brief, it is too heavy.
 
-## Required Handoff Contents
+## Required Contents
 
-The handoff should contain five parts.
+The Design Start Context should contain five parts.
 
-### 1. Handoff Summary
+### 1. Context Summary
 
 This is a short narrative summary of the problem framing that Design should carry in active memory.
 
@@ -77,7 +77,7 @@ This summary should be short enough to read in under a minute.
 
 ### 2. Problem Area Index
 
-The handoff should carry a compact list of the major Discovery problem areas or themes.
+The Design Start Context should carry a compact list of the major Discovery problem areas or themes.
 
 Each problem area entry should include:
 
@@ -100,7 +100,7 @@ This index lets Design reason about where the framing is strong and where early 
 
 ### 3. Cross-Cutting Constraints And Risks
 
-The handoff should promote the Discovery findings that apply across multiple problem areas.
+The Design Start Context should promote the Discovery findings that apply across multiple problem areas.
 
 These should usually include:
 
@@ -115,7 +115,7 @@ This section is important because many first design units will be shaped more by
 
 ### 4. Assumption Register
 
-The handoff should carry a compact assumption register containing only assumptions that materially affect design.
+The Design Start Context should carry a compact assumption register containing only assumptions that materially affect design.
 
 Each assumption entry should include:
 
@@ -153,7 +153,7 @@ This is the minimum structure needed to preserve assumption status cleanly acros
 
 ### 5. Design Start Recommendation
 
-The handoff should end with a short Design start recommendation.
+The Design Start Context should end with a short Design start recommendation.
 
 This should name:
 
@@ -165,7 +165,7 @@ This recommendation is not a rigid next-step command. It is a grounded starting 
 
 ## Deliberately Excluded
 
-The handoff should not attempt to carry:
+The Design Start Context should not attempt to carry:
 
 - the full Discovery brief text
 - design-unit definitions
@@ -174,16 +174,16 @@ The handoff should not attempt to carry:
 - a full dependency graph
 - every minor note or conversational detail from Discovery
 
-Including those would turn the handoff into either a design artifact or a noisy archive.
+Including those would turn the Design Start Context into either a design artifact or a noisy archive.
 
 ## Proposed Minimal Logical Shape
 
 The minimum logical shape is:
 
 ```yaml
-handoff_metadata:
+design_start_context_metadata:
   regenerated_after_reentry: boolean
-handoff_summary: string
+context_summary: string
 problem_areas:
   - problem_area_id: string
     title: string
@@ -213,9 +213,9 @@ This is a logical shape, not the full persistence specification.
 
 The current default physical persistence format is defined separately in `artifact_persistence_format.md`.
 
-`handoff_metadata.regenerated_after_reentry` should default to `false`.
+`design_start_context_metadata.regenerated_after_reentry` should default to `false`.
 
-If Discovery repair occurs during Design reentry and a new handoff is generated from the repaired brief, this field should be set to `true`.
+If Discovery repair occurs during Design reentry and a new Design Start Context is generated from the repaired brief, this field should be set to `true`.
 
 This is continuity metadata, not a new artifact type and not a separate workflow gate.
 
@@ -230,31 +230,31 @@ They should usually identify:
 
 This is enough to let Design reopen the source material without introducing brittle line-level references or claim-level citation machinery.
 
-If a handoff entry genuinely draws from multiple brief sections, it may carry a small list of section-header references. That should be the exception, not the default.
+If a Design Start Context entry genuinely draws from multiple brief sections, it may carry a small list of section-header references. That should be the exception, not the default.
 
 ## Reload Rule
 
 A resumed Design session should normally start by loading:
 
-- the Discovery-to-Design handoff
+- the Design Start Context
 - the active design-unit artifacts
 
 The full Discovery brief should only need to be reopened when:
 
-- the handoff appears insufficient for the current design question
+- the Design Start Context appears insufficient for the current design question
 - Design discovers a contradiction in the original framing
 - the operator explicitly wants to inspect the fuller Discovery narrative
 
-This is the main performance and clarity win of the handoff model.
+This is the main performance and clarity win of the Design Start Context model.
 
-## Handoff Creation Rule
+## Creation Rule
 
-The handoff should be created when Discovery is explicitly handed off to Design, either by:
+The Design Start Context should be created when Discovery is explicitly handed off to Design, either by:
 
 - the normal consensus transition
 - an operator override into early Design
 
-In the override case, the handoff should still be created, but it should make the weakness explicit by preserving:
+In the override case, the Design Start Context should still be created, but it should make the weakness explicit by preserving:
 
 - low-confidence problem areas
 - unresolved assumptions with weak status
@@ -264,7 +264,7 @@ This lets Design proceed without hiding the costs of the override.
 
 ## Failure Modes To Avoid
 
-The handoff design should avoid:
+The Design Start Context design should avoid:
 
 - collapsing the entire Discovery brief into a dense structured dump
 - losing assumption grounding status at the stage boundary
@@ -277,6 +277,6 @@ The handoff design should avoid:
 The main remaining questions are:
 
 - whether `design_relevance` should later become more structured than a short explanation
-- whether the handoff should persist a brief stage-level readiness rationale in addition to the existing Discovery readiness decision
+- whether the Design Start Context should persist a brief stage-level readiness rationale in addition to the existing Discovery readiness decision
 
-These do not block adopting the handoff shape above as the current design direction.
+These do not block adopting the Design Start Context shape above as the current design direction.

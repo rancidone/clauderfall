@@ -3,7 +3,7 @@ title: Clauderfall Design Session Flow
 doc_type: design
 status: active
 updated: 2026-03-22
-summary: Defines the end-to-end interaction flow from Discovery handoff into the first concrete Design unit and its review cycle.
+summary: Defines the end-to-end interaction flow from the Design Start Context into the first concrete Design unit and its review cycle.
 ---
 
 # Clauderfall Design Session Flow
@@ -14,7 +14,7 @@ This document defines the default end-to-end interaction flow for an active Desi
 
 The goal is to test the existing Design decisions as one coherent operator experience:
 
-- Discovery handoff
+- Design Start Context intake
 - first-unit selection
 - design-unit drafting
 - decomposition when needed
@@ -35,7 +35,8 @@ The engine's job is to keep the operator oriented around the current design boun
 
 The default flow is:
 
-1. confirm Discovery handoff context
+1. confirm Design Start Context
+1. confirm Design Start Context
 2. propose the first design unit
 3. draft the first design unit in-session
 4. decompose if the unit proves too broad
@@ -45,13 +46,13 @@ The default flow is:
 
 The sections below define that flow in more detail.
 
-## 1. Discovery Handoff Intake
+## 1. Design Start Context Intake
 
 When Design starts, the engine should first restate the discovery context that matters for design.
 
 This should be brief and selective.
 
-The normal source for this intake should be the condensed Discovery-to-Design handoff artifact, not a full reread of the Discovery brief.
+The normal source for this intake should be the condensed Design Start Context artifact, not a full reread of the Discovery brief.
 
 The engine should surface:
 
@@ -64,7 +65,7 @@ It should not restate the entire Discovery brief.
 
 ## 2. First-Unit Recommendation
 
-After grounding on the handoff, the engine should recommend the first design unit.
+After grounding on the Design Start Context, the engine should recommend the first design unit.
 
 The recommendation should include:
 
@@ -79,7 +80,7 @@ The reason should usually point to one of:
 - unresolved risk concentration
 - near-term build value
 
-If the discovery handoff is too weak to support a first unit cleanly, the engine should say so explicitly and either:
+If the Design Start Context is too weak to support a first unit cleanly, the engine should say so explicitly and either:
 
 - ask a narrowing design question
 - recommend a brief return to Discovery
@@ -205,7 +206,7 @@ The engine does not need to produce a full plan. It only needs to keep the next 
 
 The intended interaction shape is roughly:
 
-1. handoff summary
+1. Design Start Context summary
 2. first-unit recommendation
 3. operator confirms or redirects
 4. engine opens the unit in `draft`
@@ -234,7 +235,7 @@ If those answers are not obvious, the session has become too opaque.
 
 The session flow should avoid:
 
-- starting Design with a unit recommendation that is not grounded in the discovery handoff
+- starting Design with a unit recommendation that is not grounded in the Design Start Context
 - letting drafting continue without clarifying the current unit boundary
 - treating decomposition as a sign of failure rather than normal design work
 - jumping from active drafting straight to implicit build approval
@@ -242,6 +243,6 @@ The session flow should avoid:
 
 ## Current Design Wall
 
-The main remaining pressure point is whether handoff metadata should eventually carry richer history than a simple regenerated-after-reentry marker.
+The main remaining pressure point is whether Design Start Context metadata should eventually carry richer history than a simple regenerated-after-reentry marker.
 
-The current direction is clear that Discovery repair should update the brief, regenerate the handoff, and mark that regeneration in handoff metadata rather than creating a separate repair artifact.
+The current direction is clear that Discovery repair should update the brief, regenerate the Design Start Context, and mark that regeneration in its metadata rather than creating a separate repair artifact.

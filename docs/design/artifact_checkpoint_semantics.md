@@ -113,7 +113,7 @@ This keeps revision history honest without fragmenting the design record.
 
 ## Discovery Repair Semantics
 
-When Discovery is repaired after Design reentry, the repaired Discovery brief and regenerated handoff should each create new checkpoints under their existing artifact identities.
+When Discovery is repaired after Design reentry, the repaired Discovery brief and regenerated Design Start Context should each create new checkpoints under their existing artifact identities.
 
 The purpose is to show that the framing evolved, not to imply that entirely new artifact types appeared.
 

@@ -33,7 +33,7 @@ This keeps the product document-first without forcing large nested structure int
 
 A frontmatter-only approach is attractive for small metadata, but it breaks down for the current artifact shapes.
 
-Discovery handoffs and design units already need structured fields that can become nested enough to make frontmatter noisy, long, and unpleasant to review.
+Design Start Context artifacts and design units already need structured fields that can become nested enough to make frontmatter noisy, long, and unpleasant to review.
 
 Large inline metadata blocks also weaken the lazy-load behavior the active docs rely on, because the reader must often scan through structure before reaching the document itself.
 
@@ -60,7 +60,7 @@ The Markdown document should remain the canonical readable artifact.
 It should contain the human-facing content already defined by the relevant stage docs:
 
 - Discovery brief narrative
-- Discovery-to-Design handoff narrative
+- Design Start Context narrative
 - design-unit design document
 
 The document may use a short frontmatter header for fast document loading when useful, but that frontmatter should stay intentionally small.
@@ -80,7 +80,7 @@ This includes fields such as:
 - readiness signals
 - dependency or decomposition links
 - structured assumptions and open questions
-- handoff indexes and references
+- Design Start Context indexes and references
 
 The sidecar should stay limited to fields that materially improve downstream reliability.
 
@@ -91,7 +91,7 @@ It should not become a second prose document.
 This paired-file format should be the default for the current artifact types in scope:
 
 - Discovery brief
-- Discovery-to-Design handoff
+- Design Start Context
 - design unit
 
 The stage-specific docs still define each artifact's logical shape.

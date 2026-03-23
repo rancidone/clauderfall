@@ -140,9 +140,9 @@ The normal transition into Design should be consensus-based:
 
 - the interviewer may recommend moving on
 - the operator may suggest moving on
-- the handoff should happen when both agree the discovery brief is strong enough
+- the transition should happen when both agree the discovery brief is strong enough
 
-Clauderfall should not treat Discovery as an absolute hard gate. However, it should require an explicit operator override to begin Design when Discovery is still meaningfully incomplete. That override is a separate weaker path from the normal consensus handoff and should make clear that proceeding now increases the risk of design revision and reframing.
+Clauderfall should not treat Discovery as an absolute hard gate. However, it should require an explicit operator override to begin Design when Discovery is still meaningfully incomplete. That override is a separate weaker path from the normal consensus transition and should make clear that proceeding now increases the risk of design revision and reframing.
 
 ## Design Role In The Product
 
@@ -231,10 +231,10 @@ The system does not need explicit user approval for every substantive revision b
 
 Clauderfall has two meaningful approval points in the current product model:
 
-- Discovery-to-Design handoff approval
+- Discovery-to-Design start approval
 - design-unit build-readiness approval
 
-The first approval point is whether the current discovery brief is strong enough to begin Design, either through the normal consensus handoff or through an explicit operator override.
+The first approval point is whether the current discovery brief is strong enough to begin Design, either through the normal consensus transition or through an explicit operator override.
 
 The second approval point is whether a given design unit is ready enough to treat as buildable, based on its readiness rating and brief rationale.
 

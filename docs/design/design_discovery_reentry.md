@@ -10,7 +10,7 @@ summary: Defines when Design should resolve ambiguity locally versus explicitly 
 
 ## Purpose
 
-This document defines how the Design stage should respond when ambiguity, contradiction, or weak framing appears after Discovery handoff.
+This document defines how the Design stage should respond when ambiguity, contradiction, or weak framing appears after the Discovery-to-Design transition.
 
 The goal is to distinguish:
 
@@ -75,7 +75,7 @@ Stay in Design if all of the following are true:
 - the problem statement still appears stable
 - intended outcomes still appear stable
 - major constraints still appear usable
-- the ambiguity can be resolved without changing the meaning of the Discovery handoff
+- the ambiguity can be resolved without changing the meaning of the Design Start Context
 
 ### Return To Discovery
 
@@ -99,7 +99,7 @@ It should name:
 - why this is a Discovery issue rather than a Design issue
 - what problem-framing question now needs repair
 
-The recommendation should not sound like a failure state. Reentry is a normal correction path when the handoff proves weaker than it first appeared.
+The recommendation should not sound like a failure state. Reentry is a normal correction path when the Design Start Context proves weaker than it first appeared.
 
 ## Reentry Scope
 
@@ -115,16 +115,16 @@ The engine should identify:
 
 This keeps the workflow tight and prevents stage thrash.
 
-## Relationship To Handoff References
+## Relationship To Context References
 
-When Design detects the need for reentry, it should first use the handoff's section-header references to reopen the relevant Discovery brief sections.
+When Design detects the need for reentry, it should first use the Design Start Context's section-header references to reopen the relevant Discovery brief sections.
 
 That quick source check should help answer two questions:
 
-- is the ambiguity due to an incomplete handoff condensation
+- is the ambiguity due to an incomplete Design Start Context condensation
 - or is the underlying Discovery brief itself actually weak or contradictory
 
-This is why the handoff carries brief references instead of acting as a standalone truth source.
+This is why the Design Start Context carries brief references instead of acting as a standalone truth source.
 
 ## Effect On Active Design Work
 
@@ -145,13 +145,13 @@ Discovery repair during reentry should not create a separate required repair art
 The default persistence model should be:
 
 - update the canonical Discovery brief
-- regenerate the Discovery-to-Design handoff
-- mark the regenerated handoff via handoff metadata
-- resume Design against the repaired handoff
+- regenerate the Design Start Context
+- mark the regenerated Design Start Context via its metadata
+- resume Design against the repaired Design Start Context
 
 This keeps the stage model clean and avoids introducing a new artifact type for what is fundamentally a correction to problem framing.
 
-A separate repair artifact should only be introduced later if there is a demonstrated continuity problem that the updated brief, regenerated handoff, and handoff metadata cannot solve cleanly.
+A separate repair artifact should only be introduced later if there is a demonstrated continuity problem that the updated brief, regenerated Design Start Context, and its metadata cannot solve cleanly.
 
 ## Override Case
 
@@ -159,7 +159,7 @@ If Design was started through an explicit early-start override from incomplete D
 
 That is intentional.
 
-The override path already acknowledges that framing weakness is being carried forward. The engine should therefore surface reentry sooner rather than pretending the weaker path behaves like a normal ready handoff.
+The override path already acknowledges that framing weakness is being carried forward. The engine should therefore surface reentry sooner rather than pretending the weaker path behaves like a normal ready Design Start Context.
 
 ## Failure Modes To Avoid
 
@@ -173,6 +173,6 @@ The engine should avoid:
 
 ## Open Question
 
-The main remaining open question is whether regenerated handoff metadata eventually needs more detail than a simple boolean marker.
+The main remaining open question is whether regenerated Design Start Context metadata eventually needs more detail than a simple boolean marker.
 
 That question does not block adopting the reentry model above.
