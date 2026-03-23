@@ -30,6 +30,10 @@ These docs define:
 - `clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design_engine.md` - Design engine brief derived from the product brief.
+- `artifact_persistence_format.md` - Defines the physical persistence format for readable stage artifacts and their structured metadata.
+- `artifact_checkpoint_semantics.md` - Defines artifact identity, flush checkpoints, and revision semantics for persisted artifacts.
+- `artifact_checkpoint_metadata.md` - Defines the required metadata envelope recorded for each artifact checkpoint.
+- `artifact_filesystem_layout.md` - Defines the on-disk layout for latest artifacts and immutable checkpoint history.
 - `design_unit_artifact.md` - Defines the design-unit artifact shape for the Design stage.
 - `design_unit_readiness.md` - Defines the semantics and rating criteria for design-unit readiness.
 - `design_unit_document_shape.md` - Defines the recommended readable structure for a design unit document.

@@ -209,7 +209,9 @@ design_start_recommendation:
   caution: string | null
 ```
 
-This is a logical shape, not a final persistence format.
+This is a logical shape, not the full persistence specification.
+
+The current default physical persistence format is defined separately in `artifact_persistence_format.md`.
 
 `handoff_metadata.regenerated_after_reentry` should default to `false`.
 

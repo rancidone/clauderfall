@@ -54,7 +54,9 @@ The current design does not require the structure to live in a separate file. It
 - an adjacent machine-readable sidecar
 - another tightly linked representation
 
-That storage choice is an implementation detail. The product requirement is the logical shape, not the file format.
+The product requirement is the logical shape, not the file format.
+
+The current default physical persistence format is defined separately in `artifact_persistence_format.md`.
 
 ## Canonical Document
 

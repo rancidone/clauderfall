@@ -32,6 +32,10 @@ Core docs use the same frontmatter fields:
 - `design/clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design/design_engine.md` - Design engine brief derived from the product brief.
+- `design/artifact_persistence_format.md` - Design doc for the physical persisted format of readable artifacts and structured metadata.
+- `design/artifact_checkpoint_semantics.md` - Design doc for artifact identity, checkpoints, and revision semantics.
+- `design/artifact_checkpoint_metadata.md` - Design doc for the required metadata recorded for each checkpoint.
+- `design/artifact_filesystem_layout.md` - Design doc for the on-disk layout of current artifacts and checkpoint history.
 - `design/design_unit_artifact.md` - Design doc for the design-unit artifact shape.
 - `design/design_unit_readiness.md` - Design doc for the meaning of design-unit readiness.
 - `design/design_unit_document_shape.md` - Design doc for the canonical readable design-unit document shape.
@@ -41,5 +45,5 @@ Core docs use the same frontmatter fields:
 - `design/discovery_design_handoff.md` - Design doc for the condensed Discovery-to-Design handoff artifact.
 - `design/design_discovery_reentry.md` - Design doc for the Design-to-Discovery repair boundary.
 - `handoffs/` - Short active continuity notes for the current discovery/design effort.
-- `handoffs/session_handoff_2026-03-22_design_ready.md` - Latest active handoff into the Design phase.
+- `handoffs/session_handoff_2026-03-22_persistence_checkpoint.md` - Latest active handoff after settling the persistence model through checkpoint metadata and filesystem layout.
 - `legacy/README.md` - Index for archived MVP-era docs.

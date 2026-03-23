@@ -115,6 +115,5 @@ Within an active session, the working brief may live in session context. The eng
 
 ## Open Engine Questions
 
-- What is the right persistent representation for the readable brief, its supporting metadata, and the condensed Discovery-to-Design handoff?
 - How much supporting metadata should be visible by default versus on demand?
 - What is the right operator experience for explicit Design overrides when Discovery confidence is still incomplete?

@@ -152,6 +152,8 @@ The engine should explicitly flush the current artifact at meaningful checkpoint
 
 The flush should preserve the current unit state without forcing persistence on every turn.
 
+Each successful flush should create a new checkpoint for the same design-unit artifact rather than rewriting design history in place.
+
 ## Failure Modes To Avoid
 
 The workflow should avoid:

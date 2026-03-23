@@ -242,6 +242,5 @@ These are the meaningful review gates. Per-revision draft edits do not require e
 
 ## Open Product Questions
 
-- What is the right persistent representation for readable stage artifacts plus the supporting structured metadata they need?
 - What is the right artifact shape for Discovery and Design so they remain readable first without becoming vague?
 - What review and approval flow should exist around stage transitions, overrides, and pre-compaction flushes?

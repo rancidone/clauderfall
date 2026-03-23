@@ -100,6 +100,8 @@ Design should advance the working draft by default during the interview rather t
 
 Within an active session, the working design may live in session context. The engine should still flush the current artifact explicitly before context compaction risks losing important progress.
 
+Each successful flush should create a new checkpoint for the same artifact identity rather than replacing history in place.
+
 The operator remains the final review gate for deciding whether a design unit is ready enough to treat as buildable.
 
 The engine should recommend design-unit sequencing heuristically and conversationally rather than through a formal global plan.
