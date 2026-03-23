@@ -35,3 +35,6 @@ These docs define:
 - `design_unit_document_shape.md` - Defines the recommended readable structure for a design unit document.
 - `design_unit_sequencing.md` - Defines how the Design engine should choose and decompose design units.
 - `design_review_workflow.md` - Defines the workflow from drafting through review and build-readiness approval.
+- `design_session_flow.md` - Defines the end-to-end interaction flow for an active Design session.
+- `discovery_design_handoff.md` - Defines the condensed handoff artifact between Discovery and Design.
+- `design_discovery_reentry.md` - Defines when Design should resolve ambiguity locally versus return to Discovery.

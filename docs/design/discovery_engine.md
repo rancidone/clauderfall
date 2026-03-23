@@ -92,6 +92,8 @@ That metadata should support the brief rather than replacing it.
 
 The operator must not lose visibility into important assumptions.
 
+Discovery should also be able to condense the final ready brief into a small Discovery-to-Design handoff artifact that preserves the most design-relevant framing, confidence, and assumption status.
+
 ## Readiness Signal
 
 Discovery should recommend handoff to Design only when:
@@ -113,6 +115,6 @@ Within an active session, the working brief may live in session context. The eng
 
 ## Open Engine Questions
 
-- What is the right persistent representation for the readable brief and its supporting metadata?
+- What is the right persistent representation for the readable brief, its supporting metadata, and the condensed Discovery-to-Design handoff?
 - How much supporting metadata should be visible by default versus on demand?
 - What is the right operator experience for explicit Design overrides when Discovery confidence is still incomplete?

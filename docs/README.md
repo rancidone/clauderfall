@@ -37,6 +37,9 @@ Core docs use the same frontmatter fields:
 - `design/design_unit_document_shape.md` - Design doc for the canonical readable design-unit document shape.
 - `design/design_unit_sequencing.md` - Design doc for sequencing and decomposition of design units.
 - `design/design_review_workflow.md` - Design doc for design-unit drafting, review, and build-readiness approval.
+- `design/design_session_flow.md` - Design doc for the end-to-end Design-stage interaction flow.
+- `design/discovery_design_handoff.md` - Design doc for the condensed Discovery-to-Design handoff artifact.
+- `design/design_discovery_reentry.md` - Design doc for the Design-to-Discovery repair boundary.
 - `handoffs/` - Short active continuity notes for the current discovery/design effort.
 - `handoffs/session_handoff_2026-03-22_design_ready.md` - Latest active handoff into the Design phase.
 - `legacy/README.md` - Index for archived MVP-era docs.
