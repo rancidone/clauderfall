@@ -249,7 +249,7 @@ The Discovery session should avoid:
 - allowing solution structure to silently replace problem framing
 - hiding important assumptions in metadata only
 - treating readiness as a private engine judgment
-- creating the Design Start Context from a brief that is visibly too weak
+- creating the Design Start Context from a visibly too weak brief without an explicit override path that preserves the weakness
 
 ## Open Questions
 

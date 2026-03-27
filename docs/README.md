@@ -39,7 +39,7 @@ Core docs use the same frontmatter fields:
 - `design/discovery_brief_artifact.md` - Design doc for the canonical Discovery brief artifact and its structured side.
 - `design/discovery_session_flow.md` - Design doc for the end-to-end Discovery-stage interaction flow.
 - `design/discovery_readiness_and_transition.md` - Design doc for Discovery readiness judgment and transition rules.
-- `design/design_start_context_generation.md` - Stub design doc for Design Start Context derivation from the Discovery brief.
+- `design/design_start_context_generation.md` - Design doc for the derivation rules that condense a Discovery brief into a Design Start Context artifact.
 - `design/design_unit_artifact.md` - Design doc for the design-unit artifact shape.
 - `design/design_unit_readiness.md` - Design doc for the meaning of design-unit readiness.
 - `design/design_unit_document_shape.md` - Design doc for the canonical readable design-unit document shape.
@@ -49,5 +49,5 @@ Core docs use the same frontmatter fields:
 - `design/discovery_design_start_context.md` - Design doc for the condensed Design Start Context artifact between Discovery and Design.
 - `design/design_discovery_reentry.md` - Design doc for the Design-to-Discovery repair boundary.
 - `handoffs/` - Short active continuity notes for the current discovery/design effort.
-- `handoffs/session_handoff_2026-03-22_persistence_checkpoint.md` - Latest active handoff after settling the persistence model through checkpoint metadata and filesystem layout.
+- `handoffs/session_handoff_2026-03-22_design_start_context_generation_complete.md` - Latest active handoff after replacing the Design Start Context generation stub with a concrete derivation contract and aligning adjacent docs.
 - `legacy/README.md` - Index for archived MVP-era docs.

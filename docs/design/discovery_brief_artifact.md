@@ -279,7 +279,11 @@ This supports the normal consensus transition and the weaker override path.
 
 ### 4. Design Start Context Generation
 
-When Design begins, the system should derive the Design Start Context from the current ready Discovery brief.
+When Design begins, the system should derive the Design Start Context from the current Discovery brief at transition time.
+
+In the normal path, that brief is `ready_for_design`.
+
+In the weaker override path, that brief may still be `not_ready`, and the resulting Design Start Context should preserve that weak signal explicitly rather than smoothing it away.
 
 That derivation should be selective and condensed.
 
