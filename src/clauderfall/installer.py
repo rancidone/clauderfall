@@ -16,8 +16,7 @@ CLAUDE_INSTALL_DIR = Path(".claude/clauderfall")
 CLAUDE_MCP_CONFIG_PATH = Path(".mcp.json")
 CODEX_INSTALL_DIR = Path(".codex/clauderfall")
 CODEX_MCP_CONFIG_PATH = Path(".codex/config.toml")
-CLAUDERFALL_GITIGNORE_START = "# clauderfall-mcp: begin"
-CLAUDERFALL_GITIGNORE_END = "# clauderfall-mcp: end"
+CLAUDERFALL_GITIGNORE_HEADER = "# clauderfall-mcp"
 CLAUDE_GITIGNORE_ENTRIES = (".claude/clauderfall/", ".mcp.json")
 CODEX_GITIGNORE_ENTRIES = (".codex/clauderfall/", ".codex/config.toml")
 
@@ -333,10 +332,19 @@ def ensure_clauderfall_gitignore(target_repo: Path, entries: tuple[str, ...]) ->
     """Ensure the installed Clauderfall artifacts remain ignored by git."""
 
     gitignore_path = target_repo / ".gitignore"
-    current = gitignore_path.read_text() if gitignore_path.exists() else ""
-    managed_entries = _read_managed_gitignore_entries(current)
-    updated_entries = sorted(set(managed_entries) | set(entries))
-    gitignore_path.write_text(_render_gitignore(current, updated_entries))
+    existing_lines = gitignore_path.read_text().splitlines() if gitignore_path.exists() else []
+    updated_lines = list(existing_lines)
+
+    if CLAUDERFALL_GITIGNORE_HEADER not in updated_lines:
+        if updated_lines and updated_lines[-1] != "":
+            updated_lines.append("")
+        updated_lines.append(CLAUDERFALL_GITIGNORE_HEADER)
+
+    for entry in entries:
+        if entry not in updated_lines:
+            updated_lines.append(entry)
+
+    gitignore_path.write_text("\n".join(updated_lines).rstrip("\n") + "\n")
     return gitignore_path
 
 
@@ -347,14 +355,25 @@ def remove_clauderfall_gitignore(target_repo: Path, entries: tuple[str, ...]) ->
     if not gitignore_path.exists():
         return gitignore_path
 
-    current = gitignore_path.read_text()
-    managed_entries = _read_managed_gitignore_entries(current)
-    updated_entries = [entry for entry in managed_entries if entry not in entries]
-    updated = _render_gitignore(current, updated_entries)
-    if updated:
-        gitignore_path.write_text(updated)
-    else:
+    updated_lines = gitignore_path.read_text().splitlines()
+    original_lines = list(updated_lines)
+
+    for entry in entries:
+        updated_lines = [line for line in updated_lines if line != entry]
+
+    managed_lines = [line for line in updated_lines if line in (*CLAUDE_GITIGNORE_ENTRIES, *CODEX_GITIGNORE_ENTRIES)]
+    if not managed_lines:
+        updated_lines = [line for line in updated_lines if line != CLAUDERFALL_GITIGNORE_HEADER]
+
+    while updated_lines and updated_lines[-1] == "":
+        updated_lines.pop()
+
+    if not updated_lines:
         gitignore_path.unlink()
+        return gitignore_path
+
+    if updated_lines != original_lines:
+        gitignore_path.write_text("\n".join(updated_lines) + "\n")
     return gitignore_path
 
 
@@ -411,26 +430,3 @@ def resolve_target_docs_root(*, target_repo: Path, docs_root: str | Path | None)
         candidate = target_repo / candidate
     return candidate.resolve()
 
-
-def _read_managed_gitignore_entries(current: str) -> list[str]:
-    start = current.find(CLAUDERFALL_GITIGNORE_START)
-    end = current.find(CLAUDERFALL_GITIGNORE_END)
-    if start == -1 or end == -1 or end < start:
-        return []
-    body = current[start + len(CLAUDERFALL_GITIGNORE_START) : end]
-    return [line.strip() for line in body.splitlines() if line.strip()]
-
-
-def _render_gitignore(current: str, managed_entries: list[str]) -> str:
-    start = current.find(CLAUDERFALL_GITIGNORE_START)
-    end = current.find(CLAUDERFALL_GITIGNORE_END)
-    if start != -1 and end != -1 and end >= start:
-        end = end + len(CLAUDERFALL_GITIGNORE_END)
-        current = (current[:start] + current[end:]).strip("\n")
-
-    if managed_entries:
-        block_lines = [CLAUDERFALL_GITIGNORE_START, *managed_entries, CLAUDERFALL_GITIGNORE_END]
-        block = "\n".join(block_lines)
-        current = f"{current}\n\n{block}".strip("\n")
-
-    return f"{current}\n" if current else ""

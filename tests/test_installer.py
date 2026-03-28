@@ -15,6 +15,7 @@ from clauderfall.installer import (
     install_claude_mcp,
     install_codex_mcp,
     register_claude_mcp,
+    remove_clauderfall_gitignore,
     remove_claude_mcp,
     remove_codex_mcp,
     resolve_codex_command,
@@ -47,7 +48,7 @@ def test_gitignore_block_is_added_only_once(tmp_path: Path) -> None:
     ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
 
     content = gitignore_path.read_text()
-    assert content.count("# clauderfall-mcp: begin") == 1
+    assert content.count("# clauderfall-mcp") == 1
     assert ".claude/clauderfall/" in content
     assert ".mcp.json" in content
     assert ".codex/clauderfall/" not in content
@@ -135,7 +136,8 @@ def test_remove_claude_mcp_cleans_install_root_config_and_gitignore(tmp_path: Pa
     assert not (tmp_path / CLAUDE_MCP_CONFIG_PATH).exists()
     gitignore_path = tmp_path / ".gitignore"
     if gitignore_path.exists():
-        assert "# clauderfall-mcp: begin" not in gitignore_path.read_text()
+        assert ".claude/clauderfall/" not in gitignore_path.read_text()
+        assert ".mcp.json" not in gitignore_path.read_text()
 
 
 def test_resolve_codex_command_supports_venv_and_path(tmp_path: Path) -> None:
@@ -276,6 +278,20 @@ def test_gitignore_union_is_preserved_across_claude_and_codex_entries(tmp_path: 
     assert ".mcp.json" in content
     assert ".codex/clauderfall/" in content
     assert ".codex/config.toml" in content
+
+
+def test_remove_claude_entries_preserves_codex_entries(tmp_path: Path) -> None:
+    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
+    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
+
+    remove_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
+
+    content = (tmp_path / ".gitignore").read_text()
+    assert ".claude/clauderfall/" not in content
+    assert ".mcp.json" not in content
+    assert ".codex/clauderfall/" in content
+    assert ".codex/config.toml" in content
+    assert "# clauderfall-mcp" in content
 
 
 def test_resolve_claude_registration_command_supports_venv_and_path(tmp_path: Path) -> None:
