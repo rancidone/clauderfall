@@ -12,9 +12,12 @@ For the current feat:
 - stop and surface any real design gap that blocks implementation; do not invent missing design
 - stop, summarize progress, and hand off when remaining context reaches about 60%
 
-Dependency order:
-1. TODONE [TODO_FEAT_RUNTIME_SKELETON.md](/home/maddie/repos/clauderfall/TODO_FEAT_RUNTIME_SKELETON.md)
-2. TODONE [TODO_FEAT_SHARED_ARTIFACT_RUNTIME.md](/home/maddie/repos/clauderfall/TODO_FEAT_SHARED_ARTIFACT_RUNTIME.md)
-3. TODONE [TODO_FEAT_DISCOVERY_RUNTIME.md](/home/maddie/repos/clauderfall/TODO_FEAT_DISCOVERY_RUNTIME.md)
-4. [TODO_FEAT_DESIGN_RUNTIME.md](/home/maddie/repos/clauderfall/TODO_FEAT_DESIGN_RUNTIME.md)
-5. [TODO_FEAT_SESSION_LIFECYCLE_RUNTIME.md](/home/maddie/repos/clauderfall/TODO_FEAT_SESSION_LIFECYCLE_RUNTIME.md)
+Current feat:
+1. [TODO_FEAT_MCP_ADAPTER.md](/home/maddie/repos/clauderfall/TODO_FEAT_MCP_ADAPTER.md)
+
+Completed:
+- runtime skeleton
+- shared artifact runtime
+- Discovery runtime
+- Design runtime
+- session lifecycle runtime

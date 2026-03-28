@@ -83,6 +83,8 @@ def test_runtime_services_wiring_exposes_shared_substrate_components(tmp_path: P
     assert services.store.resolver is services.resolver
     assert services.artifacts.store is services.store
     assert services.discovery.artifacts is services.artifacts
+    assert services.design.artifacts is services.artifacts
+    assert services.session_lifecycle.artifacts is services.artifacts
 
 
 def test_operation_result_ok_tracks_non_error_status() -> None:
@@ -301,3 +303,286 @@ def test_discovery_to_design_supports_normal_and_override_handoff(tmp_path: Path
     assert override.artifacts["design_start_context"]["design_start_recommendation"]["caution"] == (
         "Revocation guarantees remain weak."
     )
+
+
+def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    sidecar = {
+        "design_unit_id": "unit-auth-session",
+        "title": "Auth Session Design",
+        "status": "draft",
+        "scope_summary": "Defines session issuance, invalidation, and consistency boundaries.",
+        "depends_on": ["unit-auth-contract"],
+        "children": ["unit-session-store"],
+        "parent": None,
+        "readiness": "medium",
+        "readiness_rationale": "Main shape is clear but revocation guarantees still need tightening.",
+        "open_questions": ["Should revocation be synchronous across all replicas?"],
+        "assumptions": ["Audit events can be written asynchronously."],
+    }
+
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nDraft design body.",
+        sidecar=sidecar,
+    )
+
+    short_view = services.design.read(unit_id="unit-auth-session", view=ArtifactView.SHORT)
+    full_view = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+
+    assert short_view.result.ok is True
+    assert short_view.artifacts["workflow_status"] == "draft"
+    assert short_view.artifacts["scope_summary"] == sidecar["scope_summary"]
+    assert short_view.artifacts["linkage"]["depends_on"] == ["unit-auth-contract"]
+    assert "markdown" not in short_view.artifacts
+    assert full_view.artifacts["markdown"] == "# Auth Session Design\n\nDraft design body."
+    assert full_view.artifacts["stage_metadata"]["design_unit_id"] == "unit-auth-session"
+
+
+def test_design_to_review_requires_persisted_valid_draft_and_writes_review_checkpoint(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nReady for review.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance and revocation behavior.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "high",
+            "readiness_rationale": "Main flow and failure handling are concrete enough to review.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+    )
+
+    result = services.design.to_review(unit_id="unit-auth-session")
+    current = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+
+    assert result.result.ok is True
+    assert result.metadata["previous_checkpoint_id"] != result.metadata["checkpoint_id"]
+    assert current.artifacts["workflow_status"] == "in_review"
+    assert current.artifacts["stage_metadata"]["status"] == "in_review"
+
+
+def test_design_accept_requires_review_without_override(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nStill draft.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance and revocation behavior.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "high",
+            "readiness_rationale": "Concrete enough to build, but not yet formally reviewed.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+    )
+
+    result = services.design.accept(unit_id="unit-auth-session")
+
+    assert result.result.ok is False
+    assert "in_review" in result.result.message
+
+
+def test_design_accept_supports_review_and_explicit_draft_override(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    base_sidecar = {
+        "design_unit_id": "unit-auth-session",
+        "title": "Auth Session Design",
+        "status": "draft",
+        "scope_summary": "Defines session issuance and revocation behavior.",
+        "depends_on": [],
+        "children": [],
+        "parent": None,
+        "readiness": "high",
+        "readiness_rationale": "Main flow and failure handling are concrete enough to accept.",
+        "open_questions": [],
+        "assumptions": [],
+    }
+
+    services.design.write_draft(
+        unit_id="unit-review-path",
+        markdown="# Auth Session Design\n\nReview path.",
+        sidecar={**base_sidecar, "design_unit_id": "unit-review-path"},
+    )
+    services.design.to_review(unit_id="unit-review-path")
+    normal = services.design.accept(unit_id="unit-review-path")
+
+    assert normal.result.ok is True
+    assert normal.metadata["override"] is False
+    assert normal.metadata["accepted_from_status"] == "in_review"
+
+    services.design.write_draft(
+        unit_id="unit-override-path",
+        markdown="# Auth Session Design\n\nOverride path.",
+        sidecar={**base_sidecar, "design_unit_id": "unit-override-path"},
+    )
+    override = services.design.accept(unit_id="unit-override-path", override=True)
+
+    assert override.result.ok is True
+    assert override.metadata["override"] is True
+    assert override.metadata["accepted_from_status"] == "draft"
+    assert override.warnings == ("Design acceptance proceeded from draft via explicit override.",)
+
+
+def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    accepted_sidecar = {
+        "design_unit_id": "unit-auth-session",
+        "title": "Auth Session Design",
+        "status": "draft",
+        "scope_summary": "Defines session issuance and revocation behavior.",
+        "depends_on": [],
+        "children": [],
+        "parent": None,
+        "readiness": "high",
+        "readiness_rationale": "Concrete enough to accept.",
+        "open_questions": [],
+        "assumptions": [],
+    }
+
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nAccepted body.",
+        sidecar=accepted_sidecar,
+    )
+    services.design.to_review(unit_id="unit-auth-session")
+    accepted = services.design.accept(unit_id="unit-auth-session")
+
+    reopened = services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nReopened body.",
+        sidecar={
+            **accepted_sidecar,
+            "status": "draft",
+            "readiness": "medium",
+            "readiness_rationale": "A new constraint requires revision before this is buildable again.",
+            "open_questions": ["How should revocation lag be bounded?"],
+        },
+    )
+    current = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+    original_checkpoint = services.store.load_checkpoint(
+        ArtifactRef(
+            key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="unit-auth-session"),
+            checkpoint_id=accepted.metadata["checkpoint_id"],
+        )
+    )
+
+    assert reopened.result.ok is True
+    assert reopened.metadata["checkpoint_id"] != accepted.metadata["checkpoint_id"]
+    assert current.artifacts["workflow_status"] == "draft"
+    assert current.artifacts["readiness"] == "medium"
+    assert original_checkpoint is not None
+    assert original_checkpoint.metadata.stage_metadata["status"] == "accepted"
+
+
+def test_session_startup_view_rebuilds_missing_or_stale_index(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.session_lifecycle.write_active_thread_handoff(
+        thread_id="thread-b",
+        title="Second Thread",
+        current_intent_summary="Still shaping the design runtime.",
+        next_suggested_action="Decide whether to split review logic.",
+        thread_markdown="# Thread B\n\nWorking notes.",
+    )
+    services.session_lifecycle.write_active_thread_handoff(
+        thread_id="thread-a",
+        title="First Thread",
+        current_intent_summary="Finishing session lifecycle implementation.",
+        next_suggested_action="Verify archive semantics.",
+        thread_markdown="# Thread A\n\nWorking notes.",
+    )
+    index_root = tmp_path / "session" / "index" / "recent-session"
+    if index_root.exists():
+        import shutil
+
+        shutil.rmtree(index_root)
+
+    startup = services.session_lifecycle.read_recent_session_startup_view()
+
+    assert startup.result.ok is True
+    assert startup.metadata["rebuilt"] is True
+    assert startup.metadata["active_thread_count"] == 2
+    assert startup.warnings == ("startup_index_rebuilt",)
+    assert [entry["thread_id"] for entry in startup.artifacts["active_threads"]] == ["thread-a", "thread-b"]
+
+
+def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+
+    write = services.session_lifecycle.write_active_thread_handoff(
+        thread_id="thread-1",
+        title="Implement Session Lifecycle",
+        current_intent_summary="Add bounded recovery and archive enforcement.",
+        next_suggested_action="Test startup rebuild and archive recovery paths.",
+        thread_markdown="# Thread 1\n\nSession lifecycle work.",
+    )
+    startup = services.session_lifecycle.read_recent_session_startup_view()
+
+    assert write.result.ok is True
+    assert write.metadata["startup_index_updated"] is True
+    assert write.metadata["projection_stale"] is False
+    assert startup.metadata["rebuilt"] is False
+    assert startup.artifacts["active_threads"][0]["thread_id"] == "thread-1"
+
+
+def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.session_lifecycle.write_active_thread_handoff(
+        thread_id="thread-1",
+        title="Implement Session Lifecycle",
+        current_intent_summary="Add bounded recovery and archive enforcement.",
+        next_suggested_action="Summarize completion and archive it.",
+        thread_markdown="# Thread 1\n\nSession lifecycle work.",
+    )
+
+    archived = services.session_lifecycle.archive_completed_thread(
+        thread_id="thread-1",
+        closure_summary="Session lifecycle runtime shipped with tests.",
+    )
+    startup = services.session_lifecycle.read_recent_session_startup_view()
+    active = services.session_lifecycle.read_active_thread(thread_id="thread-1")
+
+    assert archived.result.ok is True
+    assert archived.metadata["active_removed"] is True
+    assert startup.artifacts["active_threads"] == []
+    assert startup.artifacts["recent_completed_threads"][0]["thread_id"] == "thread-1"
+    assert active.result.ok is False
+
+
+def test_session_handoff_warns_when_projection_refresh_fails_but_thread_write_persists(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    services = build_runtime_services(tmp_path)
+
+    def fail_index_refresh(*, reason: str):
+        del reason
+        raise RuntimeError("simulated index write failure")
+
+    monkeypatch.setattr(services.session_lifecycle, "_persist_recent_session_index", fail_index_refresh)
+
+    write = services.session_lifecycle.write_active_thread_handoff(
+        thread_id="thread-1",
+        title="Implement Session Lifecycle",
+        current_intent_summary="Thread-first handoff should still persist.",
+        next_suggested_action="Repair the startup projection later.",
+        thread_markdown="# Thread 1\n\nSession lifecycle work.",
+    )
+    active = services.session_lifecycle.read_active_thread(thread_id="thread-1")
+
+    assert write.result.status == OperationStatus.WARNING
+    assert write.metadata["startup_index_updated"] is False
+    assert write.metadata["projection_stale"] is True
+    assert write.warnings == ("startup_projection_stale",)
+    assert active.result.ok is True

@@ -31,6 +31,7 @@ These docs define:
 - `discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design_engine.md` - Design engine brief derived from the product brief.
 - `stage_runtime_mcp_pattern.md` - Defines the shared Clauderfall architecture pattern of LLM-driven stage work over deterministic backend services exposed through MCP.
+- `mcp_adapter_surface.md` - Defines the first MCP-facing adapter layer over the v2 runtime services, including flat tool naming, response mapping, and thin-handler boundaries.
 - `shared_stage_runtime_substrate.md` - Defines the common runtime substrate shared by Discovery, Design, session lifecycle, and future TODO work.
 - `stage_runtime_operation_vocabulary.md` - Defines the standardized cross-stage operation vocabulary for shared runtime services and MCP interfaces.
 - `stage_artifact_runtime_interface.md` - Defines the shared artifact-level runtime interface beneath stage-specific services for authoritative reads, checkpoint writes, and status-aware transitions.

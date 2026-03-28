@@ -7,8 +7,10 @@ from pathlib import Path
 
 from clauderfall.runtime.artifacts import StageArtifactRuntime
 from clauderfall.runtime.checkpoints import CheckpointManager
+from clauderfall.runtime.design import DesignRuntimeService
 from clauderfall.runtime.discovery import DiscoveryRuntimeService
 from clauderfall.runtime.resolver import ArtifactResolver
+from clauderfall.runtime.session_lifecycle import SessionLifecycleOperationRunner, SessionLifecycleService
 from clauderfall.runtime.store import ArtifactStore
 
 
@@ -22,6 +24,8 @@ class RuntimeServices:
     store: ArtifactStore
     artifacts: StageArtifactRuntime
     discovery: DiscoveryRuntimeService
+    design: DesignRuntimeService
+    session_lifecycle: SessionLifecycleService
 
 
 def build_runtime_services(root: Path) -> RuntimeServices:
@@ -30,6 +34,13 @@ def build_runtime_services(root: Path) -> RuntimeServices:
     store = ArtifactStore(resolver=resolver)
     artifacts = StageArtifactRuntime(store=store, checkpoints=checkpoints)
     discovery = DiscoveryRuntimeService(artifacts=artifacts)
+    design = DesignRuntimeService(artifacts=artifacts)
+    session_lifecycle = SessionLifecycleService(
+        artifacts=artifacts,
+        store=store,
+        root=root,
+        runner=SessionLifecycleOperationRunner(),
+    )
     return RuntimeServices(
         root=root,
         resolver=resolver,
@@ -37,4 +48,6 @@ def build_runtime_services(root: Path) -> RuntimeServices:
         store=store,
         artifacts=artifacts,
         discovery=discovery,
+        design=design,
+        session_lifecycle=session_lifecycle,
     )

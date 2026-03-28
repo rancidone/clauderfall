@@ -139,3 +139,50 @@ class ArtifactRuntimeResult:
     warnings: tuple[str, ...] = field(default_factory=tuple)
     artifacts: dict[str, object] = field(default_factory=dict)
     metadata: dict[str, object] = field(default_factory=dict)
+
+
+class ActiveThreadMetadata(BaseModel):
+    """Authoritative structured metadata for one active thread artifact."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    thread_id: str
+    title: str
+    current_intent_summary: str
+    next_suggested_action: str
+    updated_at: datetime
+
+
+class StartupActiveThreadEntry(BaseModel):
+    """Compact startup projection for one active thread."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    thread_id: str
+    title: str
+    current_intent_summary: str
+    last_updated_at: datetime
+    thread_artifact_ref: str
+    next_suggested_action: str
+
+
+class ArchivedThreadRecord(BaseModel):
+    """Compact archived-thread metadata retained for recent startup history."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    thread_id: str
+    title: str
+    closure_summary: str
+    closed_at: datetime
+    archived_artifact_ref: str
+
+
+class RecentSessionIndexMetadata(BaseModel):
+    """Repo-level derived startup projection over active and recent archived threads."""
+
+    model_config = ConfigDict(use_enum_values=True)
+
+    active_threads: list[StartupActiveThreadEntry] = Field(default_factory=list)
+    recent_completed_threads: list[ArchivedThreadRecord] = Field(default_factory=list)
+    projection_stale: bool = False

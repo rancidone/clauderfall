@@ -3,7 +3,7 @@ title: Clauderfall Docs Index
 doc_type: index
 status: stable
 updated: 2026-03-27
-summary: Top-level index for the active Clauderfall documentation set and current continuity handoffs.
+summary: Top-level index for the active Clauderfall documentation set.
 ---
 
 # Docs Index
@@ -13,7 +13,6 @@ This folder contains the active Clauderfall documentation set.
 ## Structure
 
 - `design/` - Active product and engine-level discovery/design docs.
-- `handoffs/` - Active short session handoffs for continuity across sessions.
 
 ## Standard Frontmatter
 
@@ -42,6 +41,7 @@ Use these values consistently:
 - `design/clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design/design_engine.md` - Design engine brief derived from the product brief.
+- `design/mcp_adapter_surface.md` - Design doc for the first MCP-facing adapter layer over the v2 runtime services.
 - `design/stage_artifact_runtime_interface.md` - Design doc for the shared artifact-level runtime interface beneath stage-specific Discovery and Design services.
 - `design/discovery_runtime_mcp_interface.md` - Design doc for the minimal Discovery runtime and MCP-facing operation set of `read`, `write_draft`, and `to_design`.
 - `design/design_runtime_mcp_interface.md` - Design doc for the minimal Design runtime and MCP-facing operation set of `read`, `write_draft`, `to_review`, and `accept`.
@@ -73,6 +73,3 @@ Use these values consistently:
 - `design/session_lifecycle_mcp_interface.md` - Design doc for concrete high-level MCP lifecycle operations, payloads, and error semantics.
 - `design/session_lifecycle_backend_service.md` - Design doc for the backend service shape behind recent-session lifecycle operations and recovery rules.
 - `design/session_lifecycle_operation_runner.md` - Design doc for the shared bounded operation/recovery mechanism behind lifecycle service methods.
-- `handoffs/` - Session continuity notes for the current discovery/design effort, with older handoffs archived under `handoffs/archive/`.
-- `handoffs/session_handoff_2026-03-27_implementation_plan_ready.md` - Latest active handoff after packaging the runtime-design work into a dependency-ordered implementation plan and explicitly framing the current codebase as v1 reference rather than v2 architectural truth.
-- `handoffs/session_handoff_2026-03-27_runtime_v2_discovery_ready.md` - Latest active handoff after moving v1 out of `src`, landing the shared v2 runtime and shared artifact runtime, and completing the initial Discovery runtime with YAML-backed sidecars.
