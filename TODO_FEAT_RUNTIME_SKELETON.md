@@ -8,7 +8,7 @@ Read first:
 - `docs/design/artifact_persistence_format.md`
 - `docs/design/artifact_checkpoint_semantics.md`
 
-TODO:
+TODONE:
 - define the v2 module boundaries for substrate, artifact runtime, stage services, and MCP adapters
 - treat the current `src/` implementation as v1 reference only unless a specific piece is intentionally reused
 - introduce shared v2 runtime result types, artifact reference types, and status vocabulary

@@ -7,7 +7,7 @@ Read first:
 - `docs/design/shared_stage_runtime_substrate.md`
 - `docs/design/stage_runtime_mcp_pattern.md`
 
-TODO:
+TODONE:
 - implement shared v2 operations for `read_artifact`, `write_artifact_checkpoint`, and `transition_artifact_status`
 - support current-checkpoint lookup plus explicit checkpoint reads
 - make checkpoint writes durable and structured rather than stage-specific ad hoc saves

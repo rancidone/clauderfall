@@ -75,3 +75,4 @@ Use these values consistently:
 - `design/session_lifecycle_operation_runner.md` - Design doc for the shared bounded operation/recovery mechanism behind lifecycle service methods.
 - `handoffs/` - Session continuity notes for the current discovery/design effort, with older handoffs archived under `handoffs/archive/`.
 - `handoffs/session_handoff_2026-03-27_implementation_plan_ready.md` - Latest active handoff after packaging the runtime-design work into a dependency-ordered implementation plan and explicitly framing the current codebase as v1 reference rather than v2 architectural truth.
+- `handoffs/session_handoff_2026-03-27_runtime_v2_discovery_ready.md` - Latest active handoff after moving v1 out of `src`, landing the shared v2 runtime and shared artifact runtime, and completing the initial Discovery runtime with YAML-backed sidecars.

@@ -7,7 +7,7 @@ Read first:
 - `docs/design/discovery_readiness_and_transition.md`
 - `docs/design/design_start_context_generation.md`
 
-TODO:
+TODONE:
 - implement a v2 Discovery service with `read`, `write_draft`, and `to_design`
 - make `read` support short and full views over authoritative persisted state
 - make `write_draft` persist Discovery status, readiness, rationale, and the readable brief body as one checkpointed state update
