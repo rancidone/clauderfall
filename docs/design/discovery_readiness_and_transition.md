@@ -1,9 +1,9 @@
 ---
 title: Clauderfall Discovery Readiness And Transition
 doc_type: design
-status: active
-updated: 2026-03-22
-summary: Defines how Discovery readiness is judged from the Discovery brief and how the stage transitions into Design through either consensus or explicit override.
+status: ready
+updated: 2026-03-27
+summary: Defines how Discovery readiness is judged from the Discovery brief and how the stage transitions into Design through either accepted consensus or explicit override.
 ---
 
 # Clauderfall Discovery Readiness And Transition
@@ -73,18 +73,22 @@ It does need enough framing integrity that Design can proceed honestly.
 
 The current minimum Discovery readiness states should be:
 
-- `not_ready`
-- `ready_for_design`
+- `low`
+- `medium`
+- `high`
 
 These are stage-level judgments recorded on the Discovery brief artifact.
 
 They should not be overloaded to also mean whether Design has already begun.
 
-The brief artifact's workflow `status` remains separate and may advance from `draft` to `ready_for_design` to `handed_off`.
+The brief artifact's workflow `status` remains separate and uses:
 
-## Normal Reasons For `not_ready`
+- `draft`
+- `accepted`
 
-Discovery should remain `not_ready` when one or more of these conditions is true:
+## Normal Reasons For `low`
+
+Discovery should remain `low` when one or more of these conditions is true:
 
 - the real problem statement is still ambiguous
 - intended outcomes are still subjective, conflicting, or weakly grounded
@@ -95,9 +99,9 @@ Discovery should remain `not_ready` when one or more of these conditions is true
 
 In this state, the engine should say so directly and continue Discovery rather than offering a softened pseudo-transition.
 
-## Normal Reasons For `ready_for_design`
+## Normal Reasons For `high`
 
-Discovery may move to `ready_for_design` when:
+Discovery may move to `high` when:
 
 - the main problem framing is stable
 - major intended outcomes and constraints are visible
@@ -143,7 +147,7 @@ The engine should:
 
 Begin Design through the normal path when:
 
-- the brief is `ready_for_design`
+- the brief is `accepted`
 - the engine recommends transition
 - the operator agrees the brief is strong enough
 
@@ -189,7 +193,7 @@ However, the system should not blur override into ordinary readiness.
 The override path should require all of the following:
 
 - the operator explicitly chooses to proceed now
-- the brief remains visibly marked as having weak framing in some relevant area
+- the brief remains visibly marked as having medium or low readiness in some relevant area
 - the resulting Design Start Context preserves those weak-signal areas and assumptions
 
 The engine should explain that proceeding now increases the chance of:
@@ -224,8 +228,11 @@ The Discovery brief should:
 
 - preserve its current readable content as canonical
 - preserve its latest readiness judgment
-- move workflow `status` to `handed_off` once Design actually begins
 - receive a flush checkpoint for the transition state
+
+The normal path should persist the brief as `accepted` before `to_design`.
+
+The override path may still transition from `draft` when the operator explicitly chooses to proceed anyway.
 
 The brief should not be replaced by the Design Start Context.
 
@@ -244,10 +251,10 @@ That artifact should:
 
 The normal sequence should be:
 
-1. evaluate the current Discovery brief as `ready_for_design`
+1. evaluate the current Discovery brief readiness as high enough to move forward
 2. show the rationale and any remaining meaningful uncertainty
-3. confirm consensus to begin Design
-4. flush the Discovery brief transition checkpoint
+3. persist the brief in `accepted` status with its current readiness judgment
+4. confirm consensus to begin Design
 5. create the initial Design Start Context
 6. begin the Design session against that Design Start Context
 
@@ -260,7 +267,7 @@ The override sequence should be:
 1. evaluate the current Discovery brief as still materially incomplete
 2. show the main blocking or weak framing area
 3. explicitly ask whether the operator wants to proceed anyway
-4. if yes, flush the Discovery brief with that weaker state visible
+4. if yes, flush the Discovery brief with that weaker readiness visible
 5. create a Design Start Context that preserves the weak signal
 6. begin Design with lower tolerance for later reentry
 
@@ -294,7 +301,6 @@ This boundary should avoid:
 The main remaining open questions are:
 
 - whether the operator-facing override interaction should include a standardized short warning block
-- whether a weaker transition should leave the Discovery brief `status` at `ready_for_design` rather than `handed_off` until the first Design unit is actually opened
 - whether the Discovery brief should persist a separate transition record beyond the standard checkpoint model
 
 These questions do not block adopting the readiness and transition model above as the current v2 direction.

@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Discovery Session Flow
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the end-to-end interaction flow for an active Discovery session from rough intent through Design Start Context creation.
 ---

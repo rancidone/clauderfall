@@ -1,9 +1,9 @@
 ---
 title: Clauderfall Discovery Engine Brief
 doc_type: engine-brief
-status: active
-updated: 2026-03-22
-summary: Discovery engine brief for Clauderfall focused on interviewer-led problem framing.
+status: stable
+updated: 2026-03-27
+summary: Discovery engine brief for Clauderfall focused on interviewer-led problem framing over deterministic stage runtime operations.
 ---
 
 # Clauderfall Discovery Engine Brief
@@ -37,6 +37,8 @@ It should not behave like:
 - organize the brief around problem areas/themes
 - track a per-problem confidence signal
 - call out when the session is drifting into design
+
+The Discovery engine is responsible for the reasoning layer, not for directly enforcing persisted state transitions through prompt discipline alone.
 
 ## Design Drift Boundary
 
@@ -112,6 +114,12 @@ Discovery should prefer broadly complete framing before Design begins. Starting 
 Discovery should let the working brief advance by default during the interview rather than requiring explicit approval on every revision.
 
 Within an active session, the working brief may live in session context. The engine should still flush the current artifact explicitly before context compaction risks losing important progress. A threshold such as around 60% context usage is useful implementation guidance, not a strict rule.
+
+Those flushes, checkpoints, and stage transitions should ultimately be implemented through deterministic backend operations exposed through MCP or an equivalent runtime boundary.
+
+The Discovery engine should decide when those operations are needed and supply the language-shaped artifact content, but it should not be the final enforcement layer for persisted workflow state.
+
+That runtime boundary should be part of Clauderfall's shared stage runtime rather than a Discovery-only implementation path.
 
 ## Open Engine Questions
 

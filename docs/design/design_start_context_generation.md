@@ -1,8 +1,8 @@
 ---
 title: Clauderfall Design Start Context Generation
 doc_type: design
-status: active
-updated: 2026-03-22
+status: ready
+updated: 2026-03-27
 summary: Defines the derivation rules that condense a Discovery brief into a Design Start Context artifact.
 ---
 
@@ -74,13 +74,13 @@ Generation requires all of the following:
 
 Normal consensus generation should happen from a brief with:
 
-- `status: handed_off`
-- `readiness: ready_for_design`
+- `status: accepted`
+- `readiness: high`
 
 Override generation may happen from a brief with:
 
-- `status: handed_off`
-- `readiness: not_ready`
+- `status: draft`
+- `readiness: medium` or `low`
 
 That weaker path is valid only when the operator has explicitly chosen to begin Design anyway.
 
@@ -327,14 +327,14 @@ The difference is how weak signal is carried.
 
 ### Consensus Transition
 
-When the source brief is `ready_for_design`, generation should still preserve bounded uncertainty, but the resulting context will usually have:
+When the source brief has `high` readiness, generation should still preserve bounded uncertainty, but the resulting context will usually have:
 
 - fewer blocking gaps carried as active caution
 - fewer low-confidence areas affecting the start recommendation
 
 ### Override Transition
 
-When Design begins through explicit override from a `not_ready` brief, generation must be stricter about preserving weakness.
+When Design begins through explicit override from a `medium` or `low` readiness brief, generation must be stricter about preserving weakness.
 
 It should explicitly carry forward:
 

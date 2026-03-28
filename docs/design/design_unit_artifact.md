@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Unit Artifact
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the shape of a Clauderfall design unit as a readable design document with a small structured sidecar.
 ---
@@ -134,6 +134,10 @@ The distinction between dependency and parent-child matters. A unit may depend o
 
 This keeps build-readiness explicit without turning the structured side into a long review record.
 
+These fields are local to the current design-unit artifact.
+
+When a new design-unit document is created, its `readiness` and `readiness_rationale` should be initialized from that unit's own state rather than inherited from a parent, child, or previously active peer unit.
+
 ### Open Design Pressure
 
 - `open_questions`
@@ -180,6 +184,17 @@ assumptions: [string]
 ```
 
 This is not a final storage schema. It is the minimum field set that currently seems justified by the product and engine briefs.
+
+## Transition Rule
+
+Status and readiness transitions should be artifact-local and deterministic.
+
+At minimum:
+
+- creating or opening a new design-unit artifact initializes `status: draft`
+- creating or opening a new design-unit artifact requires a fresh `readiness` and `readiness_rationale`
+- moving an existing artifact to `in_review` or `accepted` applies only to that artifact
+- decomposition may create related units, but it does not transfer workflow state automatically across artifacts
 
 ## Readability Rule
 

@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Session Flow
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the end-to-end interaction flow from the Design Start Context into the first concrete Design unit and its review cycle.
 ---
@@ -91,6 +91,10 @@ That choice should follow the Design-to-Discovery reentry rule: stay in Design f
 
 Once a first unit is chosen, the engine should initialize the unit in `draft`.
 
+This transition should be deterministic.
+
+Opening a new design-unit document should always create a fresh local workflow state for that document rather than inheriting `status` or `readiness` from the previously active unit.
+
 That initialization should produce two things immediately:
 
 - a visible unit boundary
@@ -109,6 +113,8 @@ The initial structured side should usually be populated with:
 - any obvious `assumptions` or `open_questions`
 
 The initial readiness may be `low` or `medium`. It exists to orient the session, not to gate progress.
+
+If the new unit was created because of decomposition from a parent unit, the parent's readiness may inform the rationale for starting this child, but it must not be copied forward as the child's readiness.
 
 ## 4. Drafting Loop
 
@@ -201,6 +207,14 @@ That recommendation should connect back to the current unit's outcome:
 - a peer unit now made clearer by the reviewed design
 
 The engine does not need to produce a full plan. It only needs to keep the next step legible.
+
+If the operator or engine then opens that next unit as a new document, the workflow should deterministically re-enter unit initialization for the new artifact:
+
+- `status: draft`
+- a fresh local `readiness`
+- a fresh `readiness_rationale`
+
+This avoids accidentally carrying review-state semantics from the previously active unit into a newly opened one.
 
 ## Example Interaction Skeleton
 

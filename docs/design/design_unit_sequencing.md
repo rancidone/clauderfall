@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Unit Sequencing
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines how the Design engine should choose, decompose, and sequence design units during an active design session.
 ---

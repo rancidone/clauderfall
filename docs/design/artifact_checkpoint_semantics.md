@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Artifact Checkpoint Semantics
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines artifact identity, checkpoint creation, and revision semantics for persisted readable artifacts and metadata sidecars.
 ---

@@ -1,9 +1,9 @@
 ---
 title: Clauderfall Product Brief
 doc_type: brief
-status: active
-updated: 2026-03-22
-summary: Product brief for Clauderfall focused on Discovery and Design for a single senior engineer.
+status: stable
+updated: 2026-03-27
+summary: Product brief for Clauderfall focused on Discovery, Design, and a shared LLM-plus-runtime architecture for stateful stage work.
 ---
 
 # Clauderfall Product Brief
@@ -17,7 +17,7 @@ Its primary outputs are:
 - discovery briefs
 - design artifacts
 
-Task artifacts and context artifacts are not part of the current product boundary. They are possible later-stage product directions.
+Task artifacts and later implementation-facing artifacts are not yet part of the fully designed product boundary, but they are now plausible next-stage directions under the same runtime architecture.
 
 The product's purpose is to improve problem framing and design quality before execution begins.
 
@@ -69,6 +69,8 @@ Early stages should prevent:
 - The system must support interaction, not replace it with opaque state transitions.
 - Operator-readable drafts are necessary to make artifacts trustworthy.
 - Existing repos, docs, or code are optional evidence sources, not foundational assumptions.
+- The LLM should own reasoning, interviewing, and artifact drafting; deterministic backend services should own persisted state transitions and invariants.
+- MCP should be the normal interface between LLM stage logic and stateful backend operations.
 
 ## Product Model
 
@@ -78,6 +80,14 @@ Clauderfall is a two-stage system:
 - Design: an interview-driven stage that turns that brief into a stronger design artifact without skipping review or hiding assumptions
 
 Both stages should be interactive, operator-visible, and reviewable rather than schema-first or silent artifact generators.
+
+Under that operator-facing model, Clauderfall should use a shared architecture pattern:
+
+- LLM-driven stage behavior for questioning, synthesis, and readable artifact work
+- one shared deterministic runtime substrate for checkpointing, workflow transitions, and persisted state enforcement
+- MCP operations as the narrow contract between them
+
+Session continuity work has already made this architectural need explicit, and the same pattern should extend to Discovery, Design, and likely later TODO or implementation-preparation stages.
 
 ## Discovery Role In The Product
 
@@ -218,6 +228,10 @@ The preferred model is:
 - maintain the evolving artifact in session while the interview is active
 - avoid unnecessary persistence churn on every small turn
 - flush explicitly at meaningful checkpoints and before context pressure makes loss likely
+
+Those flushes and state transitions should not depend on prompt discipline alone.
+
+They should be implemented as deterministic backend operations exposed through explicit interfaces rather than as ad hoc file-edit behavior inside skills.
 
 A practical trigger is to flush well before context compaction risk, with a threshold such as around 60% context usage as implementation guidance rather than a strict product rule.
 

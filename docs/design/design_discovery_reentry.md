@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design To Discovery Reentry
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines when Design should resolve ambiguity locally versus explicitly return to Discovery for problem-framing repair.
 ---

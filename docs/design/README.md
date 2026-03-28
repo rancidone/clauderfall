@@ -1,8 +1,8 @@
 ---
 title: Clauderfall Design Docs Index
 doc_type: index
-status: active
-updated: 2026-03-22
+status: stable
+updated: 2026-03-27
 summary: Canonical index for the active Clauderfall product and engine-level documentation set.
 ---
 
@@ -17,7 +17,7 @@ These docs define:
 - the Clauderfall product brief
 - the behavior expected from the Discovery engine
 - the behavior expected from the Design engine
-- the starting point for the active doc set, independent of the archived MVP docs
+- the starting point for the active doc set
 
 ## Read Order
 
@@ -30,6 +30,12 @@ These docs define:
 - `clauderfall_product_brief.md` - Product brief for Clauderfall.
 - `discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design_engine.md` - Design engine brief derived from the product brief.
+- `stage_runtime_mcp_pattern.md` - Defines the shared Clauderfall architecture pattern of LLM-driven stage work over deterministic backend services exposed through MCP.
+- `shared_stage_runtime_substrate.md` - Defines the common runtime substrate shared by Discovery, Design, session lifecycle, and future TODO work.
+- `stage_runtime_operation_vocabulary.md` - Defines the standardized cross-stage operation vocabulary for shared runtime services and MCP interfaces.
+- `stage_artifact_runtime_interface.md` - Defines the shared artifact-level runtime interface beneath stage-specific services for authoritative reads, checkpoint writes, and status-aware transitions.
+- `discovery_runtime_mcp_interface.md` - Defines the minimal Discovery runtime and MCP-facing operation set for reading the working brief, checkpointing draft progress, and handing off into Design.
+- `design_runtime_mcp_interface.md` - Defines the minimal Design runtime and MCP-facing operation set for reading the current unit, checkpointing draft progress, moving into review, and accepting the current design record.
 - `artifact_persistence_format.md` - Defines the physical persistence format for readable stage artifacts and their structured metadata.
 - `artifact_checkpoint_semantics.md` - Defines artifact identity, flush checkpoints, and revision semantics for persisted artifacts.
 - `artifact_checkpoint_metadata.md` - Defines the required metadata envelope recorded for each artifact checkpoint.
@@ -46,3 +52,12 @@ These docs define:
 - `design_session_flow.md` - Defines the end-to-end interaction flow for an active Design session.
 - `discovery_design_start_context.md` - Defines the condensed Design Start Context artifact between Discovery and Design.
 - `design_discovery_reentry.md` - Defines when Design should resolve ambiguity locally versus return to Discovery.
+- `session_lifecycle.md` - Discovery brief for strict recent-session-state, handoff, and start-session lifecycle work.
+- `session_recent_state_artifact.md` - Defines the recent-session-state artifact contract spanning the repo index, active thread artifacts, and archived thread history.
+- `session_handoff_write_update_flow.md` - Defines the thread-first handoff write path and derived repo-index projection behavior for recent session state.
+- `session_start_drill_in_flow.md` - Defines the startup orientation flow from the repo-level recent-session index into optional active-thread drill-in or a new direction.
+- `session_archive_transition_mechanics.md` - Defines the immediate completion-to-archive transition and failure semantics for leaving the active layer.
+- `session_lifecycle_runtime_interface.md` - Defines the deterministic backend runtime and MCP-facing interface boundary for recent-session lifecycle operations.
+- `session_lifecycle_mcp_interface.md` - Defines the high-level MCP operations, inputs, outputs, and error semantics for recent-session lifecycle work.
+- `session_lifecycle_backend_service.md` - Defines the backend lifecycle service that should own recent-session policy, recovery, and structured lifecycle results.
+- `session_lifecycle_operation_runner.md` - Defines the shared bounded operation and recovery mechanism used by the session-lifecycle backend service.

@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Review Workflow
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines how a design unit moves through drafting, review, and build-readiness approval during the Design stage.
 ---
@@ -133,6 +133,14 @@ The expected combinations are:
 
 The workflow should not assume one field determines the other.
 
+The workflow should also not assume that one unit's state carries into another unit when a new design document is opened.
+
+Cross-unit transitions should be deterministic:
+
+- opening a new unit starts that unit in `draft`
+- the new unit gets its own local readiness judgment based on its actual design completeness
+- prior unit acceptance or high readiness does not transfer automatically
+
 ## Revision After Acceptance
 
 Acceptance is not permanent closure.
@@ -140,6 +148,13 @@ Acceptance is not permanent closure.
 If later design work reveals a material issue, the engine should be able to reopen the unit by moving it back to `draft` or `in_review` and revising readiness accordingly.
 
 This avoids the false idea that design review is irreversible.
+
+The same principle applies when switching units:
+
+- reopening the same unit revises that unit's existing workflow state
+- opening a different unit initializes a new workflow state for that different artifact
+
+Those are different transitions and should not be conflated.
 
 ## Session Checkpoints
 

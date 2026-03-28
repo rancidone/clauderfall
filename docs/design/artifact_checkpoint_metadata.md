@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Artifact Checkpoint Metadata
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the required metadata recorded for each persisted artifact checkpoint.
 ---

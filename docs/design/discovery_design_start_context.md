@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Start Context
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the condensed Design Start Context artifact that carries Discovery output into Design without requiring full brief rereads.
 ---

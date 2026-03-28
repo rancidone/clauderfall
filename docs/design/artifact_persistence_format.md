@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Artifact Persistence Format
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the physical persisted format for readable Discovery and Design artifacts plus their structured metadata.
 ---

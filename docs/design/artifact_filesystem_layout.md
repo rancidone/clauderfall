@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Artifact Filesystem Layout
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the on-disk layout for current artifact pairs and immutable checkpoint history.
 ---

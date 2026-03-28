@@ -1,9 +1,9 @@
 ---
 title: Clauderfall Design Engine Brief
 doc_type: engine-brief
-status: active
-updated: 2026-03-22
-summary: Design engine brief for Clauderfall focused on interview-led solution concretization.
+status: stable
+updated: 2026-03-27
+summary: Design engine brief for Clauderfall focused on interview-led solution concretization over deterministic stage runtime operations.
 ---
 
 # Clauderfall Design Engine Brief
@@ -36,6 +36,8 @@ It should not behave like:
 - make unresolved decisions, assumptions, and tradeoffs explicit
 - identify when the current design unit is still too broad and should be decomposed
 - assign a readiness rating with a brief rationale to each design unit
+
+The Design engine is responsible for interview and design judgment, not for directly enforcing persisted workflow state through prompt discipline alone.
 
 ## Scope
 
@@ -107,6 +109,12 @@ The operator remains the final review gate for deciding whether a design unit is
 The engine should recommend design-unit sequencing heuristically and conversationally rather than through a formal global plan.
 
 Artifact workflow status, design readiness, and explicit build-readiness approval should remain separate concepts.
+
+Those checkpoints and state transitions should ultimately be carried by deterministic backend operations exposed through MCP or an equivalent runtime boundary.
+
+The Design engine should recommend and invoke the appropriate operations while remaining focused on artifact content, tradeoffs, and readiness judgment.
+
+That runtime boundary should be part of Clauderfall's shared stage runtime rather than a Design-only implementation path.
 
 ## Open Engine Questions
 

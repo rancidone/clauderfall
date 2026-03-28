@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Unit Readiness
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the meaning, use, and rating criteria for design-unit readiness in Clauderfall.
 ---

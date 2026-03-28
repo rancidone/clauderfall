@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Discovery Brief Artifact
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the canonical Discovery brief artifact as a readable problem-framing document with a small structured sidecar.
 ---
@@ -110,14 +110,13 @@ These fields appear necessary now.
 The current minimum status set should be:
 
 - `draft`
-- `ready_for_design`
-- `handed_off`
+- `accepted`
 
 `draft` means Discovery is still actively framing the problem.
 
-`ready_for_design` means Discovery appears strong enough to begin Design, subject to the normal consensus approval or an explicit override path.
+`accepted` means the Discovery brief has been accepted as the current Design input artifact.
 
-`handed_off` means Design has been explicitly started from this brief lineage.
+It does not by itself mean the Design transition has already been executed.
 
 ## Problem-Area Index
 
@@ -177,8 +176,9 @@ It exists so the system can later condense the brief into the Design Start Conte
 
 `readiness` should use a small stage-level signal:
 
-- `not_ready`
-- `ready_for_design`
+- `low`
+- `medium`
+- `high`
 
 This is a Discovery-stage recommendation, not a silent transition command.
 
@@ -205,7 +205,7 @@ The current minimum logical shape is:
 ```yaml
 brief_id: string
 title: string
-status: draft | ready_for_design | handed_off
+status: draft | accepted
 problem_areas:
   - problem_area_id: string
     title: string
@@ -224,7 +224,7 @@ cross_cutting:
   systemic_risks: [string]
   open_questions: [string]
   source_sections: [string]
-readiness: not_ready | ready_for_design
+readiness: low | medium | high
 readiness_rationale: string
 blocking_gaps: [string]
 design_drift_notes: [string]
@@ -281,9 +281,9 @@ This supports the normal consensus transition and the weaker override path.
 
 When Design begins, the system should derive the Design Start Context from the current Discovery brief at transition time.
 
-In the normal path, that brief is `ready_for_design`.
+In the normal path, that brief is `accepted`.
 
-In the weaker override path, that brief may still be `not_ready`, and the resulting Design Start Context should preserve that weak signal explicitly rather than smoothing it away.
+In the weaker override path, that brief may still have `medium` or `low` readiness, and the resulting Design Start Context should preserve that weak signal explicitly rather than smoothing it away.
 
 That derivation should be selective and condensed.
 
@@ -294,7 +294,7 @@ The Discovery brief itself remains canonical.
 The main remaining open questions are:
 
 - whether the structured side should carry a separate machine-usable summary for each problem area beyond confidence and assumptions
-- whether `status` should remain `handed_off` after Design starts or whether that state should be inferred from related artifacts
+- whether Design-start linkage should be recorded entirely through related artifacts or also mirrored on the Discovery brief sidecar
 - how much design-drift continuity should be surfaced by default versus on demand
 
 These questions do not block adopting the Discovery brief shape above as the current v2 direction.

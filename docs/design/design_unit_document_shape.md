@@ -1,7 +1,7 @@
 ---
 title: Clauderfall Design Unit Document Shape
 doc_type: design
-status: active
+status: stable
 updated: 2026-03-22
 summary: Defines the recommended human-readable structure for a Clauderfall design unit document.
 ---
