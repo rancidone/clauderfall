@@ -11,6 +11,9 @@ dependencies = [
   "PyYAML>=6.0,<7",
 ]
 
+[project.scripts]
+clauderfall-mcp = "clauderfall.mcp.stdio:main"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"

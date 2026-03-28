@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
 from pathlib import Path
 
+from clauderfall.mcp import create_server, map_runtime_result
 from clauderfall.runtime import (
     ArtifactKey,
     ArtifactPair,
     ArtifactRef,
+    ArtifactRuntimeResult,
     ArtifactResolver,
     ArtifactStage,
     ArtifactView,
@@ -586,3 +591,303 @@ def test_session_handoff_warns_when_projection_refresh_fails_but_thread_write_pe
     assert write.metadata["projection_stale"] is True
     assert write.warnings == ("startup_projection_stale",)
     assert active.result.ok is True
+
+
+def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    tool_names = [tool.name for tool in server.list_tools()]
+
+    assert tool_names == [
+        "discovery_read",
+        "discovery_write_draft",
+        "discovery_to_design",
+        "design_read",
+        "design_write_draft",
+        "design_to_review",
+        "design_accept",
+        "read_recent_session_startup_view",
+        "read_active_thread",
+        "write_active_thread_handoff",
+        "rebuild_recent_session_index",
+        "archive_completed_thread",
+    ]
+    assert server.list_tools()[0].input_schema["required"] == ["brief_id"]
+
+
+def test_mcp_result_mapping_uses_shared_success_warning_failure_statuses() -> None:
+    success = map_runtime_result(
+        ArtifactRuntimeResult(
+            result=OperationResult(status=OperationStatus.OK, message="ok"),
+            artifacts={"value": "x"},
+            metadata={"count": 1},
+        )
+    )
+    warning = map_runtime_result(
+        ArtifactRuntimeResult(
+            result=OperationResult(status=OperationStatus.WARNING, message="warning"),
+            warnings=("projection_stale",),
+        )
+    )
+    failure = map_runtime_result(
+        ArtifactRuntimeResult(
+            result=OperationResult(status=OperationStatus.ERROR, message="error"),
+        )
+    )
+
+    assert success["result"] == "success"
+    assert success["warnings"] == []
+    assert success["artifacts"]["value"] == "x"
+    assert success["metadata"]["count"] == 1
+    assert warning["result"] == "warning"
+    assert warning["warnings"] == ["projection_stale"]
+    assert failure["result"] == "failure"
+
+
+def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    sidecar = {
+        "title": "Auth Discovery",
+        "status": "draft",
+        "readiness": "medium",
+        "readiness_rationale": "Main framing is visible but one assumption still needs validation.",
+        "blocking_gaps": ["Revocation semantics are still open."],
+        "problem_areas": [
+            {
+                "problem_area_id": "auth-session",
+                "title": "Auth Session Boundaries",
+                "confidence": "medium",
+                "source_section": "## Auth Session Boundaries",
+                "assumptions": [],
+            }
+        ],
+        "cross_cutting": {
+            "global_constraints": [],
+            "shared_assumptions": [],
+            "systemic_risks": [],
+            "open_questions": [],
+            "source_sections": ["## Cross-Cutting Constraints"],
+        },
+    }
+
+    write = server.call_tool(
+        "discovery_write_draft",
+        {
+            "brief_id": "disc-1",
+            "markdown": "# Auth Discovery\n\nDraft body.",
+            "sidecar": sidecar,
+        },
+    )
+    read = server.call_tool(
+        "discovery_read",
+        {
+            "brief_id": "disc-1",
+            "view": "short",
+        },
+    )
+
+    assert write["result"] == "success"
+    assert write["warnings"] == []
+    assert "checkpoint_id" in write["metadata"]
+    assert write["artifacts"]["artifact_ref"]["stage"] == "discovery"
+    assert read["result"] == "success"
+    assert read["artifacts"]["status"] == "draft"
+    assert read["artifacts"]["readiness"] == "medium"
+    assert "markdown" not in read["artifacts"]
+
+
+def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    handoff = server.call_tool(
+        "write_active_thread_handoff",
+        {
+            "thread_id": "thread-1",
+            "title": "Implement MCP Adapter",
+            "current_intent_summary": "Wire thin handlers over runtime services.",
+            "next_suggested_action": "Add lifecycle coverage after the read path works.",
+            "thread_markdown": "# Thread 1\n\nMCP adapter work.",
+        },
+    )
+    startup = server.call_tool("read_recent_session_startup_view")
+    active = server.call_tool("read_active_thread", {"thread_id": "thread-1"})
+
+    assert handoff["result"] == "success"
+    assert handoff["metadata"]["startup_index_updated"] is True
+    assert startup["result"] == "success"
+    assert startup["artifacts"]["active_threads"][0]["thread_id"] == "thread-1"
+    assert "thread_markdown" not in startup["artifacts"]
+    assert active["result"] == "success"
+    assert active["artifacts"]["thread_markdown"] == "# Thread 1\n\nMCP adapter work."
+    assert active["metadata"]["thread_id"] == "thread-1"
+
+
+def test_mcp_validation_failure_stays_at_adapter_boundary(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool("design_read", {"unit_id": "unit-1", "view": "wide"})
+
+    assert result["result"] == "failure"
+    assert result["warnings"] == ["invalid_input"]
+    assert "view must be 'short' or 'full'" in result["metadata"]["message"]
+
+
+def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path) -> None:
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "clauderfall.mcp.stdio",
+            "--repo-root",
+            str(tmp_path),
+        ],
+        cwd="/home/maddie/repos/clauderfall",
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        init = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        assert init["result"]["protocolVersion"] == "2025-06-18"
+        assert init["result"]["capabilities"]["tools"]["listChanged"] is False
+
+        _stdio_notify(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
+
+        tools = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/list",
+                "params": {},
+            },
+        )
+        tool_names = [tool["name"] for tool in tools["result"]["tools"]]
+        assert "discovery_write_draft" in tool_names
+        assert "write_active_thread_handoff" in tool_names
+
+        discovery_write = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "discovery_write_draft",
+                    "arguments": {
+                        "brief_id": "disc-1",
+                        "markdown": "# Auth Discovery\n\nDraft body.",
+                        "sidecar": {
+                            "title": "Auth Discovery",
+                            "status": "draft",
+                            "readiness": "medium",
+                            "readiness_rationale": "Main framing is visible but one assumption remains open.",
+                            "blocking_gaps": ["Revocation semantics are still open."],
+                            "problem_areas": [
+                                {
+                                    "problem_area_id": "auth-session",
+                                    "title": "Auth Session Boundaries",
+                                    "confidence": "medium",
+                                    "source_section": "## Auth Session Boundaries",
+                                    "assumptions": [],
+                                }
+                            ],
+                            "cross_cutting": {
+                                "global_constraints": [],
+                                "shared_assumptions": [],
+                                "systemic_risks": [],
+                                "open_questions": [],
+                                "source_sections": ["## Cross-Cutting Constraints"],
+                            },
+                        },
+                    },
+                },
+            },
+        )
+        assert discovery_write["result"]["isError"] is False
+        assert discovery_write["result"]["structuredContent"]["result"] == "success"
+
+        startup_write = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "write_active_thread_handoff",
+                    "arguments": {
+                        "thread_id": "thread-1",
+                        "title": "Implement MCP Adapter",
+                        "current_intent_summary": "Wire thin handlers over runtime services.",
+                        "next_suggested_action": "Verify stdio round trips.",
+                        "thread_markdown": "# Thread 1\n\nMCP adapter work.",
+                    },
+                },
+            },
+        )
+        assert startup_write["result"]["structuredContent"]["metadata"]["startup_index_updated"] is True
+
+        startup_read = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {
+                    "name": "read_recent_session_startup_view",
+                    "arguments": {},
+                },
+            },
+        )
+        active_threads = startup_read["result"]["structuredContent"]["artifacts"]["active_threads"]
+        assert active_threads[0]["thread_id"] == "thread-1"
+
+        invalid_read = _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 6,
+                "method": "tools/call",
+                "params": {
+                    "name": "design_read",
+                    "arguments": {"unit_id": "unit-1", "view": "wide"},
+                },
+            },
+        )
+        assert invalid_read["result"]["isError"] is True
+        assert invalid_read["result"]["structuredContent"]["warnings"] == ["invalid_input"]
+    finally:
+        if proc.stdin is not None:
+            proc.stdin.close()
+        proc.terminate()
+        proc.wait(timeout=5)
+
+
+def _stdio_request(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, object]:
+    assert proc.stdin is not None
+    assert proc.stdout is not None
+    proc.stdin.write(json.dumps(message) + "\n")
+    proc.stdin.flush()
+    line = proc.stdout.readline()
+    assert line, proc.stderr.read() if proc.stderr is not None else "missing stdio response"
+    return json.loads(line)
+
+
+def _stdio_notify(proc: subprocess.Popen[str], message: dict[str, object]) -> None:
+    assert proc.stdin is not None
+    proc.stdin.write(json.dumps(message) + "\n")
+    proc.stdin.flush()
