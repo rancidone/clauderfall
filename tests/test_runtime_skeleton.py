@@ -877,6 +877,68 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
         proc.wait(timeout=5)
 
 
+def test_stdio_mcp_server_supports_custom_artifacts_root(tmp_path: Path) -> None:
+    artifacts_root = tmp_path / "docs" / "clauderfall"
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "clauderfall.mcp.stdio",
+            "--repo-root",
+            str(tmp_path),
+            "--artifacts-root",
+            str(artifacts_root),
+        ],
+        cwd="/home/maddie/repos/clauderfall",
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        _stdio_notify(proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
+        _stdio_request(
+            proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "write_active_thread_handoff",
+                    "arguments": {
+                        "thread_id": "thread-custom-root",
+                        "title": "Custom Root",
+                        "current_intent_summary": "Write into docs/clauderfall instead of repo root.",
+                        "next_suggested_action": "Verify artifact paths.",
+                        "thread_markdown": "# Custom Root\n\nStored under docs.",
+                    },
+                },
+            },
+        )
+    finally:
+        if proc.stdin is not None:
+            proc.stdin.close()
+        proc.terminate()
+        proc.wait(timeout=5)
+
+    assert (artifacts_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
+    assert not (tmp_path / "session").exists()
+
+
 def _stdio_request(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, object]:
     assert proc.stdin is not None
     assert proc.stdout is not None

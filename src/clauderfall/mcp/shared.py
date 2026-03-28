@@ -29,10 +29,26 @@ class MCPToolSpec:
     input_schema: dict[str, Any]
 
 
-def build_services_for_repo_root(repo_root: str | Path) -> RuntimeServices:
-    """Bootstrap runtime services from the requested repo root."""
+def build_services_for_repo_root(repo_root: str | Path, artifacts_root: str | Path | None = None) -> RuntimeServices:
+    """Bootstrap runtime services from the requested repo and artifact roots."""
 
-    return build_runtime_services(Path(repo_root))
+    resolved_repo_root = Path(repo_root)
+    resolved_artifacts_root = resolve_artifacts_root(
+        repo_root=resolved_repo_root,
+        artifacts_root=artifacts_root,
+    )
+    return build_runtime_services(resolved_artifacts_root)
+
+
+def resolve_artifacts_root(*, repo_root: Path, artifacts_root: str | Path | None) -> Path:
+    """Resolve the effective artifact root from repo root and an optional override."""
+
+    if artifacts_root is None:
+        return repo_root
+    candidate = Path(artifacts_root)
+    if not candidate.is_absolute():
+        candidate = repo_root / candidate
+    return candidate.resolve()
 
 
 def map_runtime_result(result: ArtifactRuntimeResult) -> dict[str, Any]:
