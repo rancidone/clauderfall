@@ -18,16 +18,8 @@ CODEX_INSTALL_DIR = Path(".codex/clauderfall")
 CODEX_MCP_CONFIG_PATH = Path(".codex/config.toml")
 CLAUDERFALL_GITIGNORE_START = "# clauderfall-mcp: begin"
 CLAUDERFALL_GITIGNORE_END = "# clauderfall-mcp: end"
-CLAUDERFALL_GITIGNORE_BLOCK = "\n".join(
-    [
-        CLAUDERFALL_GITIGNORE_START,
-        ".claude/clauderfall/",
-        ".mcp.json",
-        ".codex/clauderfall/",
-        ".codex/config.toml",
-        CLAUDERFALL_GITIGNORE_END,
-    ]
-)
+CLAUDE_GITIGNORE_ENTRIES = (".claude/clauderfall/", ".mcp.json")
+CODEX_GITIGNORE_ENTRIES = (".codex/clauderfall/", ".codex/config.toml")
 
 
 def install_claude_mcp(
@@ -35,7 +27,7 @@ def install_claude_mcp(
     source_repo_root: Path,
     target_repo: Path,
     server_name: str,
-    artifacts_root: str | Path | None = None,
+    docs_root: str | Path | None = None,
     python_executable: str | None = None,
 ) -> dict[str, object]:
     """Install Clauderfall into a target repo and register it for Claude."""
@@ -55,7 +47,7 @@ def install_claude_mcp(
         target_repo=target_repo,
         server_name=server_name,
         command=str(launcher),
-        args=build_server_args(target_repo=target_repo, artifacts_root=artifacts_root),
+        args=build_server_args(target_repo=target_repo, docs_root=docs_root),
     )
     write_install_manifest(
         install_root=install_root,
@@ -64,14 +56,14 @@ def install_claude_mcp(
         launcher=launcher,
         target_repo=target_repo,
     )
-    ensure_clauderfall_gitignore(target_repo)
+    ensure_clauderfall_gitignore(target_repo, CLAUDE_GITIGNORE_ENTRIES)
     return {
         "target_repo": str(target_repo),
         "install_root": str(install_root),
         "venv_python": str(venv_python),
         "launcher": str(launcher),
         "server_name": server_name,
-        "artifacts_root": str(resolve_target_artifacts_root(target_repo=target_repo, artifacts_root=artifacts_root)),
+        "docs_root": str(resolve_target_docs_root(target_repo=target_repo, docs_root=docs_root)),
     }
 
 
@@ -82,7 +74,7 @@ def remove_claude_mcp(*, target_repo: Path, server_name: str) -> dict[str, objec
     install_root = target_repo / CLAUDE_INSTALL_DIR
     config_path = target_repo / CLAUDE_MCP_CONFIG_PATH
     removed_server = remove_server_from_config(config_path=config_path, server_name=server_name)
-    remove_clauderfall_gitignore(target_repo)
+    remove_clauderfall_gitignore(target_repo, CLAUDE_GITIGNORE_ENTRIES)
     removed_install_root = False
     if install_root.exists():
         shutil.rmtree(install_root)
@@ -102,7 +94,7 @@ def register_claude_mcp(
     target_repo: Path,
     server_name: str,
     mode: str,
-    artifacts_root: str | Path | None = None,
+    docs_root: str | Path | None = None,
 ) -> dict[str, object]:
     """Register the source-tree Clauderfall MCP server in a target repo's Claude config."""
 
@@ -111,7 +103,7 @@ def register_claude_mcp(
         repo_root=repo_root.resolve(),
         target_repo=target_repo,
         mode=mode,
-        artifacts_root=artifacts_root,
+        docs_root=docs_root,
     )
     config_path = update_claude_mcp_config(
         target_repo=target_repo,
@@ -125,7 +117,7 @@ def register_claude_mcp(
         "command": command,
         "args": args,
         "config_path": str(config_path),
-        "artifacts_root": str(resolve_target_artifacts_root(target_repo=target_repo, artifacts_root=artifacts_root)),
+        "docs_root": str(resolve_target_docs_root(target_repo=target_repo, docs_root=docs_root)),
     }
 
 
@@ -134,7 +126,7 @@ def install_codex_mcp(
     source_repo_root: Path,
     target_repo: Path,
     server_name: str,
-    artifacts_root: str | Path | None = None,
+    docs_root: str | Path | None = None,
     python_executable: str | None = None,
 ) -> dict[str, object]:
     """Install Clauderfall into a target repo and register it for Codex."""
@@ -154,7 +146,7 @@ def install_codex_mcp(
         target_repo=target_repo,
         server_name=server_name,
         command=str(launcher),
-        args=build_server_args(target_repo=target_repo, artifacts_root=artifacts_root),
+        args=build_server_args(target_repo=target_repo, docs_root=docs_root),
     )
     write_install_manifest(
         install_root=install_root,
@@ -163,7 +155,7 @@ def install_codex_mcp(
         launcher=launcher,
         target_repo=target_repo,
     )
-    ensure_clauderfall_gitignore(target_repo)
+    ensure_clauderfall_gitignore(target_repo, CODEX_GITIGNORE_ENTRIES)
     return {
         "target_repo": str(target_repo),
         "install_root": str(install_root),
@@ -171,7 +163,7 @@ def install_codex_mcp(
         "launcher": str(launcher),
         "server_name": server_name,
         "config_path": str(config_path),
-        "artifacts_root": str(resolve_target_artifacts_root(target_repo=target_repo, artifacts_root=artifacts_root)),
+        "docs_root": str(resolve_target_docs_root(target_repo=target_repo, docs_root=docs_root)),
     }
 
 
@@ -182,7 +174,7 @@ def remove_codex_mcp(*, target_repo: Path, server_name: str) -> dict[str, object
     install_root = target_repo / CODEX_INSTALL_DIR
     config_path = target_repo / CODEX_MCP_CONFIG_PATH
     removed_server = remove_server_from_toml_config(config_path=config_path, server_name=server_name)
-    remove_clauderfall_gitignore(target_repo)
+    remove_clauderfall_gitignore(target_repo, CODEX_GITIGNORE_ENTRIES)
     removed_install_root = False
     if install_root.exists():
         shutil.rmtree(install_root)
@@ -217,11 +209,11 @@ def resolve_claude_registration_command(
     repo_root: Path,
     target_repo: Path,
     mode: str,
-    artifacts_root: str | Path | None = None,
+    docs_root: str | Path | None = None,
 ) -> tuple[str, list[str]]:
     """Resolve a source-tree launch command for Claude registration."""
 
-    repo_root_arg = build_server_args(target_repo=target_repo, artifacts_root=artifacts_root)
+    repo_root_arg = build_server_args(target_repo=target_repo, docs_root=docs_root)
     if mode == "venv":
         return str(repo_root / ".venv" / "bin" / "clauderfall-mcp"), repo_root_arg
     if mode == "path":
@@ -337,37 +329,28 @@ def write_install_manifest(
     return manifest_path
 
 
-def ensure_clauderfall_gitignore(target_repo: Path) -> Path:
+def ensure_clauderfall_gitignore(target_repo: Path, entries: tuple[str, ...]) -> Path:
     """Ensure the installed Clauderfall artifacts remain ignored by git."""
 
     gitignore_path = target_repo / ".gitignore"
     current = gitignore_path.read_text() if gitignore_path.exists() else ""
-    if CLAUDERFALL_GITIGNORE_START in current and CLAUDERFALL_GITIGNORE_END in current:
-        return gitignore_path
-
-    normalized = current.rstrip("\n")
-    new_text = (
-        f"{normalized}\n\n{CLAUDERFALL_GITIGNORE_BLOCK}\n"
-        if normalized
-        else f"{CLAUDERFALL_GITIGNORE_BLOCK}\n"
-    )
-    gitignore_path.write_text(new_text)
+    managed_entries = _read_managed_gitignore_entries(current)
+    updated_entries = sorted(set(managed_entries) | set(entries))
+    gitignore_path.write_text(_render_gitignore(current, updated_entries))
     return gitignore_path
 
 
-def remove_clauderfall_gitignore(target_repo: Path) -> Path:
-    """Remove the Clauderfall installer ignore block when uninstalling."""
+def remove_clauderfall_gitignore(target_repo: Path, entries: tuple[str, ...]) -> Path:
+    """Remove Clauderfall installer ignore entries when uninstalling."""
 
     gitignore_path = target_repo / ".gitignore"
     if not gitignore_path.exists():
         return gitignore_path
 
     current = gitignore_path.read_text()
-    block = f"{CLAUDERFALL_GITIGNORE_BLOCK}\n"
-    if block in current:
-        updated = current.replace(f"\n\n{block}", "\n").replace(block, "")
-    else:
-        updated = current
+    managed_entries = _read_managed_gitignore_entries(current)
+    updated_entries = [entry for entry in managed_entries if entry not in entries]
+    updated = _render_gitignore(current, updated_entries)
     if updated:
         gitignore_path.write_text(updated)
     else:
@@ -405,26 +388,49 @@ def render_codex_config(mcp_servers: dict[str, object]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_server_args(*, target_repo: Path, artifacts_root: str | Path | None) -> list[str]:
+def build_server_args(*, target_repo: Path, docs_root: str | Path | None) -> list[str]:
     """Build common stdio server launch args for the target repo."""
 
     args = ["--repo-root", str(target_repo)]
-    resolved_artifacts_root = resolve_target_artifacts_root(
+    resolved_docs_root = resolve_target_docs_root(
         target_repo=target_repo,
-        artifacts_root=artifacts_root,
+        docs_root=docs_root,
     )
-    if resolved_artifacts_root != target_repo.resolve():
-        args.extend(["--artifacts-root", str(resolved_artifacts_root)])
+    default_docs_root = (target_repo.resolve() / "docs").resolve()
+    if resolved_docs_root != default_docs_root:
+        args.extend(["--docs-root", str(resolved_docs_root)])
     return args
 
 
-def resolve_target_artifacts_root(*, target_repo: Path, artifacts_root: str | Path | None) -> Path:
-    """Resolve the effective artifact root for one target repo installation."""
+def resolve_target_docs_root(*, target_repo: Path, docs_root: str | Path | None) -> Path:
+    """Resolve the effective docs root for one target repo installation."""
 
     target_repo = target_repo.resolve()
-    if artifacts_root is None:
-        return target_repo
-    candidate = Path(artifacts_root)
+    candidate = Path("docs") if docs_root is None else Path(docs_root)
     if not candidate.is_absolute():
         candidate = target_repo / candidate
     return candidate.resolve()
+
+
+def _read_managed_gitignore_entries(current: str) -> list[str]:
+    start = current.find(CLAUDERFALL_GITIGNORE_START)
+    end = current.find(CLAUDERFALL_GITIGNORE_END)
+    if start == -1 or end == -1 or end < start:
+        return []
+    body = current[start + len(CLAUDERFALL_GITIGNORE_START) : end]
+    return [line.strip() for line in body.splitlines() if line.strip()]
+
+
+def _render_gitignore(current: str, managed_entries: list[str]) -> str:
+    start = current.find(CLAUDERFALL_GITIGNORE_START)
+    end = current.find(CLAUDERFALL_GITIGNORE_END)
+    if start != -1 and end != -1 and end >= start:
+        end = end + len(CLAUDERFALL_GITIGNORE_END)
+        current = (current[:start] + current[end:]).strip("\n")
+
+    if managed_entries:
+        block_lines = [CLAUDERFALL_GITIGNORE_START, *managed_entries, CLAUDERFALL_GITIGNORE_END]
+        block = "\n".join(block_lines)
+        current = f"{current}\n\n{block}".strip("\n")
+
+    return f"{current}\n" if current else ""

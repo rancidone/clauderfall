@@ -32,9 +32,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="How Claude should launch the source-tree server. Default: venv",
     )
     parser.add_argument(
-        "--artifacts-root",
+        "--docs-root",
         default=None,
-        help="Optional Clauderfall artifact root inside the target repo, for example docs/clauderfall",
+        help="Optional Clauderfall docs root inside the target repo. Default: docs",
     )
     return parser
 
@@ -48,12 +48,12 @@ def main() -> int:
         target_repo=Path(args.target_repo),
         server_name=args.server_name,
         mode=args.mode,
-        artifacts_root=args.artifacts_root,
+        docs_root=args.docs_root,
     )
     print(f"Registered Claude MCP server '{result['server_name']}' in {result['target_repo']}")
     print(f"Command: {result['command']}")
     print(f"Args: {result['args']}")
-    print(f"Artifacts root: {result['artifacts_root']}")
+    print(f"Docs root: {result['docs_root']}")
     return 0
 
 

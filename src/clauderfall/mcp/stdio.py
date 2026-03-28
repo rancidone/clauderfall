@@ -19,15 +19,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run the Clauderfall MCP server over stdio.")
     parser.add_argument("--repo-root", default=".", help="Repository root to expose through runtime-backed tools.")
     parser.add_argument(
-        "--artifacts-root",
+        "--docs-root",
         default=None,
-        help="Optional artifact root. Relative paths are resolved under --repo-root.",
+        help="Optional docs root. Relative paths are resolved under --repo-root. Default: docs",
     )
     args = parser.parse_args()
 
     server = create_server(
         Path(args.repo_root).resolve(),
-        args.artifacts_root,
+        args.docs_root,
     )
     initialized = False
 

@@ -877,8 +877,65 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
         proc.wait(timeout=5)
 
 
-def test_stdio_mcp_server_supports_custom_artifacts_root(tmp_path: Path) -> None:
-    artifacts_root = tmp_path / "docs" / "clauderfall"
+def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tmp_path: Path) -> None:
+    default_proc = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "clauderfall.mcp.stdio",
+            "--repo-root",
+            str(tmp_path),
+        ],
+        cwd="/home/maddie/repos/clauderfall",
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        _stdio_request(
+            default_proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {
+                    "protocolVersion": "2025-06-18",
+                    "capabilities": {},
+                    "clientInfo": {"name": "pytest", "version": "0"},
+                },
+            },
+        )
+        _stdio_notify(default_proc, {"jsonrpc": "2.0", "method": "notifications/initialized"})
+        _stdio_request(
+            default_proc,
+            {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": "write_active_thread_handoff",
+                    "arguments": {
+                        "thread_id": "thread-default-docs",
+                        "title": "Default Docs Root",
+                        "current_intent_summary": "Write into docs by default.",
+                        "next_suggested_action": "Verify default path.",
+                        "thread_markdown": "# Default Docs Root\n\nStored under docs.",
+                    },
+                },
+            },
+        )
+    finally:
+        if default_proc.stdin is not None:
+            default_proc.stdin.close()
+        default_proc.terminate()
+        default_proc.wait(timeout=5)
+
+    assert (tmp_path / "docs" / "session" / "active" / "thread-default-docs" / "current" / "artifact.md").exists()
+    assert not (tmp_path / "session").exists()
+
+    docs_root = tmp_path / "docs" / "clauderfall"
     proc = subprocess.Popen(
         [
             sys.executable,
@@ -886,8 +943,8 @@ def test_stdio_mcp_server_supports_custom_artifacts_root(tmp_path: Path) -> None
             "clauderfall.mcp.stdio",
             "--repo-root",
             str(tmp_path),
-            "--artifacts-root",
-            str(artifacts_root),
+            "--docs-root",
+            str(docs_root),
         ],
         cwd="/home/maddie/repos/clauderfall",
         stdin=subprocess.PIPE,
@@ -935,8 +992,7 @@ def test_stdio_mcp_server_supports_custom_artifacts_root(tmp_path: Path) -> None
         proc.terminate()
         proc.wait(timeout=5)
 
-    assert (artifacts_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
-    assert not (tmp_path / "session").exists()
+    assert (docs_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
 
 
 def _stdio_request(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, object]:

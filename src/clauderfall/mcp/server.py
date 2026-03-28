@@ -29,7 +29,7 @@ class ClauderfallMCPServer:
     """Thin local tool registry over the runtime service surface."""
 
     repo_root: Path
-    artifacts_root: Path | None = None
+    docs_root: Path | None = None
     _services: RuntimeServices | None = None
     _handlers: dict[str, tuple[MCPToolSpec, ToolHandler]] = field(default_factory=dict)
 
@@ -67,17 +67,17 @@ class ClauderfallMCPServer:
         if self._services is None:
             self._services = build_services_for_repo_root(
                 self.repo_root,
-                self.artifacts_root,
+                self.docs_root,
             )
         return self._services
 
 
-def create_server(repo_root: str | Path, artifacts_root: str | Path | None = None) -> ClauderfallMCPServer:
+def create_server(repo_root: str | Path, docs_root: str | Path | None = None) -> ClauderfallMCPServer:
     """Build the first flat Clauderfall MCP tool surface."""
 
     server = ClauderfallMCPServer(
         repo_root=Path(repo_root),
-        artifacts_root=Path(artifacts_root) if artifacts_root is not None else None,
+        docs_root=Path(docs_root) if docs_root is not None else None,
     )
     _register_discovery_tools(server)
     _register_design_tools(server)

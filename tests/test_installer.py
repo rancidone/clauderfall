@@ -5,8 +5,10 @@ from pathlib import Path
 
 from clauderfall.installer import (
     CLAUDE_INSTALL_DIR,
+    CLAUDE_GITIGNORE_ENTRIES,
     CLAUDE_MCP_CONFIG_PATH,
     CODEX_INSTALL_DIR,
+    CODEX_GITIGNORE_ENTRIES,
     CODEX_MCP_CONFIG_PATH,
     build_server_args,
     ensure_clauderfall_gitignore,
@@ -41,13 +43,15 @@ def test_gitignore_block_is_added_only_once(tmp_path: Path) -> None:
     gitignore_path = tmp_path / ".gitignore"
     gitignore_path.write_text("node_modules/\n")
 
-    ensure_clauderfall_gitignore(tmp_path)
-    ensure_clauderfall_gitignore(tmp_path)
+    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
+    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
 
     content = gitignore_path.read_text()
     assert content.count("# clauderfall-mcp: begin") == 1
     assert ".claude/clauderfall/" in content
     assert ".mcp.json" in content
+    assert ".codex/clauderfall/" not in content
+    assert ".codex/config.toml" not in content
 
 
 def test_install_claude_mcp_creates_repo_local_artifacts_and_manifest(tmp_path: Path, monkeypatch) -> None:
@@ -80,7 +84,7 @@ def test_install_claude_mcp_creates_repo_local_artifacts_and_manifest(tmp_path: 
     assert (tmp_path / ".gitignore").exists()
 
 
-def test_install_claude_mcp_writes_custom_artifacts_root_into_config(tmp_path: Path, monkeypatch) -> None:
+def test_install_claude_mcp_writes_custom_docs_root_into_config(tmp_path: Path, monkeypatch) -> None:
     source_repo = tmp_path / "source"
     source_repo.mkdir()
 
@@ -97,16 +101,16 @@ def test_install_claude_mcp_writes_custom_artifacts_root_into_config(tmp_path: P
         source_repo_root=source_repo,
         target_repo=tmp_path,
         server_name="clauderfall",
-        artifacts_root="docs/clauderfall",
+        docs_root="docs/clauderfall",
     )
 
     config = json.loads((tmp_path / CLAUDE_MCP_CONFIG_PATH).read_text())
 
-    assert result["artifacts_root"] == str((tmp_path / "docs/clauderfall").resolve())
+    assert result["docs_root"] == str((tmp_path / "docs/clauderfall").resolve())
     assert config["mcpServers"]["clauderfall"]["args"] == [
         "--repo-root",
         str(tmp_path),
-        "--artifacts-root",
+        "--docs-root",
         str((tmp_path / "docs/clauderfall").resolve()),
     ]
 
@@ -115,7 +119,7 @@ def test_remove_claude_mcp_cleans_install_root_config_and_gitignore(tmp_path: Pa
     install_root = tmp_path / CLAUDE_INSTALL_DIR
     install_root.mkdir(parents=True)
     (install_root / "install-manifest.json").write_text("{}\n")
-    ensure_clauderfall_gitignore(tmp_path)
+    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
     update_claude_mcp_config(
         target_repo=tmp_path,
         server_name="clauderfall",
@@ -153,19 +157,19 @@ def test_register_claude_mcp_writes_source_tree_command(tmp_path: Path) -> None:
     assert config["mcpServers"]["clauderfall-dev"]["args"] == ["--repo-root", str(tmp_path)]
 
 
-def test_register_claude_mcp_supports_custom_artifacts_root(tmp_path: Path) -> None:
+def test_register_claude_mcp_supports_custom_docs_root(tmp_path: Path) -> None:
     result = register_claude_mcp(
         repo_root=Path("/work/clauderfall"),
         target_repo=tmp_path,
         server_name="clauderfall-dev",
         mode="venv",
-        artifacts_root="docs/clauderfall",
+        docs_root="docs/clauderfall",
     )
 
     assert result["args"] == [
         "--repo-root",
         str(tmp_path),
-        "--artifacts-root",
+        "--docs-root",
         str((tmp_path / "docs/clauderfall").resolve()),
     ]
 
@@ -215,7 +219,7 @@ def test_install_codex_mcp_creates_repo_local_artifacts_and_manifest(tmp_path: P
     assert 'command = "' + result["launcher"] + '"' in config
 
 
-def test_install_codex_mcp_writes_custom_artifacts_root_into_config(tmp_path: Path, monkeypatch) -> None:
+def test_install_codex_mcp_writes_custom_docs_root_into_config(tmp_path: Path, monkeypatch) -> None:
     source_repo = tmp_path / "source"
     source_repo.mkdir()
 
@@ -232,13 +236,13 @@ def test_install_codex_mcp_writes_custom_artifacts_root_into_config(tmp_path: Pa
         source_repo_root=source_repo,
         target_repo=tmp_path,
         server_name="clauderfall",
-        artifacts_root="docs/clauderfall",
+        docs_root="docs/clauderfall",
     )
 
     config = (tmp_path / CODEX_MCP_CONFIG_PATH).read_text()
 
-    assert result["artifacts_root"] == str((tmp_path / "docs/clauderfall").resolve())
-    assert '--artifacts-root' in config
+    assert result["docs_root"] == str((tmp_path / "docs/clauderfall").resolve())
+    assert '--docs-root' in config
     assert str((tmp_path / "docs/clauderfall").resolve()) in config
 
 
@@ -246,7 +250,7 @@ def test_remove_codex_mcp_cleans_install_root_config_and_gitignore(tmp_path: Pat
     install_root = tmp_path / CODEX_INSTALL_DIR
     install_root.mkdir(parents=True)
     (install_root / "install-manifest.json").write_text("{}\n")
-    ensure_clauderfall_gitignore(tmp_path)
+    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
     update_codex_mcp_config(
         target_repo=tmp_path,
         server_name="clauderfall",
@@ -260,6 +264,18 @@ def test_remove_codex_mcp_cleans_install_root_config_and_gitignore(tmp_path: Pat
     assert result["removed_install_root"] is True
     assert not (tmp_path / CODEX_INSTALL_DIR).exists()
     assert not (tmp_path / CODEX_MCP_CONFIG_PATH).exists()
+
+
+def test_gitignore_union_is_preserved_across_claude_and_codex_entries(tmp_path: Path) -> None:
+    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
+    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
+
+    content = (tmp_path / ".gitignore").read_text()
+
+    assert ".claude/clauderfall/" in content
+    assert ".mcp.json" in content
+    assert ".codex/clauderfall/" in content
+    assert ".codex/config.toml" in content
 
 
 def test_resolve_claude_registration_command_supports_venv_and_path(tmp_path: Path) -> None:
@@ -279,11 +295,11 @@ def test_resolve_claude_registration_command_supports_venv_and_path(tmp_path: Pa
     assert path_args == ["--repo-root", str(tmp_path)]
 
 
-def test_build_server_args_defaults_to_repo_root_and_supports_custom_artifacts_root(tmp_path: Path) -> None:
-    assert build_server_args(target_repo=tmp_path, artifacts_root=None) == ["--repo-root", str(tmp_path)]
-    assert build_server_args(target_repo=tmp_path, artifacts_root="docs/clauderfall") == [
+def test_build_server_args_defaults_to_docs_and_supports_custom_docs_root(tmp_path: Path) -> None:
+    assert build_server_args(target_repo=tmp_path, docs_root=None) == ["--repo-root", str(tmp_path)]
+    assert build_server_args(target_repo=tmp_path, docs_root="docs/clauderfall") == [
         "--repo-root",
         str(tmp_path),
-        "--artifacts-root",
+        "--docs-root",
         str((tmp_path / "docs/clauderfall").resolve()),
     ]

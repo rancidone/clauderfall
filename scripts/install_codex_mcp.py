@@ -31,9 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Python executable to use when creating the repo-local virtualenv. Default: current Python",
     )
     parser.add_argument(
-        "--artifacts-root",
+        "--docs-root",
         default=None,
-        help="Optional Clauderfall artifact root inside the target repo, for example docs/clauderfall",
+        help="Optional Clauderfall docs root inside the target repo. Default: docs",
     )
     return parser
 
@@ -46,7 +46,7 @@ def main() -> int:
         source_repo_root=REPO_ROOT,
         target_repo=Path(args.target_repo),
         server_name=args.server_name,
-        artifacts_root=args.artifacts_root,
+        docs_root=args.docs_root,
         python_executable=args.python_executable,
     )
 
@@ -54,7 +54,7 @@ def main() -> int:
     print(f"Install root: {result['install_root']}")
     print(f"Launcher: {result['launcher']}")
     print(f"Config: {result['config_path']}")
-    print(f"Artifacts root: {result['artifacts_root']}")
+    print(f"Docs root: {result['docs_root']}")
     return 0
 
 
