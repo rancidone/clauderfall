@@ -30,6 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("venv", "path"),
         help="How Claude should launch the source-tree server. Default: venv",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Register the MCP server with CLAUDERFALL_DEBUG=1 to enable debug logging to the SQLite DB.",
+    )
     return parser
 
 
@@ -41,6 +47,7 @@ def main() -> int:
         repo_root=REPO_ROOT,
         server_name=args.server_name,
         mode=args.mode,
+        debug=args.debug,
     )
     print(f"Registered Claude MCP server '{result['server_name']}' globally")
     print(f"Command: {result['command']}")

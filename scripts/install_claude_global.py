@@ -29,6 +29,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Python executable to use when creating the global Clauderfall virtualenv. Default: current Python",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Register the MCP server with CLAUDERFALL_DEBUG=1 to enable debug logging to the SQLite DB.",
+    )
     return parser
 
 
@@ -40,6 +46,7 @@ def main() -> int:
         source_repo_root=REPO_ROOT,
         server_name=args.server_name,
         python_executable=args.python_executable,
+        debug=args.debug,
     )
 
     print(f"Installed Claude MCP server '{result['server_name']}' globally")

@@ -24,6 +24,7 @@ def install_claude_global(
     source_repo_root: Path,
     server_name: str,
     python_executable: str | None = None,
+    debug: bool = False,
 ) -> dict[str, object]:
     """Install Clauderfall globally and register it as a user-scoped Claude MCP server."""
 
@@ -35,6 +36,7 @@ def install_claude_global(
         server_name=server_name,
         command=install_result["launcher"],
         args=[],
+        debug=debug,
     )
     return {
         **install_result,
@@ -102,11 +104,11 @@ def remove_codex_global(*, source_repo_root: Path, server_name: str) -> dict[str
     }
 
 
-def register_claude_global(*, repo_root: Path, server_name: str, mode: str) -> dict[str, object]:
+def register_claude_global(*, repo_root: Path, server_name: str, mode: str, debug: bool = False) -> dict[str, object]:
     """Register the source-tree Clauderfall server globally for Claude development use."""
 
     command = resolve_codex_command(repo_root=repo_root.resolve(), mode=mode)
-    add_claude_user_mcp_server(server_name=server_name, command=command, args=[])
+    add_claude_user_mcp_server(server_name=server_name, command=command, args=[], debug=debug)
     installed_skills = install_packaged_skills(
         source_repo_root=repo_root.resolve(),
         destination_root=Path.home() / CLAUDE_SKILLS_ROOT,
@@ -269,15 +271,25 @@ def write_global_install_manifest(*, install_root: Path, source_repo_root: Path,
     return manifest_path
 
 
-def add_claude_user_mcp_server(*, server_name: str, command: str, args: list[str]) -> dict[str, object]:
+def add_claude_user_mcp_server(
+    *,
+    server_name: str,
+    command: str,
+    args: list[str],
+    debug: bool = False,
+) -> dict[str, object]:
     """Register one user-scoped Claude MCP server through the Claude CLI."""
 
-    cmd = ["claude", "mcp", "add", server_name, "--scope", "user", "--", command, *args]
+    cmd = ["claude", "mcp", "add", server_name, "--scope", "user"]
+    if debug:
+        cmd += ["--env", "CLAUDERFALL_DEBUG=1"]
+    cmd += ["--", command, *args]
     subprocess.run(cmd, check=True)
     return {
         "command": command,
         "args": args,
         "scope": "user",
+        "debug": debug,
     }
 
 

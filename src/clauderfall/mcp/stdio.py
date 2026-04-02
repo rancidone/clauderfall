@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from clauderfall import __version__
+from clauderfall import __version__, debug_log
 from clauderfall.mcp import create_server
 
 
@@ -31,15 +31,20 @@ def main() -> int:
     )
     initialized = False
 
+    debug_log.info("stdio server started repo_root=%s", Path(args.repo_root).resolve())
     for raw_line in sys.stdin:
         line = raw_line.strip()
         if not line:
             continue
+        debug_log.debug("recv: %s", line[:500])
         response, initialized = _handle_message(server=server, initialized=initialized, raw_message=line)
         if response is None:
             continue
-        sys.stdout.write(json.dumps(response, separators=(",", ":")) + "\n")
+        encoded = json.dumps(response, separators=(",", ":"))
+        debug_log.debug("send: %s", encoded[:500])
+        sys.stdout.write(encoded + "\n")
         sys.stdout.flush()
+    debug_log.info("stdio server stdin closed, exiting")
     return 0
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from clauderfall.debug_log import configure as _configure_debug_log
 from clauderfall.runtime.artifacts import StageArtifactRuntime
 from clauderfall.runtime.design import DesignRuntimeService
 from clauderfall.runtime.discovery import DiscoveryRuntimeService
@@ -27,6 +28,7 @@ class RuntimeServices:
 
 def build_runtime_services(docs_root: Path, *, repo_root: Path | None = None) -> RuntimeServices:
     db_path = (repo_root if repo_root is not None else docs_root) / "clauderfall.db"
+    _configure_debug_log(db_path)
     store = ArtifactStore(db_path=db_path, docs_root=docs_root)
     session = SessionStore(db_path=db_path)
     artifacts = StageArtifactRuntime(store=store)
