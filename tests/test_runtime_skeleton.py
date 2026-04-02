@@ -13,7 +13,6 @@ from clauderfall.runtime import (
     ArtifactRuntimeResult,
     ArtifactResolver,
     ArtifactStage,
-    ArtifactView,
     CheckpointEnvelope,
     CheckpointManager,
     FlushReason,
@@ -118,18 +117,18 @@ def test_shared_artifact_runtime_reads_short_and_full_views(tmp_path: Path) -> N
         flush_reason=FlushReason.CHECKPOINT,
     )
 
-    short_result = services.artifacts.read_artifact(key=key, view=ArtifactView.SHORT)
-    full_result = services.artifacts.read_artifact(
+    read_result = services.artifacts.read_artifact(key=key)
+    checkpoint_result = services.artifacts.read_artifact(
         key=key,
         checkpoint_id=write_result.metadata["checkpoint_id"],
-        view=ArtifactView.FULL,
     )
 
-    assert short_result.result.ok is True
-    assert short_result.artifacts["artifact_id"] == "brief-1"
-    assert "markdown" not in short_result.artifacts
-    assert full_result.artifacts["markdown"] == "# Discovery Brief\n\nBody text."
-    assert full_result.artifacts["title"] == "Discovery Brief"
+    assert read_result.result.ok is True
+    assert read_result.artifacts["artifact_id"] == "brief-1"
+    assert "markdown" not in read_result.artifacts
+    assert read_result.artifacts["title"] == "Discovery Brief"
+    assert checkpoint_result.result.ok is True
+    assert checkpoint_result.artifacts["stage_metadata"]["title"] == "Discovery Brief"
 
 
 def test_shared_artifact_runtime_transition_writes_later_checkpoint_for_reopen(tmp_path: Path) -> None:
@@ -149,7 +148,7 @@ def test_shared_artifact_runtime_transition_writes_later_checkpoint_for_reopen(t
         stage_metadata_updates={"reopen_reason": "new constraint found"},
     )
 
-    current = services.artifacts.read_artifact(key=key, view=ArtifactView.FULL)
+    current = services.artifacts.read_artifact(key=key)
     original_checkpoint = services.store.load_checkpoint(
         ArtifactRef(key=key, checkpoint_id=initial.metadata["checkpoint_id"])
     )
@@ -207,14 +206,13 @@ def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -
         sidecar=sidecar,
     )
 
-    short_view = services.discovery.read(brief_id="disc-1", view=ArtifactView.SHORT)
-    full_view = services.discovery.read(brief_id="disc-1", view=ArtifactView.FULL)
+    result = services.discovery.read(brief_id="disc-1")
 
-    assert short_view.result.ok is True
-    assert short_view.artifacts["status"] == "draft"
-    assert short_view.artifacts["readiness"] == "medium"
-    assert "markdown" not in short_view.artifacts
-    assert full_view.artifacts["markdown"] == "# Auth Discovery\n\nDraft brief body."
+    assert result.result.ok is True
+    assert result.artifacts["status"] == "draft"
+    assert result.artifacts["readiness"] == "medium"
+    assert "markdown" not in result.artifacts
+    assert result.artifacts["stage_metadata"]["title"] == "Auth Discovery"
 
 
 def test_discovery_to_design_blocks_without_acceptance_or_override(tmp_path: Path) -> None:
@@ -332,16 +330,14 @@ def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> N
         sidecar=sidecar,
     )
 
-    short_view = services.design.read(unit_id="unit-auth-session", view=ArtifactView.SHORT)
-    full_view = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+    result = services.design.read(unit_id="unit-auth-session")
 
-    assert short_view.result.ok is True
-    assert short_view.artifacts["workflow_status"] == "draft"
-    assert short_view.artifacts["scope_summary"] == sidecar["scope_summary"]
-    assert short_view.artifacts["linkage"]["depends_on"] == ["unit-auth-contract"]
-    assert "markdown" not in short_view.artifacts
-    assert full_view.artifacts["markdown"] == "# Auth Session Design\n\nDraft design body."
-    assert full_view.artifacts["stage_metadata"]["design_unit_id"] == "unit-auth-session"
+    assert result.result.ok is True
+    assert result.artifacts["workflow_status"] == "draft"
+    assert result.artifacts["scope_summary"] == sidecar["scope_summary"]
+    assert result.artifacts["linkage"]["depends_on"] == ["unit-auth-contract"]
+    assert "markdown" not in result.artifacts
+    assert result.artifacts["stage_metadata"]["design_unit_id"] == "unit-auth-session"
 
 
 def test_design_to_review_requires_persisted_valid_draft_and_writes_review_checkpoint(tmp_path: Path) -> None:
@@ -365,7 +361,7 @@ def test_design_to_review_requires_persisted_valid_draft_and_writes_review_check
     )
 
     result = services.design.to_review(unit_id="unit-auth-session")
-    current = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+    current = services.design.read(unit_id="unit-auth-session")
 
     assert result.result.ok is True
     assert result.metadata["previous_checkpoint_id"] != result.metadata["checkpoint_id"]
@@ -475,7 +471,7 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
             "open_questions": ["How should revocation lag be bounded?"],
         },
     )
-    current = services.design.read(unit_id="unit-auth-session", view=ArtifactView.FULL)
+    current = services.design.read(unit_id="unit-auth-session")
     original_checkpoint = services.store.load_checkpoint(
         ArtifactRef(
             key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="unit-auth-session"),

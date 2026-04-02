@@ -9,7 +9,6 @@ from clauderfall.runtime.types import (
     ArtifactKey,
     ArtifactRuntimeResult,
     ArtifactStage,
-    ArtifactView,
     FlushReason,
     OperationResult,
     OperationStatus,
@@ -43,13 +42,11 @@ class DesignRuntimeService:
         self,
         *,
         unit_id: str,
-        view: ArtifactView = ArtifactView.FULL,
         checkpoint_id: str | None = None,
     ) -> ArtifactRuntimeResult:
         result = self.artifacts.read_artifact(
             key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id),
             checkpoint_id=checkpoint_id,
-            view=ArtifactView.FULL,
         )
         if not result.result.ok:
             return result
@@ -59,15 +56,12 @@ class DesignRuntimeService:
             unit_id=unit_id,
             base_artifacts=result.artifacts,
             stage_metadata=stage_metadata,
-            view=view,
         )
-        shaped_metadata = dict(result.metadata)
-        shaped_metadata["view"] = view
         return ArtifactRuntimeResult(
             result=result.result,
             warnings=result.warnings,
             artifacts=shaped_artifacts,
-            metadata=shaped_metadata,
+            metadata=result.metadata,
         )
 
     def write_draft(
@@ -110,7 +104,7 @@ class DesignRuntimeService:
         unit_id: str,
     ) -> ArtifactRuntimeResult:
         key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id)
-        read_result = self.artifacts.read_artifact(key=key, view=ArtifactView.FULL)
+        read_result = self.artifacts.read_artifact(key=key)
         if not read_result.result.ok:
             return read_result
 
@@ -161,7 +155,7 @@ class DesignRuntimeService:
         override: bool = False,
     ) -> ArtifactRuntimeResult:
         key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id)
-        read_result = self.artifacts.read_artifact(key=key, view=ArtifactView.FULL)
+        read_result = self.artifacts.read_artifact(key=key)
         if not read_result.result.ok:
             return read_result
 
@@ -265,9 +259,8 @@ def _render_design_payload(
     unit_id: str,
     base_artifacts: dict[str, object],
     stage_metadata: dict[str, object],
-    view: ArtifactView,
 ) -> dict[str, object]:
-    payload: dict[str, object] = {
+    return {
         "artifact_ref": base_artifacts["artifact_ref"],
         "artifact_id": base_artifacts["artifact_id"],
         "design_unit_id": stage_metadata.get("design_unit_id", unit_id),
@@ -286,8 +279,5 @@ def _render_design_payload(
             "children": stage_metadata.get("children", []),
             "parent": stage_metadata.get("parent"),
         },
+        "stage_metadata": stage_metadata,
     }
-    if view is ArtifactView.FULL:
-        payload["markdown"] = base_artifacts["markdown"]
-        payload["stage_metadata"] = stage_metadata
-    return payload

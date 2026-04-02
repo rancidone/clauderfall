@@ -38,12 +38,6 @@ class OperationStatus(str, Enum):
     ERROR = "error"
 
 
-class ArtifactView(str, Enum):
-    """Read shape for shared artifact runtime operations."""
-
-    SHORT = "short"
-    FULL = "full"
-
 
 @dataclass(frozen=True)
 class ArtifactKey:

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from clauderfall.runtime import ArtifactRef, ArtifactRuntimeResult, ArtifactView, OperationStatus, RuntimeServices, build_runtime_services
+from clauderfall.runtime import ArtifactRef, ArtifactRuntimeResult, OperationStatus, RuntimeServices, build_runtime_services
 
 
 MCP_RESULT_BY_RUNTIME_STATUS = {
@@ -81,16 +81,6 @@ def validation_failure(*, code: str, message: str, metadata: dict[str, Any] | No
         "metadata": {"message": message, **(metadata or {})},
     }
 
-
-def parse_view(value: str | None) -> ArtifactView:
-    """Normalize the stage read view enum at the adapter boundary."""
-
-    if value is None:
-        return ArtifactView.FULL
-    try:
-        return ArtifactView(value)
-    except ValueError as exc:
-        raise MCPValidationError("view must be 'short' or 'full'") from exc
 
 
 def require_string(payload: dict[str, Any], field: str) -> str:

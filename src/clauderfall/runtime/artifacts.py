@@ -11,8 +11,6 @@ from clauderfall.runtime.types import (
     ArtifactPair,
     ArtifactRef,
     ArtifactRuntimeResult,
-    ArtifactView,
-    CheckpointEnvelope,
     FlushReason,
     OperationResult,
     OperationStatus,
@@ -31,7 +29,6 @@ class StageArtifactRuntime:
         *,
         key: ArtifactKey,
         checkpoint_id: str | None = None,
-        view: ArtifactView = ArtifactView.FULL,
     ) -> ArtifactRuntimeResult:
         ref = ArtifactRef(key=key, checkpoint_id=checkpoint_id)
         pair = self.store.load_checkpoint(ref) if checkpoint_id else self.store.load_current(ref)
@@ -46,9 +43,14 @@ class StageArtifactRuntime:
 
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact read"),
-            artifacts=self._render_artifact_payload(key=key, pair=pair, view=view),
-            metadata=self._metadata_for_pair(key=key, pair=pair, view=view),
+            artifacts=self._render_artifact_payload(key=key, pair=pair),
+            metadata=self._metadata_for_pair(key=key, pair=pair),
         )
+
+    def read_artifact_markdown(self, *, key: ArtifactKey) -> str | None:
+        """Return the raw markdown body for a key, or None if not found. For internal runtime use only."""
+        pair = self.store.load_current(ArtifactRef(key=key))
+        return pair.markdown if pair is not None else None
 
     def write_artifact_checkpoint(
         self,
@@ -68,8 +70,8 @@ class StageArtifactRuntime:
         self.store.write_checkpoint(ref, pair)
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact checkpoint written"),
-            artifacts=self._render_artifact_payload(key=key, pair=pair, view=ArtifactView.SHORT),
-            metadata=self._metadata_for_pair(key=key, pair=pair, view=ArtifactView.SHORT),
+            artifacts=self._render_artifact_payload(key=key, pair=pair),
+            metadata=self._metadata_for_pair(key=key, pair=pair),
         )
 
     def transition_artifact_status(
@@ -108,11 +110,11 @@ class StageArtifactRuntime:
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact status transitioned"),
             artifacts={
-                **self._render_artifact_payload(key=key, pair=next_pair, view=ArtifactView.SHORT),
+                **self._render_artifact_payload(key=key, pair=next_pair),
                 "previous_checkpoint_ref": previous_ref,
             },
             metadata={
-                **self._metadata_for_pair(key=key, pair=next_pair, view=ArtifactView.SHORT),
+                **self._metadata_for_pair(key=key, pair=next_pair),
                 "previous_checkpoint_id": current.metadata.checkpoint_id,
             },
         )
@@ -122,9 +124,8 @@ class StageArtifactRuntime:
         *,
         key: ArtifactKey,
         pair: ArtifactPair,
-        view: ArtifactView,
     ) -> dict[str, object]:
-        payload: dict[str, object] = {
+        return {
             "artifact_ref": ArtifactRef(key=key, checkpoint_id=pair.metadata.checkpoint_id),
             "artifact_id": key.artifact_id,
             "stage": key.stage.value,
@@ -132,18 +133,14 @@ class StageArtifactRuntime:
             "status": pair.metadata.stage_metadata.get("status"),
             "title": pair.metadata.stage_metadata.get("title"),
             "readiness": pair.metadata.stage_metadata.get("readiness"),
+            "stage_metadata": pair.metadata.stage_metadata,
         }
-        if view is ArtifactView.FULL:
-            payload["markdown"] = pair.markdown
-            payload["stage_metadata"] = pair.metadata.stage_metadata
-        return payload
 
     def _metadata_for_pair(
         self,
         *,
         key: ArtifactKey,
         pair: ArtifactPair,
-        view: ArtifactView,
     ) -> dict[str, object]:
         return {
             "artifact_id": key.artifact_id,
@@ -152,5 +149,4 @@ class StageArtifactRuntime:
             "flush_reason": pair.metadata.flush_reason,
             "is_current": pair.metadata.is_current,
             "created_at": pair.metadata.created_at,
-            "view": view,
         }

@@ -9,7 +9,6 @@ from clauderfall.runtime.types import (
     ArtifactKey,
     ArtifactRuntimeResult,
     ArtifactStage,
-    ArtifactView,
     FlushReason,
     OperationResult,
     OperationStatus,
@@ -37,13 +36,11 @@ class DiscoveryRuntimeService:
         self,
         *,
         brief_id: str,
-        view: ArtifactView = ArtifactView.FULL,
         checkpoint_id: str | None = None,
     ) -> ArtifactRuntimeResult:
         return self.artifacts.read_artifact(
             key=ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=brief_id),
             checkpoint_id=checkpoint_id,
-            view=view,
         )
 
     def write_draft(
@@ -77,7 +74,7 @@ class DiscoveryRuntimeService:
         override: bool = False,
     ) -> ArtifactRuntimeResult:
         key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=brief_id)
-        read_result = self.artifacts.read_artifact(key=key, view=ArtifactView.FULL)
+        read_result = self.artifacts.read_artifact(key=key)
         if not read_result.result.ok:
             return read_result
 
@@ -109,8 +106,9 @@ class DiscoveryRuntimeService:
                 metadata={"brief_id": brief_id, "readiness": readiness},
             )
 
+        discovery_markdown = self.artifacts.read_artifact_markdown(key=key) or ""
         start_context = _derive_design_start_context(
-            discovery_markdown=read_result.artifacts["markdown"],
+            discovery_markdown=discovery_markdown,
             discovery_sidecar=stage_metadata,
             override=override,
         )

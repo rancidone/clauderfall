@@ -13,7 +13,6 @@ from clauderfall.mcp.shared import (
     map_runtime_result,
     optional_bool,
     optional_string,
-    parse_view,
     require_object,
     require_string,
     validation_failure,
@@ -88,12 +87,11 @@ def create_server(repo_root: str | Path, docs_root: str | Path | None = None) ->
 def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
     server.register_tool(
         name="discovery_read",
-        description="Read the authoritative Discovery artifact in short or full view.",
+        description="Read the authoritative Discovery artifact metadata.",
         input_schema={
             "type": "object",
             "properties": {
                 "brief_id": {"type": "string"},
-                "view": {"type": "string", "enum": ["short", "full"]},
                 "checkpoint_id": {"type": "string"},
             },
             "required": ["brief_id"],
@@ -135,12 +133,11 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
 def _register_design_tools(server: ClauderfallMCPServer) -> None:
     server.register_tool(
         name="design_read",
-        description="Read the authoritative Design unit in short or full view.",
+        description="Read the authoritative Design unit metadata.",
         input_schema={
             "type": "object",
             "properties": {
                 "unit_id": {"type": "string"},
-                "view": {"type": "string", "enum": ["short", "full"]},
                 "checkpoint_id": {"type": "string"},
             },
             "required": ["unit_id"],
@@ -275,7 +272,6 @@ def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[
     return map_runtime_result(
         services.discovery.read(
             brief_id=require_string(payload, "brief_id"),
-            view=parse_view(payload.get("view")),
             checkpoint_id=optional_string(payload, "checkpoint_id"),
         )
     )
@@ -304,7 +300,6 @@ def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
     return map_runtime_result(
         services.design.read(
             unit_id=require_string(payload, "unit_id"),
-            view=parse_view(payload.get("view")),
             checkpoint_id=optional_string(payload, "checkpoint_id"),
         )
     )

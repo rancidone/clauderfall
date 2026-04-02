@@ -18,7 +18,6 @@ from clauderfall.runtime.types import (
     ArtifactRef,
     ArtifactRuntimeResult,
     ArtifactStage,
-    ArtifactView,
     CheckpointEnvelope,
     FlushReason,
     OperationResult,
@@ -148,7 +147,6 @@ class SessionLifecycleService:
     def read_active_thread(self, *, thread_id: str) -> ArtifactRuntimeResult:
         result = self.artifacts.read_artifact(
             key=self._session_key(self._active_artifact_id(thread_id)),
-            view=ArtifactView.FULL,
         )
         if not result.result.ok:
             return ArtifactRuntimeResult(
@@ -281,7 +279,6 @@ class SessionLifecycleService:
         def prepare() -> tuple[ArtifactRuntimeResult, ActiveThreadMetadata]:
             current = self.artifacts.read_artifact(
                 key=self._session_key(self._active_artifact_id(thread_id)),
-                view=ArtifactView.FULL,
             )
             if not current.result.ok:
                 return (
