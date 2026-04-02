@@ -8,13 +8,9 @@ from pathlib import Path
 from clauderfall.mcp import create_server, map_runtime_result
 from clauderfall.runtime import (
     ArtifactKey,
-    ArtifactPair,
-    ArtifactRef,
+    ArtifactRecord,
     ArtifactRuntimeResult,
-    ArtifactResolver,
     ArtifactStage,
-    CheckpointEnvelope,
-    CheckpointManager,
     FlushReason,
     OperationResult,
     OperationStatus,
@@ -22,73 +18,36 @@ from clauderfall.runtime import (
 )
 
 
-def test_artifact_resolver_matches_current_and_checkpoint_layout(tmp_path: Path) -> None:
-    resolver = ArtifactResolver(root=tmp_path)
-    ref = ArtifactRef(
-        key=ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id="brief-1"),
-        checkpoint_id="chk-123",
-    )
-
-    resolved = resolver.resolve(ref)
-
-    assert resolved.artifact_root == tmp_path / "discovery" / "brief-1"
-    assert resolved.current_markdown_path == tmp_path / "discovery" / "brief-1" / "current" / "artifact.md"
-    assert (
-        resolved.checkpoint_metadata_path
-        == tmp_path / "discovery" / "brief-1" / "checkpoints" / "chk-123" / "artifact.meta.yaml"
-    )
-
-
-def test_checkpoint_manager_builds_envelope_with_controlled_reason() -> None:
-    manager = CheckpointManager()
-
-    envelope = manager.build_envelope(
-        artifact_id="unit-7",
-        flush_reason=FlushReason.REVIEW_TRANSITION,
-        stage_metadata={"status": "in_review"},
-    )
-
-    assert envelope.artifact_id == "unit-7"
-    assert envelope.flush_reason == FlushReason.REVIEW_TRANSITION
-    assert envelope.is_current is True
-    assert envelope.stage_metadata == {"status": "in_review"}
-    assert envelope.checkpoint_id
-
-
-def test_artifact_store_round_trips_checkpoint_and_current_pair(tmp_path: Path) -> None:
+def test_artifact_store_round_trips_current_record(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="auth-session")
-    checkpoint_id = "chk-auth-001"
-    envelope = CheckpointEnvelope.create(
-        artifact_id=key.artifact_id,
-        checkpoint_id=checkpoint_id,
-        flush_reason=FlushReason.CHECKPOINT,
+
+    record = services.store.write(
+        key=key,
+        markdown="# Auth Session\n\nDraft design unit.",
         stage_metadata={
             "status": "draft",
             "readiness": {"state": "not_ready", "blocking_gaps": ["Need invariant coverage"]},
         },
+        flush_reason="checkpoint",
     )
-    pair = ArtifactPair(markdown="# Auth Session\n\nDraft design unit.", metadata=envelope)
-    ref = ArtifactRef(key=key, checkpoint_id=checkpoint_id)
 
-    services.store.write_checkpoint(ref, pair)
+    current = services.store.read(key)
 
-    current = services.store.load_current(ArtifactRef(key=key))
-    checkpoint = services.store.load_checkpoint(ref)
-
-    assert current == pair
-    assert checkpoint == pair
+    assert current is not None
+    assert current.version_id == record.version_id
+    assert current.stage_metadata["status"] == "draft"
+    assert isinstance(current, ArtifactRecord)
 
 
 def test_runtime_services_wiring_exposes_shared_substrate_components(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
 
-    assert services.root == tmp_path
-    assert services.store.resolver is services.resolver
+    assert services.store is not None
     assert services.artifacts.store is services.store
     assert services.discovery.artifacts is services.artifacts
     assert services.design.artifacts is services.artifacts
-    assert services.session_lifecycle.artifacts is services.artifacts
+    assert services.session_lifecycle.session is services.session
 
 
 def test_operation_result_ok_tracks_non_error_status() -> None:
@@ -103,7 +62,7 @@ def test_operation_result_ok_tracks_non_error_status() -> None:
     assert error.ok is False
 
 
-def test_shared_artifact_runtime_reads_short_and_full_views(tmp_path: Path) -> None:
+def test_shared_artifact_runtime_reads_current_returns_version_id(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id="brief-1")
     write_result = services.artifacts.write_artifact_checkpoint(
@@ -118,20 +77,16 @@ def test_shared_artifact_runtime_reads_short_and_full_views(tmp_path: Path) -> N
     )
 
     read_result = services.artifacts.read_artifact(key=key)
-    checkpoint_result = services.artifacts.read_artifact(
-        key=key,
-        checkpoint_id=write_result.metadata["checkpoint_id"],
-    )
 
     assert read_result.result.ok is True
     assert read_result.artifacts["artifact_id"] == "brief-1"
     assert "markdown" not in read_result.artifacts
     assert read_result.artifacts["title"] == "Discovery Brief"
-    assert checkpoint_result.result.ok is True
-    assert checkpoint_result.artifacts["stage_metadata"]["title"] == "Discovery Brief"
+    assert "version_id" in read_result.metadata
+    assert read_result.metadata["version_id"] == write_result.metadata["version_id"]
 
 
-def test_shared_artifact_runtime_transition_writes_later_checkpoint_for_reopen(tmp_path: Path) -> None:
+def test_shared_artifact_runtime_transition_writes_later_version_for_reopen(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="unit-1")
     initial = services.artifacts.write_artifact_checkpoint(
@@ -149,17 +104,12 @@ def test_shared_artifact_runtime_transition_writes_later_checkpoint_for_reopen(t
     )
 
     current = services.artifacts.read_artifact(key=key)
-    original_checkpoint = services.store.load_checkpoint(
-        ArtifactRef(key=key, checkpoint_id=initial.metadata["checkpoint_id"])
-    )
 
     assert reopened.result.ok is True
-    assert reopened.metadata["previous_checkpoint_id"] == initial.metadata["checkpoint_id"]
-    assert reopened.metadata["checkpoint_id"] != initial.metadata["checkpoint_id"]
+    assert reopened.metadata["previous_version_id"] == initial.metadata["version_id"]
+    assert reopened.metadata["version_id"] != initial.metadata["version_id"]
     assert current.artifacts["status"] == "draft"
     assert current.artifacts["stage_metadata"]["reopen_reason"] == "new constraint found"
-    assert original_checkpoint is not None
-    assert original_checkpoint.metadata.stage_metadata["status"] == "accepted"
 
 
 def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -> None:
@@ -364,7 +314,7 @@ def test_design_to_review_requires_persisted_valid_draft_and_writes_review_check
     current = services.design.read(unit_id="unit-auth-session")
 
     assert result.result.ok is True
-    assert result.metadata["previous_checkpoint_id"] != result.metadata["checkpoint_id"]
+    assert result.metadata["previous_version_id"] != result.metadata["version_id"]
     assert current.artifacts["workflow_status"] == "in_review"
     assert current.artifacts["stage_metadata"]["status"] == "in_review"
 
@@ -472,22 +422,14 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
         },
     )
     current = services.design.read(unit_id="unit-auth-session")
-    original_checkpoint = services.store.load_checkpoint(
-        ArtifactRef(
-            key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="unit-auth-session"),
-            checkpoint_id=accepted.metadata["checkpoint_id"],
-        )
-    )
 
     assert reopened.result.ok is True
-    assert reopened.metadata["checkpoint_id"] != accepted.metadata["checkpoint_id"]
+    assert reopened.metadata["version_id"] != accepted.metadata["version_id"]
     assert current.artifacts["workflow_status"] == "draft"
     assert current.artifacts["readiness"] == "medium"
-    assert original_checkpoint is not None
-    assert original_checkpoint.metadata.stage_metadata["status"] == "accepted"
 
 
-def test_session_startup_view_rebuilds_missing_or_stale_index(tmp_path: Path) -> None:
+def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     services.session_lifecycle.write_active_thread_handoff(
         thread_id="thread-b",
@@ -503,19 +445,13 @@ def test_session_startup_view_rebuilds_missing_or_stale_index(tmp_path: Path) ->
         next_suggested_action="Verify archive semantics.",
         thread_markdown="# Thread A\n\nWorking notes.",
     )
-    index_root = tmp_path / "session" / "index" / "recent-session"
-    if index_root.exists():
-        import shutil
-
-        shutil.rmtree(index_root)
 
     startup = services.session_lifecycle.read_recent_session_startup_view()
 
     assert startup.result.ok is True
-    assert startup.metadata["rebuilt"] is True
     assert startup.metadata["active_thread_count"] == 2
-    assert startup.warnings == ("startup_index_rebuilt",)
-    assert [entry["thread_id"] for entry in startup.artifacts["active_threads"]] == ["thread-a", "thread-b"]
+    thread_ids = {entry["thread_id"] for entry in startup.artifacts["active_threads"]}
+    assert thread_ids == {"thread-a", "thread-b"}
 
 
 def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
@@ -559,34 +495,6 @@ def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_pa
     assert startup.artifacts["active_threads"] == []
     assert startup.artifacts["recent_completed_threads"][0]["thread_id"] == "thread-1"
     assert active.result.ok is False
-
-
-def test_session_handoff_warns_when_projection_refresh_fails_but_thread_write_persists(
-    tmp_path: Path,
-    monkeypatch,
-) -> None:
-    services = build_runtime_services(tmp_path)
-
-    def fail_index_refresh(*, reason: str):
-        del reason
-        raise RuntimeError("simulated index write failure")
-
-    monkeypatch.setattr(services.session_lifecycle, "_persist_recent_session_index", fail_index_refresh)
-
-    write = services.session_lifecycle.write_active_thread_handoff(
-        thread_id="thread-1",
-        title="Implement Session Lifecycle",
-        current_intent_summary="Thread-first handoff should still persist.",
-        next_suggested_action="Repair the startup projection later.",
-        thread_markdown="# Thread 1\n\nSession lifecycle work.",
-    )
-    active = services.session_lifecycle.read_active_thread(thread_id="thread-1")
-
-    assert write.result.status == OperationStatus.WARNING
-    assert write.metadata["startup_index_updated"] is False
-    assert write.metadata["projection_stale"] is True
-    assert write.warnings == ("startup_projection_stale",)
-    assert active.result.ok is True
 
 
 def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
@@ -678,14 +586,12 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
         "discovery_read",
         {
             "brief_id": "disc-1",
-            "view": "short",
         },
     )
 
     assert write["result"] == "success"
     assert write["warnings"] == []
-    assert "checkpoint_id" in write["metadata"]
-    assert write["artifacts"]["artifact_ref"]["stage"] == "discovery"
+    assert "version_id" in write["metadata"]
     assert read["result"] == "success"
     assert read["artifacts"]["status"] == "draft"
     assert read["artifacts"]["readiness"] == "medium"
@@ -928,7 +834,8 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         default_proc.terminate()
         default_proc.wait(timeout=5)
 
-    assert (tmp_path / "docs" / "session" / "active" / "thread-default-docs" / "current" / "artifact.md").exists()
+    # Session threads are now in SQLite only — no markdown files
+    assert (tmp_path / "clauderfall.db").exists()
     assert not (tmp_path / "session").exists()
 
     docs_root = tmp_path / "docs" / "clauderfall"
@@ -988,7 +895,8 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         proc.terminate()
         proc.wait(timeout=5)
 
-    assert (docs_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
+    # Session threads are in SQLite — verify DB exists at repo root
+    assert (tmp_path / "clauderfall.db").exists()
 
 
 def _stdio_request(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, object]:

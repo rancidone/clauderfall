@@ -214,3 +214,4 @@ pyrightconfig.json
 # End of https://www.toptal.com/developers/gitignore/api/python,linux,visualstudiocode
 
 docs/handoffs/
+clauderfall.db

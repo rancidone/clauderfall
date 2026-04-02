@@ -6,11 +6,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from clauderfall.runtime.artifacts import StageArtifactRuntime
-from clauderfall.runtime.checkpoints import CheckpointManager
 from clauderfall.runtime.design import DesignRuntimeService
 from clauderfall.runtime.discovery import DiscoveryRuntimeService
-from clauderfall.runtime.resolver import ArtifactResolver
-from clauderfall.runtime.session_lifecycle import SessionLifecycleOperationRunner, SessionLifecycleService
+from clauderfall.runtime.session_lifecycle import SessionLifecycleService
+from clauderfall.runtime.session_store import SessionStore
 from clauderfall.runtime.store import ArtifactStore
 
 
@@ -18,34 +17,25 @@ from clauderfall.runtime.store import ArtifactStore
 class RuntimeServices:
     """Shared substrate services for the v2 runtime spine."""
 
-    root: Path
-    resolver: ArtifactResolver
-    checkpoints: CheckpointManager
     store: ArtifactStore
+    session: SessionStore
     artifacts: StageArtifactRuntime
     discovery: DiscoveryRuntimeService
     design: DesignRuntimeService
     session_lifecycle: SessionLifecycleService
 
 
-def build_runtime_services(root: Path) -> RuntimeServices:
-    resolver = ArtifactResolver(root=root)
-    checkpoints = CheckpointManager()
-    store = ArtifactStore(resolver=resolver)
-    artifacts = StageArtifactRuntime(store=store, checkpoints=checkpoints)
+def build_runtime_services(docs_root: Path, *, repo_root: Path | None = None) -> RuntimeServices:
+    db_path = (repo_root if repo_root is not None else docs_root) / "clauderfall.db"
+    store = ArtifactStore(db_path=db_path, docs_root=docs_root)
+    session = SessionStore(db_path=db_path)
+    artifacts = StageArtifactRuntime(store=store)
     discovery = DiscoveryRuntimeService(artifacts=artifacts)
     design = DesignRuntimeService(artifacts=artifacts)
-    session_lifecycle = SessionLifecycleService(
-        artifacts=artifacts,
-        store=store,
-        root=root,
-        runner=SessionLifecycleOperationRunner(),
-    )
+    session_lifecycle = SessionLifecycleService(session=session)
     return RuntimeServices(
-        root=root,
-        resolver=resolver,
-        checkpoints=checkpoints,
         store=store,
+        session=session,
         artifacts=artifacts,
         discovery=discovery,
         design=design,

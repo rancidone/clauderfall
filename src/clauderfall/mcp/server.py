@@ -269,10 +269,12 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
 
 
 def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    view = payload.get("view")
+    if view is not None and view not in {"short", "full"}:
+        raise MCPValidationError("view must be 'short' or 'full'")
     return map_runtime_result(
         services.discovery.read(
             brief_id=require_string(payload, "brief_id"),
-            checkpoint_id=optional_string(payload, "checkpoint_id"),
         )
     )
 
@@ -297,10 +299,12 @@ def _discovery_to_design(services: RuntimeServices, payload: dict[str, Any]) -> 
 
 
 def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    view = payload.get("view")
+    if view is not None and view not in {"short", "full"}:
+        raise MCPValidationError("view must be 'short' or 'full'")
     return map_runtime_result(
         services.design.read(
             unit_id=require_string(payload, "unit_id"),
-            checkpoint_id=optional_string(payload, "checkpoint_id"),
         )
     )
 

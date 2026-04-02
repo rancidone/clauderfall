@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from clauderfall.runtime import ArtifactRef, ArtifactRuntimeResult, OperationStatus, RuntimeServices, build_runtime_services
+from clauderfall.runtime import ArtifactRuntimeResult, OperationStatus, RuntimeServices, build_runtime_services
 
 
 MCP_RESULT_BY_RUNTIME_STATUS = {
@@ -37,7 +37,7 @@ def build_services_for_repo_root(repo_root: str | Path, docs_root: str | Path | 
         repo_root=resolved_repo_root,
         docs_root=docs_root,
     )
-    return build_runtime_services(resolved_docs_root)
+    return build_runtime_services(resolved_docs_root, repo_root=resolved_repo_root)
 
 
 def resolve_docs_root(*, repo_root: Path, docs_root: str | Path | None) -> Path:
@@ -122,14 +122,6 @@ def require_object(payload: dict[str, Any], field: str) -> dict[str, Any]:
 
 
 def _serialize_value(value: Any) -> Any:
-    if isinstance(value, ArtifactRef):
-        ref = {
-            "stage": value.key.stage.value,
-            "artifact_id": value.key.artifact_id,
-        }
-        if value.checkpoint_id is not None:
-            ref["checkpoint_id"] = value.checkpoint_id
-        return ref
     if hasattr(value, "isoformat"):
         return value.isoformat()
     return value

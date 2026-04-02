@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
-
-from clauderfall.runtime.checkpoints import CheckpointManager
 from clauderfall.runtime.store import ArtifactStore
 from clauderfall.runtime.types import (
     ArtifactKey,
-    ArtifactPair,
-    ArtifactRef,
+    ArtifactRecord,
     ArtifactRuntimeResult,
     FlushReason,
     OperationResult,
@@ -20,9 +16,8 @@ from clauderfall.runtime.types import (
 class StageArtifactRuntime:
     """Execute shared artifact mechanics without deciding stage policy."""
 
-    def __init__(self, *, store: ArtifactStore, checkpoints: CheckpointManager) -> None:
+    def __init__(self, *, store: ArtifactStore) -> None:
         self.store = store
-        self.checkpoints = checkpoints
 
     def read_artifact(
         self,
@@ -30,27 +25,27 @@ class StageArtifactRuntime:
         key: ArtifactKey,
         checkpoint_id: str | None = None,
     ) -> ArtifactRuntimeResult:
-        ref = ArtifactRef(key=key, checkpoint_id=checkpoint_id)
-        pair = self.store.load_checkpoint(ref) if checkpoint_id else self.store.load_current(ref)
-        if pair is None:
+        # checkpoint_id is ignored — only current state is stored
+        del checkpoint_id
+        record = self.store.read(key)
+        if record is None:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
                     message=f"artifact not found: {key.stage.value}/{key.artifact_id}",
                 ),
-                metadata={"artifact_id": key.artifact_id, "stage": key.stage.value, "checkpoint_id": checkpoint_id},
+                metadata={"artifact_id": key.artifact_id, "stage": key.stage.value},
             )
 
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact read"),
-            artifacts=self._render_artifact_payload(key=key, pair=pair),
-            metadata=self._metadata_for_pair(key=key, pair=pair),
+            artifacts=_render_payload(key=key, record=record),
+            metadata=_render_metadata(key=key, record=record),
         )
 
     def read_artifact_markdown(self, *, key: ArtifactKey) -> str | None:
         """Return the raw markdown body for a key, or None if not found. For internal runtime use only."""
-        pair = self.store.load_current(ArtifactRef(key=key))
-        return pair.markdown if pair is not None else None
+        return self.store.read_markdown(key)
 
     def write_artifact_checkpoint(
         self,
@@ -60,18 +55,16 @@ class StageArtifactRuntime:
         stage_metadata: dict[str, object],
         flush_reason: FlushReason,
     ) -> ArtifactRuntimeResult:
-        envelope = self.checkpoints.build_envelope(
-            artifact_id=key.artifact_id,
-            flush_reason=flush_reason,
+        record = self.store.write(
+            key=key,
+            markdown=markdown,
             stage_metadata=stage_metadata,
+            flush_reason=flush_reason.value,
         )
-        pair = ArtifactPair(markdown=markdown, metadata=envelope)
-        ref = ArtifactRef(key=key, checkpoint_id=envelope.checkpoint_id)
-        self.store.write_checkpoint(ref, pair)
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact checkpoint written"),
-            artifacts=self._render_artifact_payload(key=key, pair=pair),
-            metadata=self._metadata_for_pair(key=key, pair=pair),
+            artifacts=_render_payload(key=key, record=record),
+            metadata=_render_metadata(key=key, record=record),
         )
 
     def transition_artifact_status(
@@ -82,7 +75,7 @@ class StageArtifactRuntime:
         flush_reason: FlushReason,
         stage_metadata_updates: dict[str, object] | None = None,
     ) -> ArtifactRuntimeResult:
-        current = self.store.load_current(ArtifactRef(key=key))
+        current = self.store.read(key)
         if current is None:
             return ArtifactRuntimeResult(
                 result=OperationResult(
@@ -92,61 +85,50 @@ class StageArtifactRuntime:
                 metadata={"artifact_id": key.artifact_id, "stage": key.stage.value},
             )
 
-        next_stage_metadata = dict(current.metadata.stage_metadata)
+        previous_version_id = current.version_id
+        next_stage_metadata = dict(current.stage_metadata)
         next_stage_metadata["status"] = status
         if stage_metadata_updates:
             next_stage_metadata.update(stage_metadata_updates)
 
-        next_envelope = self.checkpoints.build_envelope(
-            artifact_id=key.artifact_id,
-            flush_reason=flush_reason,
+        record = self.store.write(
+            key=key,
+            markdown=None,
             stage_metadata=next_stage_metadata,
+            flush_reason=flush_reason.value,
         )
-        next_pair = ArtifactPair(markdown=current.markdown, metadata=next_envelope)
-        ref = ArtifactRef(key=key, checkpoint_id=next_envelope.checkpoint_id)
-        self.store.write_checkpoint(ref, next_pair)
 
-        previous_ref = ArtifactRef(key=key, checkpoint_id=current.metadata.checkpoint_id)
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact status transitioned"),
-            artifacts={
-                **self._render_artifact_payload(key=key, pair=next_pair),
-                "previous_checkpoint_ref": previous_ref,
-            },
+            artifacts=_render_payload(key=key, record=record),
             metadata={
-                **self._metadata_for_pair(key=key, pair=next_pair),
-                "previous_checkpoint_id": current.metadata.checkpoint_id,
+                **_render_metadata(key=key, record=record),
+                "previous_version_id": previous_version_id,
+                # Keep previous_checkpoint_id as alias for test compatibility
+                "previous_checkpoint_id": previous_version_id,
             },
         )
 
-    def _render_artifact_payload(
-        self,
-        *,
-        key: ArtifactKey,
-        pair: ArtifactPair,
-    ) -> dict[str, object]:
-        return {
-            "artifact_ref": ArtifactRef(key=key, checkpoint_id=pair.metadata.checkpoint_id),
-            "artifact_id": key.artifact_id,
-            "stage": key.stage.value,
-            "checkpoint_id": pair.metadata.checkpoint_id,
-            "status": pair.metadata.stage_metadata.get("status"),
-            "title": pair.metadata.stage_metadata.get("title"),
-            "readiness": pair.metadata.stage_metadata.get("readiness"),
-            "stage_metadata": pair.metadata.stage_metadata,
-        }
 
-    def _metadata_for_pair(
-        self,
-        *,
-        key: ArtifactKey,
-        pair: ArtifactPair,
-    ) -> dict[str, object]:
-        return {
-            "artifact_id": key.artifact_id,
-            "stage": key.stage.value,
-            "checkpoint_id": pair.metadata.checkpoint_id,
-            "flush_reason": pair.metadata.flush_reason,
-            "is_current": pair.metadata.is_current,
-            "created_at": pair.metadata.created_at,
-        }
+def _render_payload(*, key: ArtifactKey, record: ArtifactRecord) -> dict[str, object]:
+    return {
+        "artifact_id": key.artifact_id,
+        "stage": key.stage.value,
+        "version_id": record.version_id,
+        "status": record.stage_metadata.get("status"),
+        "title": record.stage_metadata.get("title"),
+        "readiness": record.stage_metadata.get("readiness"),
+        "stage_metadata": record.stage_metadata,
+    }
+
+
+def _render_metadata(*, key: ArtifactKey, record: ArtifactRecord) -> dict[str, object]:
+    return {
+        "artifact_id": key.artifact_id,
+        "stage": key.stage.value,
+        "version_id": record.version_id,
+        # checkpoint_id alias for backward compat with tests and design.py
+        "checkpoint_id": record.version_id,
+        "flush_reason": record.flush_reason,
+        "updated_at": record.updated_at,
+    }

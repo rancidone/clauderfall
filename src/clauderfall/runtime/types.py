@@ -48,68 +48,14 @@ class ArtifactKey:
 
 
 @dataclass(frozen=True)
-class ArtifactRef:
-    """Address either the current artifact or a specific checkpoint."""
+class ArtifactRecord:
+    """Current persisted state of one artifact."""
 
     key: ArtifactKey
-    checkpoint_id: str | None = None
-
-
-@dataclass(frozen=True)
-class ArtifactPair:
-    """Readable artifact content plus structured metadata."""
-
-    markdown: str
-    metadata: "CheckpointEnvelope"
-
-
-@dataclass(frozen=True)
-class ResolvedArtifactPaths:
-    """Filesystem paths for one logical artifact and optional checkpoint."""
-
-    key: ArtifactKey
-    artifact_root: Path
-    current_dir: Path
-    current_markdown_path: Path
-    current_metadata_path: Path
-    checkpoints_dir: Path
-    checkpoint_id: str | None = None
-    checkpoint_dir: Path | None = None
-    checkpoint_markdown_path: Path | None = None
-    checkpoint_metadata_path: Path | None = None
-
-
-class CheckpointEnvelope(BaseModel):
-    """Standard checkpoint metadata envelope plus stage-specific fields."""
-
-    model_config = ConfigDict(use_enum_values=True)
-
-    artifact_id: str
-    checkpoint_id: str
-    created_at: datetime
-    flush_reason: FlushReason
-    is_current: bool
-    stage_metadata: dict[str, object] = Field(default_factory=dict)
-
-    @classmethod
-    def create(
-        cls,
-        *,
-        artifact_id: str,
-        checkpoint_id: str,
-        flush_reason: FlushReason,
-        stage_metadata: dict[str, object] | None = None,
-        created_at: datetime | None = None,
-        is_current: bool = True,
-    ) -> "CheckpointEnvelope":
-        return cls(
-            artifact_id=artifact_id,
-            checkpoint_id=checkpoint_id,
-            created_at=created_at or datetime.now(UTC),
-            flush_reason=flush_reason,
-            is_current=is_current,
-            stage_metadata=stage_metadata or {},
-        )
+    version_id: str
+    stage_metadata: dict[str, object]
+    flush_reason: str
+    updated_at: datetime
 
 
 @dataclass(frozen=True)
@@ -156,7 +102,6 @@ class StartupActiveThreadEntry(BaseModel):
     title: str
     current_intent_summary: str
     last_updated_at: datetime
-    thread_artifact_ref: str
     next_suggested_action: str
 
 
@@ -169,7 +114,6 @@ class ArchivedThreadRecord(BaseModel):
     title: str
     closure_summary: str
     closed_at: datetime
-    archived_artifact_ref: str
 
 
 class RecentSessionIndexMetadata(BaseModel):

@@ -121,13 +121,12 @@ class DiscoveryRuntimeService:
             result=OperationResult(status=OperationStatus.OK, message="discovery transitioned to design"),
             warnings=warnings,
             artifacts={
-                "discovery_artifact_ref": read_result.artifacts["artifact_ref"],
                 "design_start_context": start_context,
             },
             metadata={
                 "brief_id": brief_id,
                 "override": override,
-                "source_checkpoint_id": read_result.metadata["checkpoint_id"],
+                "source_version_id": read_result.metadata["version_id"],
                 "readiness": readiness,
                 "status": status,
             },
@@ -224,5 +223,4 @@ def _derive_design_start_context(
             "rationale": f"Start with {mapped_problem_areas[0]['title']} because it is a visible Discovery problem area.",
             "caution": caution,
         },
-        "source_discovery_markdown": discovery_markdown,
     }

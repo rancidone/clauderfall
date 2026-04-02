@@ -134,9 +134,10 @@ class DesignRuntimeService:
                     status=OperationStatus.OK,
                     message="design unit already in review",
                 ),
-                artifacts={"artifact_ref": read_result.artifacts["artifact_ref"]},
+                artifacts={"version_id": read_result.artifacts["version_id"]},
                 metadata={
                     "unit_id": unit_id,
+                    "version_id": read_result.metadata["version_id"],
                     "checkpoint_id": read_result.metadata["checkpoint_id"],
                     "status": status,
                 },
@@ -177,9 +178,10 @@ class DesignRuntimeService:
                     status=OperationStatus.OK,
                     message="design unit already accepted",
                 ),
-                artifacts={"artifact_ref": read_result.artifacts["artifact_ref"]},
+                artifacts={"version_id": read_result.artifacts["version_id"]},
                 metadata={
                     "unit_id": unit_id,
+                    "version_id": read_result.metadata["version_id"],
                     "checkpoint_id": read_result.metadata["checkpoint_id"],
                     "status": status,
                     "override": override,
@@ -261,11 +263,11 @@ def _render_design_payload(
     stage_metadata: dict[str, object],
 ) -> dict[str, object]:
     return {
-        "artifact_ref": base_artifacts["artifact_ref"],
         "artifact_id": base_artifacts["artifact_id"],
         "design_unit_id": stage_metadata.get("design_unit_id", unit_id),
         "stage": base_artifacts["stage"],
-        "checkpoint_id": base_artifacts["checkpoint_id"],
+        "version_id": base_artifacts["version_id"],
+        "checkpoint_id": base_artifacts["version_id"],
         "title": stage_metadata.get("title"),
         "workflow_status": stage_metadata.get("status"),
         "readiness": stage_metadata.get("readiness"),
