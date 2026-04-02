@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Remove a repo-local Clauderfall install and Claude MCP registration."""
+"""Remove the global Claude MCP registration and packaged Claude skills."""
 
 from __future__ import annotations
 
@@ -10,14 +10,13 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from clauderfall.installer import remove_claude_mcp
+from clauderfall.installer import remove_claude_global
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Remove Clauderfall install artifacts and Claude MCP registration from a target repo.",
+        description="Remove the user-scoped Claude MCP registration and packaged Claude skills.",
     )
-    parser.add_argument("target_repo", help="Path to the repo where Claude should stop using Clauderfall.")
     parser.add_argument(
         "server_name",
         nargs="?",
@@ -31,15 +30,13 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    result = remove_claude_mcp(
-        target_repo=Path(args.target_repo),
+    result = remove_claude_global(
+        source_repo_root=REPO_ROOT,
         server_name=args.server_name,
     )
 
-    if not result["removed_server"] and not result["removed_install_root"]:
-        print(f"No Clauderfall install found in {result['target_repo']}; nothing to remove.")
-    else:
-        print(f"Removed Claude MCP server '{result['server_name']}' from {result['target_repo']}")
+    print(f"Removed Claude MCP server '{result['server_name']}' globally")
+    print(f"Removed skills: {', '.join(result['removed_skills']) or '(none)'}")
     return 0
 
 

@@ -42,6 +42,7 @@ Use these values consistently:
 - `design/discovery_engine.md` - Discovery engine brief derived from the product brief.
 - `design/design_engine.md` - Design engine brief derived from the product brief.
 - `design/mcp_adapter_surface.md` - Design doc for the first MCP-facing adapter layer over the v2 runtime services.
+- `design/skill_mcp_interaction_contract.md` - Design doc for how Clauderfall stage skills should interact with MCP for authoritative reads, writes, and workflow transitions.
 - `design/stage_artifact_runtime_interface.md` - Design doc for the shared artifact-level runtime interface beneath stage-specific Discovery and Design services.
 - `design/discovery_runtime_mcp_interface.md` - Design doc for the minimal Discovery runtime and MCP-facing operation set of `read`, `write_draft`, and `to_design`.
 - `design/design_runtime_mcp_interface.md` - Design doc for the minimal Design runtime and MCP-facing operation set of `read`, `write_draft`, `to_review`, and `accept`.

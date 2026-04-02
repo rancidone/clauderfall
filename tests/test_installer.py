@@ -4,140 +4,19 @@ import json
 from pathlib import Path
 
 from clauderfall.installer import (
-    CLAUDE_INSTALL_DIR,
-    CLAUDE_GITIGNORE_ENTRIES,
-    CLAUDE_MCP_CONFIG_PATH,
-    CODEX_INSTALL_DIR,
-    CODEX_GITIGNORE_ENTRIES,
     CODEX_MCP_CONFIG_PATH,
-    build_server_args,
-    ensure_clauderfall_gitignore,
-    install_claude_mcp,
-    install_codex_mcp,
-    register_claude_mcp,
-    remove_clauderfall_gitignore,
-    remove_claude_mcp,
-    remove_codex_mcp,
+    install_claude_global,
+    install_codex_global,
+    install_global_clauderfall,
+    install_packaged_skills,
+    list_packaged_skill_dirs,
+    register_claude_global,
+    register_codex_global,
+    remove_claude_global,
+    remove_codex_global,
     resolve_codex_command,
-    resolve_claude_registration_command,
-    update_claude_mcp_config,
     update_codex_mcp_config,
 )
-
-
-def test_update_claude_mcp_config_writes_stdio_server_entry(tmp_path: Path) -> None:
-    config_path = update_claude_mcp_config(
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        command="/tmp/clauderfall/.venv/bin/clauderfall-mcp",
-        args=["--repo-root", str(tmp_path)],
-    )
-
-    data = json.loads(config_path.read_text())
-
-    assert config_path == tmp_path / CLAUDE_MCP_CONFIG_PATH
-    assert data["mcpServers"]["clauderfall"]["transport"] == "stdio"
-    assert data["mcpServers"]["clauderfall"]["args"] == ["--repo-root", str(tmp_path)]
-
-
-def test_gitignore_block_is_added_only_once(tmp_path: Path) -> None:
-    gitignore_path = tmp_path / ".gitignore"
-    gitignore_path.write_text("node_modules/\n")
-
-    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-
-    content = gitignore_path.read_text()
-    assert content.count("# clauderfall-mcp") == 1
-    assert ".claude/clauderfall/" in content
-    assert ".mcp.json" in content
-    assert ".codex/clauderfall/" not in content
-    assert ".codex/config.toml" not in content
-
-
-def test_install_claude_mcp_creates_repo_local_artifacts_and_manifest(tmp_path: Path, monkeypatch) -> None:
-    source_repo = tmp_path / "source"
-    source_repo.mkdir()
-
-    def fake_create_repo_local_venv(*, install_root: Path, source_repo_root: Path, python_executable: str) -> Path:
-        del source_repo_root, python_executable
-        bin_dir = install_root / ".venv" / "bin"
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        launcher = bin_dir / "clauderfall-mcp"
-        launcher.write_text("#!/bin/sh\n")
-        return bin_dir / "python"
-
-    monkeypatch.setattr("clauderfall.installer.create_repo_local_venv", fake_create_repo_local_venv)
-
-    result = install_claude_mcp(
-        source_repo_root=source_repo,
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        python_executable="python3",
-    )
-
-    manifest = json.loads((tmp_path / CLAUDE_INSTALL_DIR / "install-manifest.json").read_text())
-    config = json.loads((tmp_path / CLAUDE_MCP_CONFIG_PATH).read_text())
-
-    assert result["launcher"] == str(tmp_path / CLAUDE_INSTALL_DIR / ".venv" / "bin" / "clauderfall-mcp")
-    assert manifest["installed_from_repo"] == str(source_repo.resolve())
-    assert config["mcpServers"]["clauderfall"]["command"] == result["launcher"]
-    assert (tmp_path / ".gitignore").exists()
-
-
-def test_install_claude_mcp_writes_custom_docs_root_into_config(tmp_path: Path, monkeypatch) -> None:
-    source_repo = tmp_path / "source"
-    source_repo.mkdir()
-
-    def fake_create_repo_local_venv(*, install_root: Path, source_repo_root: Path, python_executable: str) -> Path:
-        del source_repo_root, python_executable
-        bin_dir = install_root / ".venv" / "bin"
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        (bin_dir / "clauderfall-mcp").write_text("#!/bin/sh\n")
-        return bin_dir / "python"
-
-    monkeypatch.setattr("clauderfall.installer.create_repo_local_venv", fake_create_repo_local_venv)
-
-    result = install_claude_mcp(
-        source_repo_root=source_repo,
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        docs_root="docs/clauderfall",
-    )
-
-    config = json.loads((tmp_path / CLAUDE_MCP_CONFIG_PATH).read_text())
-
-    assert result["docs_root"] == str((tmp_path / "docs/clauderfall").resolve())
-    assert config["mcpServers"]["clauderfall"]["args"] == [
-        "--repo-root",
-        str(tmp_path),
-        "--docs-root",
-        str((tmp_path / "docs/clauderfall").resolve()),
-    ]
-
-
-def test_remove_claude_mcp_cleans_install_root_config_and_gitignore(tmp_path: Path) -> None:
-    install_root = tmp_path / CLAUDE_INSTALL_DIR
-    install_root.mkdir(parents=True)
-    (install_root / "install-manifest.json").write_text("{}\n")
-    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-    update_claude_mcp_config(
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        command="/tmp/clauderfall/.venv/bin/clauderfall-mcp",
-        args=["--repo-root", str(tmp_path)],
-    )
-
-    result = remove_claude_mcp(target_repo=tmp_path, server_name="clauderfall")
-
-    assert result["removed_server"] is True
-    assert result["removed_install_root"] is True
-    assert not (tmp_path / CLAUDE_INSTALL_DIR).exists()
-    assert not (tmp_path / CLAUDE_MCP_CONFIG_PATH).exists()
-    gitignore_path = tmp_path / ".gitignore"
-    if gitignore_path.exists():
-        assert ".claude/clauderfall/" not in gitignore_path.read_text()
-        assert ".mcp.json" not in gitignore_path.read_text()
 
 
 def test_resolve_codex_command_supports_venv_and_path(tmp_path: Path) -> None:
@@ -145,177 +24,200 @@ def test_resolve_codex_command_supports_venv_and_path(tmp_path: Path) -> None:
     assert resolve_codex_command(repo_root=tmp_path, mode="path") == "clauderfall-mcp"
 
 
-def test_register_claude_mcp_writes_source_tree_command(tmp_path: Path) -> None:
-    result = register_claude_mcp(
-        repo_root=Path("/work/clauderfall"),
-        target_repo=tmp_path,
-        server_name="clauderfall-dev",
-        mode="venv",
-    )
-
-    config = json.loads((tmp_path / CLAUDE_MCP_CONFIG_PATH).read_text())
-
-    assert result["command"] == "/work/clauderfall/.venv/bin/clauderfall-mcp"
-    assert config["mcpServers"]["clauderfall-dev"]["args"] == ["--repo-root", str(tmp_path)]
-
-
-def test_register_claude_mcp_supports_custom_docs_root(tmp_path: Path) -> None:
-    result = register_claude_mcp(
-        repo_root=Path("/work/clauderfall"),
-        target_repo=tmp_path,
-        server_name="clauderfall-dev",
-        mode="venv",
-        docs_root="docs/clauderfall",
-    )
-
-    assert result["args"] == [
-        "--repo-root",
-        str(tmp_path),
-        "--docs-root",
-        str((tmp_path / "docs/clauderfall").resolve()),
-    ]
-
-
 def test_update_codex_mcp_config_writes_minimal_toml_entry(tmp_path: Path) -> None:
     config_path = update_codex_mcp_config(
         target_repo=tmp_path,
         server_name="clauderfall",
-        command="/tmp/clauderfall/.codex/clauderfall/.venv/bin/clauderfall-mcp",
-        args=["--repo-root", str(tmp_path)],
+        command="/tmp/clauderfall/.clauderfall/.venv/bin/clauderfall-mcp",
+        args=[],
     )
 
     content = config_path.read_text()
 
     assert config_path == tmp_path / CODEX_MCP_CONFIG_PATH
     assert "[mcp_servers.clauderfall]" in content
-    assert 'command = "/tmp/clauderfall/.codex/clauderfall/.venv/bin/clauderfall-mcp"' in content
-    assert 'args = ["--repo-root", "' in content
+    assert 'command = "/tmp/clauderfall/.clauderfall/.venv/bin/clauderfall-mcp"' in content
+    assert "args =" not in content
 
 
-def test_install_codex_mcp_creates_repo_local_artifacts_and_manifest(tmp_path: Path, monkeypatch) -> None:
-    source_repo = tmp_path / "source"
-    source_repo.mkdir()
+def test_list_packaged_skill_dirs_discovers_skill_directories(tmp_path: Path) -> None:
+    skills_root = tmp_path / "src" / "clauderfall" / "skills"
+    (skills_root / "design").mkdir(parents=True)
+    (skills_root / "design" / "SKILL.md").write_text("# design\n")
+    (skills_root / "discovery").mkdir(parents=True)
+    (skills_root / "discovery" / "SKILL.md").write_text("# discovery\n")
+    (skills_root / "not-a-skill").mkdir(parents=True)
 
-    def fake_create_repo_local_venv(*, install_root: Path, source_repo_root: Path, python_executable: str) -> Path:
-        del source_repo_root, python_executable
-        bin_dir = install_root / ".venv" / "bin"
-        bin_dir.mkdir(parents=True, exist_ok=True)
-        launcher = bin_dir / "clauderfall-mcp"
-        launcher.write_text("#!/bin/sh\n")
-        return bin_dir / "python"
+    result = list_packaged_skill_dirs(source_repo_root=tmp_path)
 
-    monkeypatch.setattr("clauderfall.installer.create_repo_local_venv", fake_create_repo_local_venv)
+    assert [path.name for path in result] == ["design", "discovery"]
 
-    result = install_codex_mcp(
-        source_repo_root=source_repo,
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        python_executable="python3",
+
+def test_install_packaged_skills_copies_skill_directories(tmp_path: Path) -> None:
+    skills_root = tmp_path / "src" / "clauderfall" / "skills"
+    (skills_root / "design" / "references").mkdir(parents=True)
+    (skills_root / "design" / "SKILL.md").write_text("design\n")
+    (skills_root / "design" / "references" / "ref.md").write_text("ref\n")
+
+    installed = install_packaged_skills(
+        source_repo_root=tmp_path,
+        destination_root=tmp_path / "home" / ".codex" / "skills",
+        mode="copy",
     )
 
-    manifest = json.loads((tmp_path / CODEX_INSTALL_DIR / "install-manifest.json").read_text())
-    config = (tmp_path / CODEX_MCP_CONFIG_PATH).read_text()
+    destination = tmp_path / "home" / ".codex" / "skills" / "design"
+    assert installed == ["design"]
+    assert destination.is_dir()
+    assert not destination.is_symlink()
+    assert (destination / "SKILL.md").read_text() == "design\n"
+    assert (destination / "references" / "ref.md").read_text() == "ref\n"
 
-    assert result["launcher"] == str(tmp_path / CODEX_INSTALL_DIR / ".venv" / "bin" / "clauderfall-mcp")
-    assert manifest["installed_from_repo"] == str(source_repo.resolve())
-    assert 'command = "' + result["launcher"] + '"' in config
+
+def test_install_packaged_skills_symlinks_skill_directories(tmp_path: Path) -> None:
+    skills_root = tmp_path / "src" / "clauderfall" / "skills"
+    (skills_root / "design").mkdir(parents=True)
+    (skills_root / "design" / "SKILL.md").write_text("design\n")
+
+    installed = install_packaged_skills(
+        source_repo_root=tmp_path,
+        destination_root=tmp_path / "home" / ".codex" / "skills",
+        mode="symlink",
+    )
+
+    destination = tmp_path / "home" / ".codex" / "skills" / "design"
+    assert installed == ["design"]
+    assert destination.is_symlink()
+    assert destination.resolve() == skills_root / "design"
 
 
-def test_install_codex_mcp_writes_custom_docs_root_into_config(tmp_path: Path, monkeypatch) -> None:
+def test_install_global_clauderfall_installs_shared_runtime_and_skills(tmp_path: Path, monkeypatch) -> None:
     source_repo = tmp_path / "source"
     source_repo.mkdir()
+    global_root = tmp_path / ".clauderfall"
 
     def fake_create_repo_local_venv(*, install_root: Path, source_repo_root: Path, python_executable: str) -> Path:
+        assert install_root == global_root
         del source_repo_root, python_executable
         bin_dir = install_root / ".venv" / "bin"
         bin_dir.mkdir(parents=True, exist_ok=True)
         (bin_dir / "clauderfall-mcp").write_text("#!/bin/sh\n")
         return bin_dir / "python"
 
+    monkeypatch.setattr("clauderfall.installer.GLOBAL_INSTALL_ROOT", global_root)
     monkeypatch.setattr("clauderfall.installer.create_repo_local_venv", fake_create_repo_local_venv)
+    monkeypatch.setattr("clauderfall.installer.install_packaged_skills", lambda **_: ["design", "discovery"])
 
-    result = install_codex_mcp(
-        source_repo_root=source_repo,
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        docs_root="docs/clauderfall",
+    result = install_global_clauderfall(source_repo_root=source_repo, python_executable="python3")
+
+    assert result["install_root"] == str(global_root)
+    assert result["launcher"] == str(global_root / ".venv" / "bin" / "clauderfall-mcp")
+    assert result["installed_codex_skills"] == ["design", "discovery"]
+    assert result["installed_claude_skills"] == ["design", "discovery"]
+    manifest = json.loads((global_root / "install-manifest.json").read_text())
+    assert manifest["scope"] == "user"
+    assert manifest["installed_from_repo"] == str(source_repo.resolve())
+
+
+def test_install_claude_global_registers_user_scoped_server(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "clauderfall.installer.install_global_clauderfall",
+        lambda **_: {
+            "install_root": "/home/test/.clauderfall",
+            "venv_python": "/home/test/.clauderfall/.venv/bin/python",
+            "launcher": "/home/test/.clauderfall/.venv/bin/clauderfall-mcp",
+            "installed_codex_skills": ["design", "discovery"],
+            "installed_claude_skills": ["design", "discovery"],
+        },
+    )
+    calls: list[tuple[str, str, list[str]]] = []
+
+    def fake_add(*, server_name: str, command: str, args: list[str]) -> dict[str, object]:
+        calls.append((server_name, command, args))
+        return {"command": command, "args": args, "scope": "user"}
+
+    monkeypatch.setattr("clauderfall.installer.add_claude_user_mcp_server", fake_add)
+
+    result = install_claude_global(source_repo_root=Path("/work/clauderfall"), server_name="clauderfall")
+
+    assert calls == [("clauderfall", "/home/test/.clauderfall/.venv/bin/clauderfall-mcp", [])]
+    assert result["server_name"] == "clauderfall"
+    assert result["scope"] == "user"
+
+
+def test_install_codex_global_writes_user_config(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "clauderfall.installer.install_global_clauderfall",
+        lambda **_: {
+            "install_root": "/home/test/.clauderfall",
+            "venv_python": "/home/test/.clauderfall/.venv/bin/python",
+            "launcher": "/home/test/.clauderfall/.venv/bin/clauderfall-mcp",
+            "installed_codex_skills": ["design", "discovery"],
+            "installed_claude_skills": ["design", "discovery"],
+        },
     )
 
-    config = (tmp_path / CODEX_MCP_CONFIG_PATH).read_text()
+    def fake_update(*, target_repo: Path, server_name: str, command: str, args: list[str]) -> Path:
+        assert target_repo == Path.home()
+        assert server_name == "clauderfall"
+        assert command == "/home/test/.clauderfall/.venv/bin/clauderfall-mcp"
+        assert args == []
+        return Path("/home/test/.codex/config.toml")
 
-    assert result["docs_root"] == str((tmp_path / "docs/clauderfall").resolve())
-    assert '--docs-root' in config
-    assert str((tmp_path / "docs/clauderfall").resolve()) in config
+    monkeypatch.setattr("clauderfall.installer.update_codex_mcp_config", fake_update)
 
+    result = install_codex_global(source_repo_root=Path("/work/clauderfall"), server_name="clauderfall")
 
-def test_remove_codex_mcp_cleans_install_root_config_and_gitignore(tmp_path: Path) -> None:
-    install_root = tmp_path / CODEX_INSTALL_DIR
-    install_root.mkdir(parents=True)
-    (install_root / "install-manifest.json").write_text("{}\n")
-    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
-    update_codex_mcp_config(
-        target_repo=tmp_path,
-        server_name="clauderfall",
-        command="/tmp/clauderfall/.venv/bin/clauderfall-mcp",
-        args=["--repo-root", str(tmp_path)],
-    )
-
-    result = remove_codex_mcp(target_repo=tmp_path, server_name="clauderfall")
-
-    assert result["removed_server"] is True
-    assert result["removed_install_root"] is True
-    assert not (tmp_path / CODEX_INSTALL_DIR).exists()
-    assert not (tmp_path / CODEX_MCP_CONFIG_PATH).exists()
+    assert result["server_name"] == "clauderfall"
+    assert result["config_path"] == "/home/test/.codex/config.toml"
 
 
-def test_gitignore_union_is_preserved_across_claude_and_codex_entries(tmp_path: Path) -> None:
-    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
+def test_register_claude_global_uses_user_scope(monkeypatch) -> None:
+    calls: list[tuple[str, str, list[str]]] = []
 
-    content = (tmp_path / ".gitignore").read_text()
+    def fake_add(*, server_name: str, command: str, args: list[str]) -> dict[str, object]:
+        calls.append((server_name, command, args))
+        return {"command": command, "args": args, "scope": "user"}
 
-    assert ".claude/clauderfall/" in content
-    assert ".mcp.json" in content
-    assert ".codex/clauderfall/" in content
-    assert ".codex/config.toml" in content
+    monkeypatch.setattr("clauderfall.installer.add_claude_user_mcp_server", fake_add)
+    monkeypatch.setattr("clauderfall.installer.install_packaged_skills", lambda **_: ["design", "discovery"])
 
+    result = register_claude_global(repo_root=Path("/work/clauderfall"), server_name="clauderfall-dev", mode="venv")
 
-def test_remove_claude_entries_preserves_codex_entries(tmp_path: Path) -> None:
-    ensure_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-    ensure_clauderfall_gitignore(tmp_path, CODEX_GITIGNORE_ENTRIES)
-
-    remove_clauderfall_gitignore(tmp_path, CLAUDE_GITIGNORE_ENTRIES)
-
-    content = (tmp_path / ".gitignore").read_text()
-    assert ".claude/clauderfall/" not in content
-    assert ".mcp.json" not in content
-    assert ".codex/clauderfall/" in content
-    assert ".codex/config.toml" in content
-    assert "# clauderfall-mcp" in content
+    assert calls == [("clauderfall-dev", "/work/clauderfall/.venv/bin/clauderfall-mcp", [])]
+    assert result["installed_skills"] == ["design", "discovery"]
 
 
-def test_resolve_claude_registration_command_supports_venv_and_path(tmp_path: Path) -> None:
-    command, args = resolve_claude_registration_command(
-        repo_root=Path("/work/clauderfall"),
-        target_repo=tmp_path,
-        mode="venv",
-    )
-    assert command == "/work/clauderfall/.venv/bin/clauderfall-mcp"
-    assert args == ["--repo-root", str(tmp_path)]
-    path_command, path_args = resolve_claude_registration_command(
-        repo_root=Path("/work/clauderfall"),
-        target_repo=tmp_path,
-        mode="path",
-    )
-    assert path_command == "clauderfall-mcp"
-    assert path_args == ["--repo-root", str(tmp_path)]
+def test_register_codex_global_writes_user_config(monkeypatch) -> None:
+    calls: list[tuple[Path, str, str, list[str]]] = []
+
+    def fake_update(*, target_repo: Path, server_name: str, command: str, args: list[str]) -> Path:
+        calls.append((target_repo, server_name, command, args))
+        return Path("/home/test/.codex/config.toml")
+
+    monkeypatch.setattr("clauderfall.installer.update_codex_mcp_config", fake_update)
+    monkeypatch.setattr("clauderfall.installer.install_packaged_skills", lambda **_: ["design", "discovery"])
+
+    result = register_codex_global(repo_root=Path("/work/clauderfall"), server_name="clauderfall-dev", mode="venv")
+
+    assert calls == [(Path.home(), "clauderfall-dev", "/work/clauderfall/.venv/bin/clauderfall-mcp", [])]
+    assert result["installed_skills"] == ["design", "discovery"]
+    assert result["config_path"] == "/home/test/.codex/config.toml"
 
 
-def test_build_server_args_defaults_to_docs_and_supports_custom_docs_root(tmp_path: Path) -> None:
-    assert build_server_args(target_repo=tmp_path, docs_root=None) == ["--repo-root", str(tmp_path)]
-    assert build_server_args(target_repo=tmp_path, docs_root="docs/clauderfall") == [
-        "--repo-root",
-        str(tmp_path),
-        "--docs-root",
-        str((tmp_path / "docs/clauderfall").resolve()),
-    ]
+def test_remove_global_helpers_remove_skills_and_registration(monkeypatch) -> None:
+    removed_claude: list[str] = []
+
+    def fake_remove_claude_user_mcp_server(*, server_name: str) -> None:
+        removed_claude.append(server_name)
+
+    monkeypatch.setattr("clauderfall.installer.remove_claude_user_mcp_server", fake_remove_claude_user_mcp_server)
+    monkeypatch.setattr("clauderfall.installer.remove_packaged_skills", lambda **_: ["design", "discovery"])
+    monkeypatch.setattr("clauderfall.installer.remove_server_from_toml_config", lambda **_: True)
+
+    claude_result = remove_claude_global(source_repo_root=Path("/work/clauderfall"), server_name="clauderfall")
+    codex_result = remove_codex_global(source_repo_root=Path("/work/clauderfall"), server_name="clauderfall")
+
+    assert removed_claude == ["clauderfall"]
+    assert claude_result["removed_skills"] == ["design", "discovery"]
+    assert codex_result["removed_server"] is True
+    assert codex_result["removed_skills"] == ["design", "discovery"]
