@@ -149,8 +149,37 @@ def _validate_discovery_sidecar(sidecar: dict[str, object]) -> list[str]:
         errors.append("blocking_gaps must be a list")
     if not isinstance(sidecar.get("problem_areas"), list) or not sidecar.get("problem_areas"):
         errors.append("problem_areas must be a non-empty list")
+    else:
+        for i, area in enumerate(sidecar["problem_areas"]):  # type: ignore[union-attr]
+            errors.extend(_validate_problem_area(i, area))  # type: ignore[arg-type]
     if not isinstance(sidecar.get("cross_cutting"), dict):
         errors.append("cross_cutting must be an object")
+    return errors
+
+
+def _validate_problem_area(index: int, area: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    prefix = f"problem_areas[{index}]"
+    for field in ("problem_area_id", "title", "confidence", "source_section"):
+        if not area.get(field):
+            errors.append(f"{prefix}: missing required field: {field}")
+    if "confidence" in area and area["confidence"] not in {"low", "medium", "high"}:
+        errors.append(f"{prefix}: confidence must be 'low', 'medium', or 'high'")
+    if not isinstance(area.get("assumptions"), list):
+        errors.append(f"{prefix}: assumptions must be a list")
+    else:
+        for j, assumption in enumerate(area["assumptions"]):  # type: ignore[union-attr]
+            errors.extend(_validate_assumption(f"{prefix}.assumptions[{j}]", assumption))  # type: ignore[arg-type]
+    return errors
+
+
+def _validate_assumption(prefix: str, assumption: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    for field in ("assumption_id", "statement", "status"):
+        if not assumption.get(field):
+            errors.append(f"{prefix}: missing required field: {field}")
+    if "status" in assumption and assumption["status"] not in {"confirmed", "inferred", "unknown"}:
+        errors.append(f"{prefix}: status must be 'confirmed', 'inferred', or 'unknown'")
     return errors
 
 

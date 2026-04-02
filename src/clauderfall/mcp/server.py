@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+from clauderfall import debug_log
 from clauderfall.mcp.shared import (
     MCPToolSpec,
     MCPValidationError,
@@ -53,13 +54,21 @@ class ClauderfallMCPServer:
 
     def call_tool(self, name: str, payload: dict[str, Any] | None = None) -> dict[str, Any]:
         if name not in self._handlers:
+            debug_log.warning("call_tool: unknown tool %r", name)
             return validation_failure(code="unknown_tool", message=f"unknown tool: {name}")
 
         _, handler = self._handlers[name]
+        debug_log.debug("call_tool: %r payload=%r", name, payload)
         try:
-            return handler(self.services, payload or {})
+            result = handler(self.services, payload or {})
+            debug_log.debug("call_tool: %r result=%r", name, result)
+            return result
         except MCPValidationError as exc:
+            debug_log.warning("call_tool: %r validation error: %s", name, exc)
             return validation_failure(code="invalid_input", message=str(exc))
+        except Exception as exc:
+            debug_log.exception("call_tool: %r unhandled exception: %s", name, exc)
+            return validation_failure(code="internal_error", message=f"internal error: {exc}")
 
     @property
     def services(self) -> RuntimeServices:
@@ -107,7 +116,63 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
             "properties": {
                 "brief_id": {"type": "string"},
                 "markdown": {"type": "string"},
-                "sidecar": {"type": "object"},
+                "sidecar": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "status": {"type": "string", "enum": ["draft", "accepted"]},
+                        "readiness": {"type": "string", "enum": ["low", "medium", "high"]},
+                        "readiness_rationale": {"type": "string"},
+                        "blocking_gaps": {"type": "array", "items": {"type": "string"}},
+                        "problem_areas": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "problem_area_id": {"type": "string"},
+                                    "title": {"type": "string"},
+                                    "confidence": {"type": "string", "enum": ["low", "medium", "high"]},
+                                    "source_section": {"type": "string"},
+                                    "assumptions": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "assumption_id": {"type": "string"},
+                                                "statement": {"type": "string"},
+                                                "status": {"type": "string", "enum": ["confirmed", "inferred", "unknown"]},
+                                            },
+                                            "required": ["assumption_id", "statement", "status"],
+                                        },
+                                    },
+                                },
+                                "required": ["problem_area_id", "title", "confidence", "source_section", "assumptions"],
+                            },
+                        },
+                        "cross_cutting": {
+                            "type": "object",
+                            "properties": {
+                                "global_constraints": {"type": "array", "items": {"type": "string"}},
+                                "shared_assumptions": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "assumption_id": {"type": "string"},
+                                            "statement": {"type": "string"},
+                                            "status": {"type": "string", "enum": ["confirmed", "inferred", "unknown"]},
+                                        },
+                                        "required": ["assumption_id", "statement", "status"],
+                                    },
+                                },
+                                "systemic_risks": {"type": "array", "items": {"type": "string"}},
+                                "open_questions": {"type": "array", "items": {"type": "string"}},
+                                "source_sections": {"type": "array", "items": {"type": "string"}},
+                            },
+                        },
+                    },
+                    "required": ["title", "status", "readiness", "readiness_rationale", "blocking_gaps", "problem_areas", "cross_cutting"],
+                },
             },
             "required": ["brief_id", "markdown", "sidecar"],
             "additionalProperties": False,
@@ -153,7 +218,26 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
             "properties": {
                 "unit_id": {"type": "string"},
                 "markdown": {"type": "string"},
-                "sidecar": {"type": "object"},
+                "sidecar": {
+                    "type": "object",
+                    "properties": {
+                        "design_unit_id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "status": {"type": "string", "enum": ["draft", "in_review"]},
+                        "scope_summary": {"type": "string"},
+                        "readiness": {"type": "string", "enum": ["low", "medium", "high"]},
+                        "readiness_rationale": {"type": "string"},
+                        "open_questions": {"type": "array", "items": {"type": "string"}},
+                        "assumptions": {"type": "array", "items": {"type": "string"}},
+                        "depends_on": {"type": "array", "items": {"type": "string"}},
+                        "children": {"type": "array", "items": {"type": "string"}},
+                        "parent": {"type": ["string", "null"]},
+                    },
+                    "required": [
+                        "design_unit_id", "title", "status", "scope_summary",
+                        "readiness", "readiness_rationale", "open_questions", "assumptions",
+                    ],
+                },
             },
             "required": ["unit_id", "markdown", "sidecar"],
             "additionalProperties": False,

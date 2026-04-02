@@ -2,7 +2,7 @@
 title: MCP Adapter Surface
 doc_type: design
 status: ready
-updated: 2026-03-27
+updated: 2026-04-01
 summary: Defines the first MCP-facing adapter layer over the v2 runtime services, including tool naming, response mapping, and thin-handler boundaries.
 ---
 
@@ -218,6 +218,23 @@ Examples:
 
 - the adapter may reject a missing `thread_id`
 - the adapter should not independently decide whether acceptance from `draft` is allowed
+
+## Input Schema Completeness Rule
+
+Every MCP tool that accepts a structured body parameter — particularly `sidecar` arguments — must expose the full internal schema of that parameter in its `input_schema` definition, not just `{"type": "object"}`.
+
+The LLM client uses the tool's input schema as the sole authoritative contract for what to write.
+
+A bare `{"type": "object"}` gives the client no field contract. The result is schema drift: the client invents fields, uses the wrong names, or omits required fields, and the error surfaces at runtime rather than at the tool boundary.
+
+The input schema for structured body parameters should:
+
+- enumerate required fields
+- specify enum constraints for controlled values
+- define nested object and array shapes
+- match the shape the runtime validator actually enforces
+
+This is not redundant with runtime validation. The runtime validator is the invariant layer. The tool input schema is the machine-readable contract that tells the LLM what to produce. Both must exist and stay in sync.
 
 ## Versioning Position
 

@@ -25,6 +25,7 @@ package = true
 dev = [
   "pytest>=8.3,<9",
   "pytest-cov>=6.1,<7",
+  "openai>=1.0,<2",
 ]
 
 [tool.hatch.build.targets.wheel]
