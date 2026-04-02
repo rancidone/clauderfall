@@ -161,8 +161,10 @@ def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -
     assert result.result.ok is True
     assert result.artifacts["status"] == "draft"
     assert result.artifacts["readiness"] == "medium"
+    assert result.artifacts["title"] == "Auth Discovery"
     assert "markdown" not in result.artifacts
-    assert result.artifacts["stage_metadata"]["title"] == "Auth Discovery"
+    assert "stage_metadata" not in result.artifacts
+    assert "problem_areas" not in result.artifacts
 
 
 def test_discovery_to_design_blocks_without_acceptance_or_override(tmp_path: Path) -> None:
@@ -286,8 +288,9 @@ def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> N
     assert result.artifacts["workflow_status"] == "draft"
     assert result.artifacts["scope_summary"] == sidecar["scope_summary"]
     assert result.artifacts["linkage"]["depends_on"] == ["unit-auth-contract"]
+    assert result.artifacts["design_unit_id"] == "unit-auth-session"
     assert "markdown" not in result.artifacts
-    assert result.artifacts["stage_metadata"]["design_unit_id"] == "unit-auth-session"
+    assert "stage_metadata" not in result.artifacts
 
 
 def test_design_to_review_requires_persisted_valid_draft_and_writes_review_checkpoint(tmp_path: Path) -> None:
@@ -316,7 +319,6 @@ def test_design_to_review_requires_persisted_valid_draft_and_writes_review_check
     assert result.result.ok is True
     assert result.metadata["previous_version_id"] != result.metadata["version_id"]
     assert current.artifacts["workflow_status"] == "in_review"
-    assert current.artifacts["stage_metadata"]["status"] == "in_review"
 
 
 def test_design_accept_requires_review_without_override(tmp_path: Path) -> None:

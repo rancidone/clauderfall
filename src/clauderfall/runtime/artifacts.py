@@ -39,7 +39,7 @@ class StageArtifactRuntime:
 
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact read"),
-            artifacts=_render_payload(key=key, record=record),
+            artifacts=_render_payload(key=key, record=record, include_stage_metadata=True),
             metadata=_render_metadata(key=key, record=record),
         )
 
@@ -110,16 +110,18 @@ class StageArtifactRuntime:
         )
 
 
-def _render_payload(*, key: ArtifactKey, record: ArtifactRecord) -> dict[str, object]:
-    return {
+def _render_payload(*, key: ArtifactKey, record: ArtifactRecord, include_stage_metadata: bool = False) -> dict[str, object]:
+    payload: dict[str, object] = {
         "artifact_id": key.artifact_id,
         "stage": key.stage.value,
         "version_id": record.version_id,
         "status": record.stage_metadata.get("status"),
         "title": record.stage_metadata.get("title"),
         "readiness": record.stage_metadata.get("readiness"),
-        "stage_metadata": record.stage_metadata,
     }
+    if include_stage_metadata:
+        payload["stage_metadata"] = record.stage_metadata
+    return payload
 
 
 def _render_metadata(*, key: ArtifactKey, record: ArtifactRecord) -> dict[str, object]:

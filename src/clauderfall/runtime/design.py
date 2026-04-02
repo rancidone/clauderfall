@@ -43,11 +43,10 @@ class DesignRuntimeService:
         *,
         unit_id: str,
         checkpoint_id: str | None = None,
+        view: str = "short",
     ) -> ArtifactRuntimeResult:
-        result = self.artifacts.read_artifact(
-            key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id),
-            checkpoint_id=checkpoint_id,
-        )
+        key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id)
+        result = self.artifacts.read_artifact(key=key, checkpoint_id=checkpoint_id)
         if not result.result.ok:
             return result
 
@@ -57,6 +56,10 @@ class DesignRuntimeService:
             base_artifacts=result.artifacts,
             stage_metadata=stage_metadata,
         )
+        if view == "full":
+            shaped_artifacts["open_questions"] = stage_metadata.get("open_questions", [])
+            shaped_artifacts["assumptions"] = stage_metadata.get("assumptions", [])
+            shaped_artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key) or ""
         return ArtifactRuntimeResult(
             result=result.result,
             warnings=result.warnings,
@@ -267,19 +270,14 @@ def _render_design_payload(
         "design_unit_id": stage_metadata.get("design_unit_id", unit_id),
         "stage": base_artifacts["stage"],
         "version_id": base_artifacts["version_id"],
-        "checkpoint_id": base_artifacts["version_id"],
         "title": stage_metadata.get("title"),
         "workflow_status": stage_metadata.get("status"),
         "readiness": stage_metadata.get("readiness"),
         "readiness_rationale": stage_metadata.get("readiness_rationale"),
         "scope_summary": stage_metadata.get("scope_summary"),
-        "depends_on": stage_metadata.get("depends_on", []),
-        "children": stage_metadata.get("children", []),
-        "parent": stage_metadata.get("parent"),
         "linkage": {
             "depends_on": stage_metadata.get("depends_on", []),
             "children": stage_metadata.get("children", []),
             "parent": stage_metadata.get("parent"),
         },
-        "stage_metadata": stage_metadata,
     }

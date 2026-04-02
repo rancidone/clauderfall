@@ -96,12 +96,13 @@ def create_server(repo_root: str | Path, docs_root: str | Path | None = None) ->
 def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
     server.register_tool(
         name="discovery_read",
-        description="Read the authoritative Discovery artifact metadata.",
+        description="Read the authoritative Discovery artifact. short (default): orientation metadata only. full: adds problem_areas, cross_cutting, and markdown body.",
         input_schema={
             "type": "object",
             "properties": {
                 "brief_id": {"type": "string"},
                 "checkpoint_id": {"type": "string"},
+                "view": {"type": "string", "enum": ["short", "full"]},
             },
             "required": ["brief_id"],
             "additionalProperties": False,
@@ -198,12 +199,13 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
 def _register_design_tools(server: ClauderfallMCPServer) -> None:
     server.register_tool(
         name="design_read",
-        description="Read the authoritative Design unit metadata.",
+        description="Read the authoritative Design unit. short (default): orientation metadata only. full: adds open_questions, assumptions, and markdown body.",
         input_schema={
             "type": "object",
             "properties": {
                 "unit_id": {"type": "string"},
                 "checkpoint_id": {"type": "string"},
+                "view": {"type": "string", "enum": ["short", "full"]},
             },
             "required": ["unit_id"],
             "additionalProperties": False,
@@ -353,12 +355,13 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
 
 
 def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    view = payload.get("view")
-    if view is not None and view not in {"short", "full"}:
+    view = payload.get("view", "short")
+    if view not in {"short", "full"}:
         raise MCPValidationError("view must be 'short' or 'full'")
     return map_runtime_result(
         services.discovery.read(
             brief_id=require_string(payload, "brief_id"),
+            view=view,
         )
     )
 
@@ -383,12 +386,13 @@ def _discovery_to_design(services: RuntimeServices, payload: dict[str, Any]) -> 
 
 
 def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    view = payload.get("view")
-    if view is not None and view not in {"short", "full"}:
+    view = payload.get("view", "short")
+    if view not in {"short", "full"}:
         raise MCPValidationError("view must be 'short' or 'full'")
     return map_runtime_result(
         services.design.read(
             unit_id=require_string(payload, "unit_id"),
+            view=view,
         )
     )
 

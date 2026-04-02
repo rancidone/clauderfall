@@ -37,10 +37,28 @@ class DiscoveryRuntimeService:
         *,
         brief_id: str,
         checkpoint_id: str | None = None,
+        view: str = "short",
     ) -> ArtifactRuntimeResult:
-        return self.artifacts.read_artifact(
-            key=ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=brief_id),
-            checkpoint_id=checkpoint_id,
+        key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=brief_id)
+        result = self.artifacts.read_artifact(key=key, checkpoint_id=checkpoint_id)
+        if not result.result.ok:
+            return result
+
+        sidecar = dict(result.artifacts["stage_metadata"])
+        artifacts = _render_discovery_short_payload(
+            brief_id=brief_id,
+            base_artifacts=result.artifacts,
+            sidecar=sidecar,
+        )
+        if view == "full":
+            artifacts["problem_areas"] = sidecar.get("problem_areas", [])
+            artifacts["cross_cutting"] = sidecar.get("cross_cutting", {})
+            artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key) or ""
+        return ArtifactRuntimeResult(
+            result=result.result,
+            warnings=result.warnings,
+            artifacts=artifacts,
+            metadata=result.metadata,
         )
 
     def write_draft(
@@ -131,6 +149,24 @@ class DiscoveryRuntimeService:
                 "status": status,
             },
         )
+
+
+def _render_discovery_short_payload(
+    *,
+    brief_id: str,
+    base_artifacts: dict[str, object],
+    sidecar: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "brief_id": brief_id,
+        "stage": base_artifacts["stage"],
+        "version_id": base_artifacts["version_id"],
+        "title": sidecar.get("title"),
+        "status": sidecar.get("status"),
+        "readiness": sidecar.get("readiness"),
+        "readiness_rationale": sidecar.get("readiness_rationale"),
+        "blocking_gaps": sidecar.get("blocking_gaps", []),
+    }
 
 
 def _validate_discovery_sidecar(sidecar: dict[str, object]) -> list[str]:
