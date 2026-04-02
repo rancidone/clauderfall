@@ -68,8 +68,8 @@ class StageArtifactRuntime:
         self.store.write_checkpoint(ref, pair)
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact checkpoint written"),
-            artifacts=self._render_artifact_payload(key=key, pair=pair, view=ArtifactView.FULL),
-            metadata=self._metadata_for_pair(key=key, pair=pair, view=ArtifactView.FULL),
+            artifacts=self._render_artifact_payload(key=key, pair=pair, view=ArtifactView.SHORT),
+            metadata=self._metadata_for_pair(key=key, pair=pair, view=ArtifactView.SHORT),
         )
 
     def transition_artifact_status(
@@ -108,11 +108,11 @@ class StageArtifactRuntime:
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="artifact status transitioned"),
             artifacts={
-                **self._render_artifact_payload(key=key, pair=next_pair, view=ArtifactView.FULL),
+                **self._render_artifact_payload(key=key, pair=next_pair, view=ArtifactView.SHORT),
                 "previous_checkpoint_ref": previous_ref,
             },
             metadata={
-                **self._metadata_for_pair(key=key, pair=next_pair, view=ArtifactView.FULL),
+                **self._metadata_for_pair(key=key, pair=next_pair, view=ArtifactView.SHORT),
                 "previous_checkpoint_id": current.metadata.checkpoint_id,
             },
         )

@@ -12,8 +12,7 @@ For the current feat:
 - stop and surface any real design gap that blocks implementation; do not invent missing design
 - stop, summarize progress, and hand off when remaining context reaches about 60%
 
-Current feat:
-1. [TODO_FEAT_MCP_ADAPTER.md](/home/maddie/repos/clauderfall/TODO_FEAT_MCP_ADAPTER.md)
+Current feat: none
 
 Completed:
 - runtime skeleton
@@ -21,3 +20,4 @@ Completed:
 - Discovery runtime
 - Design runtime
 - session lifecycle runtime
+- MCP adapter (implementation complete; tests pending)
