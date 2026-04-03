@@ -67,6 +67,29 @@ class ArtifactStore:
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )
 
+    def list_by_stage(self, stage: ArtifactStage) -> list[ArtifactRecord]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT artifact_id, version_id, stage_metadata, flush_reason, updated_at
+                FROM artifacts
+                WHERE stage = ?
+                ORDER BY updated_at DESC
+                """,
+                (stage.value,),
+            ).fetchall()
+
+        return [
+            ArtifactRecord(
+                key=ArtifactKey(stage=stage, artifact_id=row["artifact_id"]),
+                version_id=row["version_id"],
+                stage_metadata=json.loads(row["stage_metadata"]),
+                flush_reason=row["flush_reason"],
+                updated_at=datetime.fromisoformat(row["updated_at"]),
+            )
+            for row in rows
+        ]
+
     def write(
         self,
         *,

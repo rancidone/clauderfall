@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from clauderfall.runtime.artifacts import StageArtifactRuntime
 from clauderfall.runtime.types import (
     ArtifactKey,
+    ArtifactRecord,
     ArtifactRuntimeResult,
     ArtifactStage,
     FlushReason,
@@ -37,6 +38,22 @@ class DesignRuntimeService:
     """Stage-specific Design operations built on the shared artifact runtime."""
 
     artifacts: StageArtifactRuntime
+
+    def list(self) -> ArtifactRuntimeResult:
+        records = self.artifacts.list_artifacts(stage=ArtifactStage.DESIGN)
+        units: list[dict[str, object]] = []
+        warnings: list[str] = []
+
+        for record in records:
+            unit, unit_warnings = _render_design_list_entry(record)
+            units.append(unit)
+            warnings.extend(unit_warnings)
+
+        return ArtifactRuntimeResult(
+            result=OperationResult(status=OperationStatus.OK, message="design units listed"),
+            warnings=tuple(warnings),
+            artifacts={"units": units, "count": len(units)},
+        )
 
     def read(
         self,
@@ -257,6 +274,27 @@ def _validate_design_sidecar(sidecar: dict[str, object]) -> list[str]:
         errors.append("parent must be a string or null when present")
 
     return errors
+
+
+def _render_design_list_entry(record: ArtifactRecord) -> tuple[dict[str, object], tuple[str, ...]]:
+    unit = {
+        "unit_id": record.key.artifact_id,
+        "title": record.stage_metadata.get("title"),
+        "status": record.stage_metadata.get("status"),
+        "readiness": record.stage_metadata.get("readiness"),
+        "updated_at": record.updated_at.isoformat(),
+    }
+
+    missing_fields = [
+        field
+        for field in ("title", "status", "readiness")
+        if not isinstance(record.stage_metadata.get(field), str) or not record.stage_metadata.get(field)
+    ]
+    if not missing_fields:
+        return unit, ()
+
+    unit["malformed"] = True
+    return unit, (f"design unit {record.key.artifact_id} is malformed: missing {', '.join(missing_fields)}",)
 
 
 def _render_design_payload(

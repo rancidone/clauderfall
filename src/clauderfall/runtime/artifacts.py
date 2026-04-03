@@ -7,6 +7,7 @@ from clauderfall.runtime.types import (
     ArtifactKey,
     ArtifactRecord,
     ArtifactRuntimeResult,
+    ArtifactStage,
     FlushReason,
     OperationResult,
     OperationStatus,
@@ -46,6 +47,9 @@ class StageArtifactRuntime:
     def read_artifact_markdown(self, *, key: ArtifactKey) -> str | None:
         """Return the raw markdown body for a key, or None if not found. For internal runtime use only."""
         return self.store.read_markdown(key)
+
+    def list_artifacts(self, *, stage: ArtifactStage) -> list[ArtifactRecord]:
+        return self.store.list_by_stage(stage)
 
     def write_artifact_checkpoint(
         self,

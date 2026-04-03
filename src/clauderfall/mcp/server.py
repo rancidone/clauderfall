@@ -213,6 +213,16 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
         handler=_design_read,
     )
     server.register_tool(
+        name="design_list",
+        description="List compact Design unit summaries across the current project.",
+        input_schema={
+            "type": "object",
+            "properties": {},
+            "additionalProperties": False,
+        },
+        handler=_design_list,
+    )
+    server.register_tool(
         name="design_write_draft",
         description="Persist a Design draft checkpoint without acceptance.",
         input_schema={
@@ -380,6 +390,11 @@ def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
             view=view,
         )
     )
+
+
+def _design_list(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return map_runtime_result(services.design.list())
 
 
 def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:

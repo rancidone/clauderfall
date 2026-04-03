@@ -42,6 +42,33 @@ def test_artifact_store_round_trips_current_record(tmp_path: Path) -> None:
     assert isinstance(current, ArtifactRecord)
 
 
+def test_artifact_store_lists_stage_records_by_updated_at_desc(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.store.write(
+        key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="older-design-unit"),
+        markdown="# Older Design Unit\n\nBody.",
+        stage_metadata={"title": "Older Design Unit", "status": "draft", "readiness": "low"},
+        flush_reason="checkpoint",
+    )
+    services.store.write(
+        key=ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id="discovery-brief"),
+        markdown="# Discovery Brief\n\nBody.",
+        stage_metadata={"title": "Discovery Brief", "status": "draft", "readiness": "medium"},
+        flush_reason="checkpoint",
+    )
+    newer_design = services.store.write(
+        key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="newer-design-unit"),
+        markdown="# Newer Design Unit\n\nBody.",
+        stage_metadata={"title": "Newer Design Unit", "status": "in_review", "readiness": "high"},
+        flush_reason="checkpoint",
+    )
+
+    records = services.store.list_by_stage(ArtifactStage.DESIGN)
+
+    assert [record.key.artifact_id for record in records] == ["newer-design-unit", "older-design-unit"]
+    assert records[0].version_id == newer_design.version_id
+
+
 def test_runtime_services_wiring_exposes_shared_substrate_components(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
 
@@ -390,6 +417,47 @@ def test_design_accept_supports_review_and_explicit_draft_override(tmp_path: Pat
     assert override.warnings == ("Design acceptance proceeded from draft via explicit override.",)
 
 
+def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.design.write_draft(
+        unit_id="healthy-unit",
+        markdown="# Healthy Unit\n\nBody.",
+        sidecar={
+            "design_unit_id": "healthy-unit",
+            "title": "Healthy Unit",
+            "status": "in_review",
+            "scope_summary": "Well-formed unit.",
+            "readiness": "high",
+            "readiness_rationale": "The design is ready for review.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+    )
+    services.store.write(
+        key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="broken-unit"),
+        markdown="# Broken Unit\n\nBody.",
+        stage_metadata={
+            "design_unit_id": "broken-unit",
+            "status": "draft",
+            "scope_summary": "Missing title and readiness.",
+            "readiness_rationale": "Incomplete sidecar for coverage.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+        flush_reason="checkpoint",
+    )
+
+    result = services.design.list()
+
+    assert result.result.ok is True
+    assert result.artifacts["count"] == 2
+    assert [unit["unit_id"] for unit in result.artifacts["units"]] == ["broken-unit", "healthy-unit"]
+    assert result.artifacts["units"][0]["malformed"] is True
+    assert result.artifacts["units"][0]["title"] is None
+    assert result.artifacts["units"][1]["status"] == "in_review"
+    assert result.warnings == ("design unit broken-unit is malformed: missing title, readiness",)
+
+
 def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     accepted_sidecar = {
@@ -510,6 +578,7 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
         "discovery_write_draft",
         "discovery_to_design",
         "design_read",
+        "design_list",
         "design_write_draft",
         "design_to_review",
         "design_accept",
@@ -599,6 +668,48 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
     assert read["artifacts"]["status"] == "draft"
     assert read["artifacts"]["readiness"] == "medium"
     assert "markdown" not in read["artifacts"]
+
+
+def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "healthy-unit",
+            "markdown": "# Healthy Unit\n\nBody.",
+            "sidecar": {
+                "design_unit_id": "healthy-unit",
+                "title": "Healthy Unit",
+                "status": "draft",
+                "scope_summary": "Well-formed unit.",
+                "readiness": "medium",
+                "readiness_rationale": "Still one review pass away.",
+                "open_questions": [],
+                "assumptions": [],
+            },
+        },
+    )
+    server.services.store.write(
+        key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="broken-unit"),
+        markdown="# Broken Unit\n\nBody.",
+        stage_metadata={
+            "design_unit_id": "broken-unit",
+            "status": "draft",
+            "scope_summary": "Missing title and readiness.",
+            "readiness_rationale": "Incomplete sidecar for coverage.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+        flush_reason="checkpoint",
+    )
+
+    result = server.call_tool("design_list")
+
+    assert result["result"] == "success"
+    assert result["artifacts"]["count"] == 2
+    assert result["artifacts"]["units"][0]["unit_id"] == "broken-unit"
+    assert result["artifacts"]["units"][0]["malformed"] is True
+    assert result["warnings"] == ["design unit broken-unit is malformed: missing title, readiness"]
 
 
 def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_path: Path) -> None:
