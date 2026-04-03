@@ -2,17 +2,22 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import tomllib
 
 from clauderfall.installer import (
     CODEX_MCP_CONFIG_PATH,
     add_claude_user_mcp_server,
+    install_global,
     install_claude_global,
     install_codex_global,
     install_global_clauderfall,
     install_packaged_skills,
     list_packaged_skill_dirs,
+    normalize_install_targets,
+    register_global,
     register_claude_global,
     register_codex_global,
+    remove_global,
     remove_claude_global,
     remove_codex_global,
     resolve_codex_command,
@@ -23,6 +28,11 @@ from clauderfall.installer import (
 def test_resolve_codex_command_supports_venv_and_path(tmp_path: Path) -> None:
     assert resolve_codex_command(repo_root=tmp_path, mode="venv") == str(tmp_path / ".venv" / "bin" / "clauderfall-mcp")
     assert resolve_codex_command(repo_root=tmp_path, mode="path") == "clauderfall-mcp"
+
+
+def test_normalize_install_targets_defaults_to_all_and_deduplicates() -> None:
+    assert normalize_install_targets(None) == ("claude", "codex")
+    assert normalize_install_targets(["codex", "claude", "codex"]) == ("codex", "claude")
 
 
 def test_update_codex_mcp_config_writes_minimal_toml_entry(tmp_path: Path) -> None:
@@ -50,9 +60,9 @@ def test_update_codex_mcp_config_writes_env_when_present(tmp_path: Path) -> None
         env={"CLAUDERFALL_DEBUG": "1"},
     )
 
-    content = config_path.read_text()
+    loaded = tomllib.loads(config_path.read_text())
 
-    assert 'env = { CLAUDERFALL_DEBUG = "1" }' in content
+    assert loaded["mcp_servers"]["clauderfall"]["env"] == {"CLAUDERFALL_DEBUG": "1"}
 
 
 def test_update_codex_mcp_config_preserves_unrelated_settings(tmp_path: Path) -> None:
@@ -155,6 +165,63 @@ def test_install_global_clauderfall_installs_shared_runtime_and_skills(tmp_path:
     manifest = json.loads((global_root / "install-manifest.json").read_text())
     assert manifest["scope"] == "user"
     assert manifest["installed_from_repo"] == str(source_repo.resolve())
+
+
+def test_install_global_registers_selected_targets(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "clauderfall.installer.install_global_clauderfall",
+        lambda **_: {
+            "install_root": "/home/test/.clauderfall",
+            "venv_python": "/home/test/.clauderfall/.venv/bin/python",
+            "launcher": "/home/test/.clauderfall/.venv/bin/clauderfall-mcp",
+            "installed_codex_skills": ["design", "discovery"],
+            "installed_claude_skills": ["design", "discovery"],
+        },
+    )
+    add_calls: list[tuple[str, str, list[str], bool]] = []
+    update_calls: list[tuple[Path, str, str, list[str], dict[str, str] | None]] = []
+
+    def fake_add(
+        *,
+        server_name: str,
+        command: str,
+        args: list[str],
+        debug: bool = False,
+    ) -> dict[str, object]:
+        add_calls.append((server_name, command, args, debug))
+        return {"command": command, "args": args, "scope": "user", "debug": debug}
+
+    def fake_update(
+        *,
+        target_repo: Path,
+        server_name: str,
+        command: str,
+        args: list[str],
+        env: dict[str, str] | None = None,
+    ) -> Path:
+        update_calls.append((target_repo, server_name, command, args, env))
+        return Path("/home/test/.codex/config.toml")
+
+    monkeypatch.setattr("clauderfall.installer.add_claude_user_mcp_server", fake_add)
+    monkeypatch.setattr("clauderfall.installer.update_codex_mcp_config", fake_update)
+
+    result = install_global(
+        source_repo_root=Path("/work/clauderfall"),
+        server_name="clauderfall",
+        debug=True,
+    )
+
+    assert result["targets"] == ["claude", "codex"]
+    assert add_calls == [("clauderfall", "/home/test/.clauderfall/.venv/bin/clauderfall-mcp", [], True)]
+    assert update_calls == [
+        (
+            Path.home(),
+            "clauderfall",
+            "/home/test/.clauderfall/.venv/bin/clauderfall-mcp",
+            [],
+            {"CLAUDERFALL_DEBUG": "1"},
+        )
+    ]
 
 
 def test_install_claude_global_registers_user_scoped_server(monkeypatch) -> None:
@@ -285,6 +352,64 @@ def test_register_claude_global_uses_user_scope(monkeypatch) -> None:
     assert result["installed_skills"] == ["design", "discovery"]
 
 
+def test_register_global_registers_selected_targets(monkeypatch) -> None:
+    add_calls: list[tuple[str, str, list[str], bool]] = []
+    update_calls: list[tuple[Path, str, str, list[str], dict[str, str] | None]] = []
+    skill_calls: list[tuple[Path, Path, str]] = []
+
+    def fake_add(
+        *,
+        server_name: str,
+        command: str,
+        args: list[str],
+        debug: bool = False,
+    ) -> dict[str, object]:
+        add_calls.append((server_name, command, args, debug))
+        return {"command": command, "args": args, "scope": "user", "debug": debug}
+
+    def fake_update(
+        *,
+        target_repo: Path,
+        server_name: str,
+        command: str,
+        args: list[str],
+        env: dict[str, str] | None = None,
+    ) -> Path:
+        update_calls.append((target_repo, server_name, command, args, env))
+        return Path("/home/test/.codex/config.toml")
+
+    def fake_install_skills(*, source_repo_root: Path, destination_root: Path, mode: str) -> list[str]:
+        skill_calls.append((source_repo_root, destination_root, mode))
+        return ["design", "discovery"]
+
+    monkeypatch.setattr("clauderfall.installer.add_claude_user_mcp_server", fake_add)
+    monkeypatch.setattr("clauderfall.installer.update_codex_mcp_config", fake_update)
+    monkeypatch.setattr("clauderfall.installer.install_packaged_skills", fake_install_skills)
+
+    result = register_global(
+        repo_root=Path("/work/clauderfall"),
+        server_name="clauderfall-dev",
+        mode="venv",
+        debug=True,
+    )
+
+    assert result["targets"] == ["claude", "codex"]
+    assert add_calls == [("clauderfall-dev", "/work/clauderfall/.venv/bin/clauderfall-mcp", [], True)]
+    assert update_calls == [
+        (
+            Path.home(),
+            "clauderfall-dev",
+            "/work/clauderfall/.venv/bin/clauderfall-mcp",
+            [],
+            {"CLAUDERFALL_DEBUG": "1"},
+        )
+    ]
+    assert skill_calls == [
+        (Path("/work/clauderfall"), Path.home() / ".claude" / "skills", "symlink"),
+        (Path("/work/clauderfall"), Path.home() / ".codex" / "skills", "symlink"),
+    ]
+
+
 def test_add_claude_user_mcp_server_replaces_existing_registration(monkeypatch) -> None:
     calls: list[tuple[list[str], bool]] = []
 
@@ -399,6 +524,40 @@ def test_remove_global_helpers_remove_skills_and_registration(monkeypatch) -> No
     assert claude_result["removed_skills"] == ["design", "discovery"]
     assert codex_result["removed_server"] is True
     assert codex_result["removed_skills"] == ["design", "discovery"]
+
+
+def test_remove_global_removes_selected_targets(monkeypatch) -> None:
+    removed_claude: list[str] = []
+    remove_config_calls: list[tuple[Path, str]] = []
+    skill_calls: list[tuple[Path, Path]] = []
+
+    def fake_remove_claude_user_mcp_server(*, server_name: str) -> None:
+        removed_claude.append(server_name)
+
+    def fake_remove_server_from_toml_config(*, config_path: Path, server_name: str) -> bool:
+        remove_config_calls.append((config_path, server_name))
+        return True
+
+    def fake_remove_packaged_skills(*, source_repo_root: Path, destination_root: Path) -> list[str]:
+        skill_calls.append((source_repo_root, destination_root))
+        return ["design", "discovery"]
+
+    monkeypatch.setattr("clauderfall.installer.remove_claude_user_mcp_server", fake_remove_claude_user_mcp_server)
+    monkeypatch.setattr("clauderfall.installer.remove_server_from_toml_config", fake_remove_server_from_toml_config)
+    monkeypatch.setattr("clauderfall.installer.remove_packaged_skills", fake_remove_packaged_skills)
+
+    result = remove_global(
+        source_repo_root=Path("/work/clauderfall"),
+        server_name="clauderfall",
+    )
+
+    assert result["targets"] == ["claude", "codex"]
+    assert removed_claude == ["clauderfall"]
+    assert remove_config_calls == [(Path.home() / ".codex" / "config.toml", "clauderfall")]
+    assert skill_calls == [
+        (Path("/work/clauderfall"), Path.home() / ".claude" / "skills"),
+        (Path("/work/clauderfall"), Path.home() / ".codex" / "skills"),
+    ]
 
 
 def test_remove_codex_global_preserves_unrelated_config(tmp_path: Path) -> None:

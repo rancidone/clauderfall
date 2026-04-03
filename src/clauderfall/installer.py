@@ -8,7 +8,8 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
-from typing import Any
+
+import tomli_w
 
 from clauderfall import __version__
 
@@ -18,6 +19,93 @@ PACKAGED_SKILLS_DIR = Path("src/clauderfall/skills")
 CLAUDE_SKILLS_ROOT = Path(".claude/skills")
 CODEX_SKILLS_ROOT = Path(".codex/skills")
 GLOBAL_INSTALL_ROOT = Path.home() / ".clauderfall"
+INSTALL_TARGETS = ("claude", "codex")
+SKILL_ROOTS = {
+    "claude": CLAUDE_SKILLS_ROOT,
+    "codex": CODEX_SKILLS_ROOT,
+}
+
+
+def install_global(
+    *,
+    source_repo_root: Path,
+    server_name: str,
+    python_executable: str | None = None,
+    debug: bool = False,
+    targets: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, object]:
+    """Install Clauderfall once and register it for one or more global clients."""
+
+    selected_targets = normalize_install_targets(targets)
+    install_result = install_global_clauderfall(
+        source_repo_root=source_repo_root,
+        python_executable=python_executable,
+    )
+    registrations = register_installed_server(
+        server_name=server_name,
+        launcher=install_result["launcher"],
+        debug=debug,
+        targets=selected_targets,
+    )
+    return {
+        **install_result,
+        "server_name": server_name,
+        "targets": list(selected_targets),
+        "debug": debug,
+        "registrations": registrations,
+    }
+
+
+def register_global(
+    *,
+    repo_root: Path,
+    server_name: str,
+    mode: str,
+    debug: bool = False,
+    targets: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, object]:
+    """Register the source-tree Clauderfall server for one or more global clients."""
+
+    selected_targets = normalize_install_targets(targets)
+    command = resolve_codex_command(repo_root=repo_root.resolve(), mode=mode)
+    registrations = register_installed_server(
+        server_name=server_name,
+        launcher=command,
+        debug=debug,
+        targets=selected_targets,
+        source_repo_root=repo_root.resolve(),
+        skill_mode="symlink",
+    )
+    return {
+        "server_name": server_name,
+        "command": command,
+        "targets": list(selected_targets),
+        "debug": debug,
+        "registrations": registrations,
+    }
+
+
+def remove_global(
+    *,
+    source_repo_root: Path,
+    server_name: str,
+    targets: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, object]:
+    """Remove the global Clauderfall registration for one or more clients."""
+
+    selected_targets = normalize_install_targets(targets)
+    removals: dict[str, object] = {}
+    for target in selected_targets:
+        removals[target] = remove_target_registration(
+            source_repo_root=source_repo_root,
+            server_name=server_name,
+            target=target,
+        )
+    return {
+        "server_name": server_name,
+        "targets": list(selected_targets),
+        "removals": removals,
+    }
 
 
 def install_claude_global(
@@ -29,18 +117,20 @@ def install_claude_global(
 ) -> dict[str, object]:
     """Install Clauderfall globally and register it as a user-scoped Claude MCP server."""
 
-    install_result = install_global_clauderfall(
+    result = install_global(
         source_repo_root=source_repo_root,
-        python_executable=python_executable,
-    )
-    register_result = add_claude_user_mcp_server(
         server_name=server_name,
-        command=install_result["launcher"],
-        args=[],
+        python_executable=python_executable,
         debug=debug,
+        targets=["claude"],
     )
+    register_result = result["registrations"]["claude"]
     return {
-        **install_result,
+        "install_root": result["install_root"],
+        "venv_python": result["venv_python"],
+        "launcher": result["launcher"],
+        "installed_codex_skills": result["installed_codex_skills"],
+        "installed_claude_skills": result["installed_claude_skills"],
         **register_result,
         "server_name": server_name,
     }
@@ -55,99 +145,185 @@ def install_codex_global(
 ) -> dict[str, object]:
     """Install Clauderfall globally and register it in user-scoped Codex config."""
 
-    install_result = install_global_clauderfall(
+    result = install_global(
         source_repo_root=source_repo_root,
-        python_executable=python_executable,
-    )
-    config_path = update_codex_mcp_config(
-        target_repo=Path.home(),
         server_name=server_name,
-        command=install_result["launcher"],
-        args=[],
-        env={"CLAUDERFALL_DEBUG": "1"} if debug else None,
+        python_executable=python_executable,
+        debug=debug,
+        targets=["codex"],
     )
+    register_result = result["registrations"]["codex"]
     return {
-        **install_result,
+        "install_root": result["install_root"],
+        "venv_python": result["venv_python"],
+        "launcher": result["launcher"],
         "server_name": server_name,
-        "config_path": str(config_path),
+        "config_path": register_result["config_path"],
         "debug": debug,
+        "installed_codex_skills": result["installed_codex_skills"],
+        "installed_claude_skills": result["installed_claude_skills"],
     }
 
 
 def remove_claude_global(*, source_repo_root: Path, server_name: str) -> dict[str, object]:
     """Remove the user-scoped Claude registration and packaged Claude skills."""
 
-    remove_claude_user_mcp_server(server_name=server_name)
-    removed_skills = remove_packaged_skills(
+    result = remove_global(
         source_repo_root=source_repo_root,
-        destination_root=Path.home() / CLAUDE_SKILLS_ROOT,
+        server_name=server_name,
+        targets=["claude"],
     )
+    removal = result["removals"]["claude"]
     return {
         "server_name": server_name,
-        "removed_skills": removed_skills,
+        "removed_skills": removal["removed_skills"],
     }
 
 
 def remove_codex_global(*, source_repo_root: Path, server_name: str) -> dict[str, object]:
     """Remove the user-scoped Codex registration and packaged Codex skills."""
 
-    config_path = Path.home() / CODEX_MCP_CONFIG_PATH
-    removed_server = remove_server_from_toml_config(
-        config_path=config_path,
-        server_name=server_name,
-    )
-    removed_skills = remove_packaged_skills(
+    result = remove_global(
         source_repo_root=source_repo_root,
-        destination_root=Path.home() / CODEX_SKILLS_ROOT,
+        server_name=server_name,
+        targets=["codex"],
     )
+    removal = result["removals"]["codex"]
     return {
         "server_name": server_name,
-        "removed_server": removed_server,
-        "removed_skills": removed_skills,
-        "config_path": str(config_path),
+        "removed_server": removal["removed_server"],
+        "removed_skills": removal["removed_skills"],
+        "config_path": removal["config_path"],
     }
 
 
 def register_claude_global(*, repo_root: Path, server_name: str, mode: str, debug: bool = False) -> dict[str, object]:
     """Register the source-tree Clauderfall server globally for Claude development use."""
 
-    command = resolve_codex_command(repo_root=repo_root.resolve(), mode=mode)
-    add_claude_user_mcp_server(server_name=server_name, command=command, args=[], debug=debug)
-    installed_skills = install_packaged_skills(
-        source_repo_root=repo_root.resolve(),
-        destination_root=Path.home() / CLAUDE_SKILLS_ROOT,
-        mode="symlink",
+    result = register_global(
+        repo_root=repo_root,
+        server_name=server_name,
+        mode=mode,
+        debug=debug,
+        targets=["claude"],
     )
+    register_result = result["registrations"]["claude"]
     return {
         "server_name": server_name,
-        "command": command,
-        "installed_skills": installed_skills,
+        "command": result["command"],
+        "installed_skills": register_result["installed_skills"],
     }
 
 
 def register_codex_global(*, repo_root: Path, server_name: str, mode: str, debug: bool = False) -> dict[str, object]:
     """Register the source-tree Clauderfall server globally for Codex development use."""
 
-    command = resolve_codex_command(repo_root=repo_root.resolve(), mode=mode)
-    config_path = update_codex_mcp_config(
-        target_repo=Path.home(),
+    result = register_global(
+        repo_root=repo_root,
         server_name=server_name,
-        command=command,
-        args=[],
-        env={"CLAUDERFALL_DEBUG": "1"} if debug else None,
+        mode=mode,
+        debug=debug,
+        targets=["codex"],
     )
-    installed_skills = install_packaged_skills(
-        source_repo_root=repo_root.resolve(),
-        destination_root=Path.home() / CODEX_SKILLS_ROOT,
-        mode="symlink",
-    )
+    register_result = result["registrations"]["codex"]
     return {
         "server_name": server_name,
-        "command": command,
-        "config_path": str(config_path),
-        "installed_skills": installed_skills,
+        "command": result["command"],
+        "config_path": register_result["config_path"],
+        "installed_skills": register_result["installed_skills"],
         "debug": debug,
     }
+
+
+def normalize_install_targets(targets: list[str] | tuple[str, ...] | None) -> tuple[str, ...]:
+    """Normalize target selectors into a de-duplicated, ordered target tuple."""
+
+    if not targets:
+        return INSTALL_TARGETS
+    normalized: list[str] = []
+    for target in targets:
+        if target not in INSTALL_TARGETS:
+            raise ValueError(f"unsupported install target: {target}")
+        if target not in normalized:
+            normalized.append(target)
+    return tuple(normalized)
+
+
+def register_installed_server(
+    *,
+    server_name: str,
+    launcher: str,
+    debug: bool,
+    targets: tuple[str, ...],
+    source_repo_root: Path | None = None,
+    skill_mode: str = "copy",
+) -> dict[str, object]:
+    """Register one launcher across selected clients and install target-specific skills."""
+
+    registrations: dict[str, object] = {}
+    for target in targets:
+        if target == "claude":
+            register_result = add_claude_user_mcp_server(
+                server_name=server_name,
+                command=launcher,
+                args=[],
+                debug=debug,
+            )
+        elif target == "codex":
+            config_path = update_codex_mcp_config(
+                target_repo=Path.home(),
+                server_name=server_name,
+                command=launcher,
+                args=[],
+                env={"CLAUDERFALL_DEBUG": "1"} if debug else None,
+            )
+            register_result = {
+                "command": launcher,
+                "args": [],
+                "config_path": str(config_path),
+                "debug": debug,
+            }
+        else:
+            raise ValueError(f"unsupported install target: {target}")
+
+        if source_repo_root is not None:
+            register_result["installed_skills"] = install_packaged_skills(
+                source_repo_root=source_repo_root,
+                destination_root=Path.home() / SKILL_ROOTS[target],
+                mode=skill_mode,
+            )
+        registrations[target] = register_result
+    return registrations
+
+
+def remove_target_registration(*, source_repo_root: Path, server_name: str, target: str) -> dict[str, object]:
+    """Remove one target registration and its packaged skills."""
+
+    if target == "claude":
+        remove_claude_user_mcp_server(server_name=server_name)
+        removed_server = True
+        config_path: str | None = None
+    elif target == "codex":
+        config = Path.home() / CODEX_MCP_CONFIG_PATH
+        removed_server = remove_server_from_toml_config(
+            config_path=config,
+            server_name=server_name,
+        )
+        config_path = str(config)
+    else:
+        raise ValueError(f"unsupported install target: {target}")
+
+    removed_skills = remove_packaged_skills(
+        source_repo_root=source_repo_root,
+        destination_root=Path.home() / SKILL_ROOTS[target],
+    )
+    result = {
+        "removed_server": removed_server,
+        "removed_skills": removed_skills,
+    }
+    if config_path is not None:
+        result["config_path"] = config_path
+    return result
 
 
 def resolve_codex_command(*, repo_root: Path, mode: str) -> str:
@@ -339,7 +515,7 @@ def update_codex_mcp_config(
         server_config["env"] = env
     mcp_servers[server_name] = server_config
     updated["mcp_servers"] = mcp_servers
-    config_path.write_text(render_toml_document(updated))
+    config_path.write_text(tomli_w.dumps(updated))
     return config_path
 
 
@@ -362,7 +538,7 @@ def remove_server_from_toml_config(*, config_path: Path, server_name: str) -> bo
         updated.pop("mcp_servers", None)
 
     if updated:
-        config_path.write_text(render_toml_document(updated))
+        config_path.write_text(tomli_w.dumps(updated))
     else:
         config_path.unlink()
     return True
@@ -374,84 +550,3 @@ def load_toml_file(path: Path) -> dict[str, object]:
     if not path.exists():
         return {}
     return tomllib.loads(path.read_text())
-
-
-def render_toml_document(data: dict[str, object]) -> str:
-    """Render a small TOML document while preserving unrelated config sections."""
-
-    lines: list[str] = []
-
-    scalar_items = [
-        (key, value)
-        for key, value in data.items()
-        if not isinstance(value, dict)
-    ]
-    table_items = [
-        (key, value)
-        for key, value in data.items()
-        if isinstance(value, dict)
-    ]
-
-    for key, value in scalar_items:
-        lines.append(f"{key} = {_render_toml_value(value)}")
-    if scalar_items and table_items:
-        lines.append("")
-
-    for index, (key, value) in enumerate(table_items):
-        _render_toml_table(lines=lines, path=[key], table=value)
-        if index != len(table_items) - 1:
-            lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def _render_toml_table(*, lines: list[str], path: list[str], table: dict[str, Any]) -> None:
-    header = ".".join(path)
-    lines.append(f"[{header}]")
-
-    scalar_items = [
-        (key, value)
-        for key, value in table.items()
-        if not isinstance(value, dict) or _should_inline_toml_table(path=path, key=key, value=value)
-    ]
-    child_tables = [
-        (key, value)
-        for key, value in table.items()
-        if isinstance(value, dict) and not _should_inline_toml_table(path=path, key=key, value=value)
-    ]
-
-    for key, value in scalar_items:
-        lines.append(f"{key} = {_render_toml_value(value)}")
-
-    for key, value in child_tables:
-        lines.append("")
-        _render_toml_table(lines=lines, path=[*path, key], table=value)
-
-
-def _render_toml_value(value: object) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, str):
-        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-    if isinstance(value, list):
-        rendered_items = ", ".join(_render_toml_value(item) for item in value)
-        return f"[{rendered_items}]"
-    if isinstance(value, dict):
-        rendered_items = ", ".join(
-            f"{key} = {_render_toml_value(item)}"
-            for key, item in sorted(value.items())
-        )
-        return f"{{ {rendered_items} }}"
-    raise TypeError(f"unsupported TOML value: {value!r}")
-
-
-def _should_inline_toml_table(*, path: list[str], key: str, value: object) -> bool:
-    if not isinstance(value, dict):
-        return False
-    if path == ["mcp_servers"]:
-        return False
-    del key
-    return all(not isinstance(item, dict) for item in value.values())
