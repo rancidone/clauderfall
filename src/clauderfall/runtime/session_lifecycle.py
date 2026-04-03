@@ -19,8 +19,7 @@ class SessionLifecycleService:
 
     session: SessionStore
 
-    def read_recent_session_startup_view(self, *, force_rebuild: bool = False) -> ArtifactRuntimeResult:
-        del force_rebuild  # DB always current; rebuild is a no-op
+    def session_read_startup_view(self) -> ArtifactRuntimeResult:
         active_rows = self.session.list_active_threads()
         archived_rows = self.session.list_recent_archived(limit=5)
 
@@ -57,7 +56,7 @@ class SessionLifecycleService:
             },
         )
 
-    def read_active_thread(self, *, thread_id: str) -> ArtifactRuntimeResult:
+    def session_read_thread(self, *, thread_id: str) -> ArtifactRuntimeResult:
         row = self.session.read_thread(thread_id)
         if row is None or row.get("status") != "active":
             return ArtifactRuntimeResult(
@@ -78,7 +77,7 @@ class SessionLifecycleService:
             },
         )
 
-    def write_active_thread_handoff(
+    def session_write_handoff(
         self,
         *,
         thread_id: str,
@@ -106,11 +105,7 @@ class SessionLifecycleService:
             },
         )
 
-    def rebuild_recent_session_index(self, *, reason: str) -> ArtifactRuntimeResult:
-        del reason
-        return self.read_recent_session_startup_view()
-
-    def archive_completed_thread(self, *, thread_id: str, closure_summary: str) -> ArtifactRuntimeResult:
+    def session_archive_thread(self, *, thread_id: str, closure_summary: str) -> ArtifactRuntimeResult:
         row = self.session.read_thread(thread_id)
         if row is None or row.get("status") != "active":
             return ArtifactRuntimeResult(

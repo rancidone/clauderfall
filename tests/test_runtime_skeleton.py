@@ -17,6 +17,8 @@ from clauderfall.runtime import (
     build_runtime_services,
 )
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 
 def test_artifact_store_round_trips_current_record(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
@@ -433,14 +435,14 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
 
 def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.session_lifecycle.write_active_thread_handoff(
+    services.session_lifecycle.session_write_handoff(
         thread_id="thread-b",
         title="Second Thread",
         current_intent_summary="Still shaping the design runtime.",
         next_suggested_action="Decide whether to split review logic.",
         thread_markdown="# Thread B\n\nWorking notes.",
     )
-    services.session_lifecycle.write_active_thread_handoff(
+    services.session_lifecycle.session_write_handoff(
         thread_id="thread-a",
         title="First Thread",
         current_intent_summary="Finishing session lifecycle implementation.",
@@ -448,7 +450,7 @@ def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
         thread_markdown="# Thread A\n\nWorking notes.",
     )
 
-    startup = services.session_lifecycle.read_recent_session_startup_view()
+    startup = services.session_lifecycle.session_read_startup_view()
 
     assert startup.result.ok is True
     assert startup.metadata["active_thread_count"] == 2
@@ -459,14 +461,14 @@ def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
 def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
 
-    write = services.session_lifecycle.write_active_thread_handoff(
+    write = services.session_lifecycle.session_write_handoff(
         thread_id="thread-1",
         title="Implement Session Lifecycle",
         current_intent_summary="Add bounded recovery and archive enforcement.",
         next_suggested_action="Test startup rebuild and archive recovery paths.",
         thread_markdown="# Thread 1\n\nSession lifecycle work.",
     )
-    startup = services.session_lifecycle.read_recent_session_startup_view()
+    startup = services.session_lifecycle.session_read_startup_view()
 
     assert write.result.ok is True
     assert write.metadata["startup_index_updated"] is True
@@ -477,7 +479,7 @@ def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
 
 def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.session_lifecycle.write_active_thread_handoff(
+    services.session_lifecycle.session_write_handoff(
         thread_id="thread-1",
         title="Implement Session Lifecycle",
         current_intent_summary="Add bounded recovery and archive enforcement.",
@@ -485,12 +487,12 @@ def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_pa
         thread_markdown="# Thread 1\n\nSession lifecycle work.",
     )
 
-    archived = services.session_lifecycle.archive_completed_thread(
+    archived = services.session_lifecycle.session_archive_thread(
         thread_id="thread-1",
         closure_summary="Session lifecycle runtime shipped with tests.",
     )
-    startup = services.session_lifecycle.read_recent_session_startup_view()
-    active = services.session_lifecycle.read_active_thread(thread_id="thread-1")
+    startup = services.session_lifecycle.session_read_startup_view()
+    active = services.session_lifecycle.session_read_thread(thread_id="thread-1")
 
     assert archived.result.ok is True
     assert archived.metadata["active_removed"] is True
@@ -512,11 +514,10 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
         "design_write_draft",
         "design_to_review",
         "design_accept",
-        "read_recent_session_startup_view",
-        "read_active_thread",
-        "write_active_thread_handoff",
-        "rebuild_recent_session_index",
-        "archive_completed_thread",
+        "session_read_startup_view",
+        "session_read_thread",
+        "session_write_handoff",
+        "session_archive_thread",
     ]
     assert server.list_tools()[0].input_schema["required"] == ["brief_id"]
 
@@ -604,7 +605,7 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
     server = create_server(tmp_path)
 
     handoff = server.call_tool(
-        "write_active_thread_handoff",
+        "session_write_handoff",
         {
             "thread_id": "thread-1",
             "title": "Implement MCP Adapter",
@@ -613,8 +614,8 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
             "thread_markdown": "# Thread 1\n\nMCP adapter work.",
         },
     )
-    startup = server.call_tool("read_recent_session_startup_view")
-    active = server.call_tool("read_active_thread", {"thread_id": "thread-1"})
+    startup = server.call_tool("session_read_startup_view")
+    active = server.call_tool("session_read_thread", {"thread_id": "thread-1"})
 
     assert handoff["result"] == "success"
     assert handoff["metadata"]["startup_index_updated"] is True
@@ -645,7 +646,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
             "--repo-root",
             str(tmp_path),
         ],
-        cwd="/home/maddie/repos/clauderfall",
+        cwd=str(REPO_ROOT),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -682,7 +683,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
         )
         tool_names = [tool["name"] for tool in tools["result"]["tools"]]
         assert "discovery_write_draft" in tool_names
-        assert "write_active_thread_handoff" in tool_names
+        assert "session_write_handoff" in tool_names
 
         discovery_write = _stdio_request(
             proc,
@@ -732,7 +733,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 "id": 4,
                 "method": "tools/call",
                 "params": {
-                    "name": "write_active_thread_handoff",
+                    "name": "session_write_handoff",
                     "arguments": {
                         "thread_id": "thread-1",
                         "title": "Implement MCP Adapter",
@@ -752,7 +753,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 "id": 5,
                 "method": "tools/call",
                 "params": {
-                    "name": "read_recent_session_startup_view",
+                    "name": "session_read_startup_view",
                     "arguments": {},
                 },
             },
@@ -790,7 +791,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
             "--repo-root",
             str(tmp_path),
         ],
-        cwd="/home/maddie/repos/clauderfall",
+        cwd=str(REPO_ROOT),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -819,7 +820,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                 "id": 2,
                 "method": "tools/call",
                 "params": {
-                    "name": "write_active_thread_handoff",
+                    "name": "session_write_handoff",
                     "arguments": {
                         "thread_id": "thread-default-docs",
                         "title": "Default Docs Root",
@@ -851,7 +852,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
             "--docs-root",
             str(docs_root),
         ],
-        cwd="/home/maddie/repos/clauderfall",
+        cwd=str(REPO_ROOT),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -880,7 +881,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                 "id": 2,
                 "method": "tools/call",
                 "params": {
-                    "name": "write_active_thread_handoff",
+                    "name": "session_write_handoff",
                     "arguments": {
                         "thread_id": "thread-custom-root",
                         "title": "Custom Root",

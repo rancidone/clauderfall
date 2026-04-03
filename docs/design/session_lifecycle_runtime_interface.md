@@ -2,7 +2,7 @@
 title: Session Lifecycle Runtime Interface
 doc_type: design
 status: ready
-updated: 2026-03-27
+updated: 2026-04-02
 summary: Defines the deterministic runtime operations and MCP-facing boundary for recent-session lifecycle work.
 ---
 
@@ -92,11 +92,10 @@ The runtime interface should prefer named lifecycle operations over generic file
 
 That means operations should look more like:
 
-- `read_recent_session_startup_view`
-- `read_active_thread`
-- `write_active_thread_handoff`
-- `rebuild_recent_session_index`
-- `archive_completed_thread`
+- `session_read_startup_view`
+- `session_read_thread`
+- `session_write_handoff`
+- `session_archive_thread`
 
 and less like:
 

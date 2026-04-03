@@ -2,7 +2,7 @@
 title: Session Lifecycle Backend Service
 doc_type: design
 status: draft
-updated: 2026-03-27
+updated: 2026-04-02
 summary: Defines the backend service shape that should own recent-session lifecycle operations and enforce lifecycle invariants.
 ---
 
@@ -148,11 +148,10 @@ Those are lifecycle-policy decisions and belong in the lifecycle service.
 
 The lifecycle service methods should align closely with the MCP operation set:
 
-- `read_recent_session_startup_view(...)`
-- `read_active_thread(...)`
-- `write_active_thread_handoff(...)`
-- `rebuild_recent_session_index(...)`
-- `archive_completed_thread(...)`
+- `session_read_startup_view(...)`
+- `session_read_thread(...)`
+- `session_write_handoff(...)`
+- `session_archive_thread(...)`
 
 This reduces translation overhead and makes logs, tests, and operator behavior easier to reason about.
 

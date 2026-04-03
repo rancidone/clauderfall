@@ -9,7 +9,7 @@ The handoff system has no skill surface and a minimal MCP surface. Currently the
 - Orient at session startup via a skill
 - Manage thread lifecycle (create, update, archive) without direct MCP tool calls
 
-The MCP tools that exist (`read_active_thread`, `read_recent_session_startup_view`, `write_active_thread_handoff`, `archive_completed_thread`) are functional but incomplete as a surface for both LLM-driven and user-driven thread management.
+The MCP tools that exist (`session_read_thread`, `session_read_startup_view`, `session_write_handoff`, `session_archive_thread`) are functional but incomplete as a surface for both LLM-driven and user-driven thread management.
 
 ## Known Problem Areas
 

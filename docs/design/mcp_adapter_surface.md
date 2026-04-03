@@ -2,7 +2,7 @@
 title: MCP Adapter Surface
 doc_type: design
 status: ready
-updated: 2026-04-01
+updated: 2026-04-02
 summary: Defines the first MCP-facing adapter layer over the v2 runtime services, including tool naming, response mapping, and thin-handler boundaries.
 ---
 
@@ -36,11 +36,10 @@ The tool names should be explicit and stage-shaped:
 - `design_write_draft`
 - `design_to_review`
 - `design_accept`
-- `read_recent_session_startup_view`
-- `read_active_thread`
-- `write_active_thread_handoff`
-- `rebuild_recent_session_index`
-- `archive_completed_thread`
+- `session_read_startup_view`
+- `session_read_thread`
+- `session_write_handoff`
+- `session_archive_thread`
 
 The adapter layer should remain thin.
 
@@ -160,8 +159,8 @@ For Discovery and Design:
 
 For session lifecycle:
 
-- `read_active_thread` may return the readable thread artifact because drill-in explicitly asks for thread detail
-- `read_recent_session_startup_view` should remain compact
+- `session_read_thread` may return the readable thread artifact because drill-in explicitly asks for thread detail
+- `session_read_startup_view` should remain compact
 - lifecycle write and archive tools should return references and metadata, not full thread Markdown bodies
 
 This keeps MCP aligned with the token-economy goal instead of turning every operation into a large read response.
@@ -185,11 +184,10 @@ The first adapter layer should map tools to runtime services like this.
 
 ### Session Lifecycle
 
-- `read_recent_session_startup_view` -> `RuntimeServices.session_lifecycle.read_recent_session_startup_view(...)`
-- `read_active_thread` -> `RuntimeServices.session_lifecycle.read_active_thread(...)`
-- `write_active_thread_handoff` -> `RuntimeServices.session_lifecycle.write_active_thread_handoff(...)`
-- `rebuild_recent_session_index` -> `RuntimeServices.session_lifecycle.rebuild_recent_session_index(...)`
-- `archive_completed_thread` -> `RuntimeServices.session_lifecycle.archive_completed_thread(...)`
+- `session_read_startup_view` -> `RuntimeServices.session_lifecycle.session_read_startup_view(...)`
+- `session_read_thread` -> `RuntimeServices.session_lifecycle.session_read_thread(...)`
+- `session_write_handoff` -> `RuntimeServices.session_lifecycle.session_write_handoff(...)`
+- `session_archive_thread` -> `RuntimeServices.session_lifecycle.session_archive_thread(...)`
 
 ## Shared Adapter Helpers
 

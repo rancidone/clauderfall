@@ -2,7 +2,7 @@
 title: Session Lifecycle Operation Runner
 doc_type: design
 status: draft
-updated: 2026-03-27
+updated: 2026-04-02
 summary: Defines the shared bounded operation and recovery mechanism used by the session-lifecycle backend service.
 ---
 
@@ -52,14 +52,13 @@ The operation runner should be used for multi-step lifecycle operations that nee
 
 That likely includes:
 
-- `write_active_thread_handoff`
-- `rebuild_recent_session_index`
-- `archive_completed_thread`
-- startup validation paths inside `read_recent_session_startup_view`
+- `session_write_handoff`
+- `session_archive_thread`
+- startup validation paths inside `session_read_startup_view`
 
 It does not need to wrap every simple read path.
 
-For example, a straightforward `read_active_thread` call may not need the full runner unless it grows recovery behavior later.
+For example, a straightforward `session_read_thread` call may not need the full runner unless it grows recovery behavior later.
 
 ## Execution Model
 

@@ -2,7 +2,7 @@
 title: Stage Runtime Operation Vocabulary
 doc_type: design
 status: draft
-updated: 2026-03-27
+updated: 2026-04-02
 summary: Defines the standardized cross-stage operation vocabulary for the shared Clauderfall runtime and MCP interfaces.
 ---
 
@@ -63,7 +63,7 @@ Examples:
 
 - `read_discovery_brief`
 - `read_design_unit`
-- `read_active_thread`
+- `session_read_thread`
 
 Do not introduce synonyms like `load`, `fetch`, or `get` unless there is a real distinction.
 
@@ -84,7 +84,7 @@ Examples:
 
 - `write_discovery_brief`
 - `write_design_unit`
-- `write_active_thread_handoff`
+- `session_write_handoff`
 
 `write` should be the default verb for persisted artifact updates.
 
@@ -116,7 +116,7 @@ Use `archive` when moving authoritative state from active usage into a historica
 
 Example:
 
-- `archive_completed_thread`
+- `session_archive_thread`
 
 This is domain-specific enough to remain a named verb, but broad enough to standardize where archival exists.
 
@@ -148,7 +148,7 @@ Use `rebuild` for deterministic regeneration of a derived artifact or projection
 
 Examples:
 
-- `rebuild_recent_session_index`
+- `rebuild_search_index`
 
 This should imply:
 
@@ -168,12 +168,12 @@ Examples:
 - `write_design_unit`
 - `checkpoint_discovery_brief`
 - `derive_design_start_context`
-- `archive_completed_thread`
+- `session_archive_thread`
 
 Qualifiers should only be added when they disambiguate a real distinction:
 
-- `read_recent_session_startup_view`
-- `write_active_thread_handoff`
+- `session_read_startup_view`
+- `session_write_handoff`
 
 ## 3. Domain-Specific Actions
 
@@ -241,11 +241,10 @@ and avoid mixing `state` and `status` when the concept is the ordinary workflow 
 
 The current lifecycle operation set is already close to the preferred vocabulary:
 
-- `read_recent_session_startup_view`
-- `read_active_thread`
-- `write_active_thread_handoff`
-- `rebuild_recent_session_index`
-- `archive_completed_thread`
+- `session_read_startup_view`
+- `session_read_thread`
+- `session_write_handoff`
+- `session_archive_thread`
 
 That makes the lifecycle cluster a good concrete starting example.
 

@@ -275,17 +275,17 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
 
 def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
     server.register_tool(
-        name="read_recent_session_startup_view",
+        name="session_read_startup_view",
         description="Read the startup-oriented recent-session view.",
         input_schema={
             "type": "object",
-            "properties": {"force_rebuild": {"type": "boolean"}},
+            "properties": {},
             "additionalProperties": False,
         },
-        handler=_read_recent_session_startup_view,
+        handler=_session_read_startup_view,
     )
     server.register_tool(
-        name="read_active_thread",
+        name="session_read_thread",
         description="Read one active thread in full detail.",
         input_schema={
             "type": "object",
@@ -293,11 +293,11 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
             "required": ["thread_id"],
             "additionalProperties": False,
         },
-        handler=_read_active_thread,
+        handler=_session_read_thread,
     )
     server.register_tool(
-        name="write_active_thread_handoff",
-        description="Persist one active-thread handoff update and refresh the startup projection.",
+        name="session_write_handoff",
+        description="Persist one active-thread handoff update.",
         input_schema={
             "type": "object",
             "properties": {
@@ -320,25 +320,10 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
             ],
             "additionalProperties": False,
         },
-        handler=_write_active_thread_handoff,
+        handler=_session_write_handoff,
     )
     server.register_tool(
-        name="rebuild_recent_session_index",
-        description="Deterministically rebuild the repo-level recent-session startup index.",
-        input_schema={
-            "type": "object",
-            "properties": {
-                "reason": {
-                    "type": "string",
-                    "enum": ["startup_validation", "handoff_recovery", "operator_requested"],
-                }
-            },
-            "additionalProperties": False,
-        },
-        handler=_rebuild_recent_session_index,
-    )
-    server.register_tool(
-        name="archive_completed_thread",
+        name="session_archive_thread",
         description="Archive one completed active thread and update startup state.",
         input_schema={
             "type": "object",
@@ -350,7 +335,7 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
             "required": ["thread_id", "closure_summary"],
             "additionalProperties": False,
         },
-        handler=_archive_completed_thread,
+        handler=_session_archive_thread,
     )
 
 
@@ -420,21 +405,16 @@ def _design_accept(services: RuntimeServices, payload: dict[str, Any]) -> dict[s
     )
 
 
-def _read_recent_session_startup_view(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(
-        services.session_lifecycle.read_recent_session_startup_view(
-            force_rebuild=optional_bool(payload, "force_rebuild"),
-        )
-    )
+def _session_read_startup_view(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return map_runtime_result(services.session_lifecycle.session_read_startup_view())
 
 
-def _read_active_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(
-        services.session_lifecycle.read_active_thread(thread_id=require_string(payload, "thread_id"))
-    )
+def _session_read_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    return map_runtime_result(services.session_lifecycle.session_read_thread(thread_id=require_string(payload, "thread_id")))
 
 
-def _write_active_thread_handoff(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     flush_reason_value = payload.get("flush_reason")
     flush_reason = FlushReason.CHECKPOINT
     if flush_reason_value is not None:
@@ -444,7 +424,7 @@ def _write_active_thread_handoff(services: RuntimeServices, payload: dict[str, A
             raise MCPValidationError(f"flush_reason must be one of: {', '.join(reason.value for reason in FlushReason)}") from exc
 
     return map_runtime_result(
-        services.session_lifecycle.write_active_thread_handoff(
+        services.session_lifecycle.session_write_handoff(
             thread_id=require_string(payload, "thread_id"),
             title=require_string(payload, "title"),
             current_intent_summary=require_string(payload, "current_intent_summary"),
@@ -455,19 +435,12 @@ def _write_active_thread_handoff(services: RuntimeServices, payload: dict[str, A
     )
 
 
-def _rebuild_recent_session_index(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    reason = payload.get("reason", "operator_requested")
-    if not isinstance(reason, str) or reason not in {"startup_validation", "handoff_recovery", "operator_requested"}:
-        raise MCPValidationError("reason must be 'startup_validation', 'handoff_recovery', or 'operator_requested'")
-    return map_runtime_result(services.session_lifecycle.rebuild_recent_session_index(reason=reason))
-
-
-def _archive_completed_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+def _session_archive_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     archived_thread_markdown = payload.get("archived_thread_markdown")
     if archived_thread_markdown is not None:
         raise MCPValidationError("archived_thread_markdown is not supported by the current runtime service")
     return map_runtime_result(
-        services.session_lifecycle.archive_completed_thread(
+        services.session_lifecycle.session_archive_thread(
             thread_id=require_string(payload, "thread_id"),
             closure_summary=require_string(payload, "closure_summary"),
         )

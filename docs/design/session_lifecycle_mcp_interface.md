@@ -2,7 +2,7 @@
 title: Session Lifecycle MCP Interface
 doc_type: design
 status: draft
-updated: 2026-03-27
+updated: 2026-04-02
 summary: Defines the high-level MCP operations, inputs, and result shapes for recent-session lifecycle work.
 ---
 
@@ -30,11 +30,10 @@ The MCP layer should not expose low-level file mutation as the default lifecycle
 
 The initial MCP surface should expose these operations:
 
-- `read_recent_session_startup_view`
-- `read_active_thread`
-- `write_active_thread_handoff`
-- `rebuild_recent_session_index`
-- `archive_completed_thread`
+- `session_read_startup_view`
+- `session_read_thread`
+- `session_write_handoff`
+- `session_archive_thread`
 
 This is intentionally small.
 
@@ -91,7 +90,7 @@ Lifecycle MCP operations should return references and concise structured metadat
 
 This field should stay operational and concise.
 
-## 1. `read_recent_session_startup_view`
+## 1. `session_read_startup_view`
 
 ## Purpose
 
@@ -101,22 +100,11 @@ Return the startup-oriented recent-session view used to begin session orientatio
 
 This operation should require no thread-specific input.
 
-Optional inputs may include:
-
-- `force_rebuild: boolean`
-
-`force_rebuild` should default to `false`.
-
-If `true`, the runtime may rebuild the repo-level recent-session index before returning the startup view.
-
 ## Behavior
 
-By default, the runtime should:
+The runtime should return the authoritative startup-oriented session view directly from persisted session state.
 
-1. read the persisted repo-level recent-session index
-2. validate it against active-thread metadata
-3. rebuild deterministically if the index is stale, malformed, or missing required projection data
-4. return the startup view
+Any validation or repair needed to make that view safe should happen inside the runtime rather than as a separate MCP step.
 
 ## Result Metadata
 
@@ -125,7 +113,6 @@ The response metadata should include at least:
 - `rebuilt: boolean`
 - `active_thread_count: number`
 - `recent_completed_count: number`
-- `startup_index_checkpoint_id`
 
 ## Returned View
 
@@ -133,14 +120,14 @@ The startup payload should include:
 
 - active thread summaries
 - recent completed thread summaries
-- any warnings about deterministic rebuild or malformed persisted startup state
+- any warnings about internal validation or repair
 
 The returned active thread list should already be deterministically ordered:
 
 - `updated_at` descending
 - stable secondary key such as `thread_id`
 
-## 2. `read_active_thread`
+## 2. `session_read_thread`
 
 ## Purpose
 
@@ -171,7 +158,7 @@ The response metadata should include at least:
 - `checkpoint_id`
 - `updated_at`
 
-## 3. `write_active_thread_handoff`
+## 3. `session_write_handoff`
 
 ## Purpose
 
@@ -198,13 +185,10 @@ Optional:
 The runtime should:
 
 1. persist the active-thread Markdown artifact
-2. persist the authoritative thread metadata sidecar
-3. checkpoint the thread artifact pair together
-4. refresh or derive the repo-level recent-session index projection for that thread
+2. persist the authoritative thread metadata
+3. make the new active-thread state durable
 
-The operation should succeed once the authoritative thread checkpoint is durable.
-
-If repo-index projection refresh fails after thread persistence succeeds, the operation may return `warning` rather than `failure`, provided the runtime marks the startup projection as stale and recoverable.
+The operation should succeed once the authoritative thread state is durable.
 
 ## Result Metadata
 
@@ -218,49 +202,9 @@ The response metadata should include at least:
 
 The response should not include the full persisted thread Markdown body.
 
-If the caller needs authoritative readable content after the write, it should use `read_active_thread`.
+If the caller needs authoritative readable content after the write, it should use `session_read_thread`.
 
-## 4. `rebuild_recent_session_index`
-
-## Purpose
-
-Deterministically regenerate the repo-level recent-session index from authoritative metadata.
-
-## Inputs
-
-This operation should require no thread-specific input.
-
-Optional inputs may include:
-
-- `reason`
-
-`reason` should be a controlled value such as:
-
-- `startup_validation`
-- `handoff_recovery`
-- `operator_requested`
-
-## Behavior
-
-The runtime should:
-
-1. read authoritative active-thread sidecars
-2. read the bounded recent-completions history metadata needed for startup projection
-3. regenerate the repo-level recent-session index mechanically
-4. persist the rebuilt startup index as the current projection
-
-This operation must not ask the LLM to regenerate summaries from prose.
-
-## Result Metadata
-
-The response metadata should include at least:
-
-- `rebuilt: true`
-- `active_thread_count`
-- `recent_completed_count`
-- `startup_index_checkpoint_id`
-
-## 5. `archive_completed_thread`
+## 4. `session_archive_thread`
 
 ## Purpose
 
@@ -301,8 +245,6 @@ The response metadata should include at least:
 - `archived: boolean`
 - `history_checkpoint_id`
 - `restored_to_active: boolean`
-- `startup_index_updated: boolean`
-
 The response should not include the full archived readable artifact body.
 
 ## Error Semantics
