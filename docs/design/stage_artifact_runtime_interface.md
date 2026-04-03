@@ -107,7 +107,6 @@ Stage-specific services should wrap them in stage-shaped operations such as:
 - Discovery `to_design`
 - Design `read`
 - Design `write_draft`
-- Design `to_review`
 - Design `accept`
 
 ## 1. `read_artifact`

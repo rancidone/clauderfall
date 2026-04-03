@@ -34,16 +34,15 @@ The design status MCP surface is:
 
 Use exactly one MCP call: `design_list`.
 
-Do not call `design_read`, `design_write_draft`, `design_to_review`, or `design_accept` as part of status orientation.
+Do not call `design_read`, `design_write_draft`, or `design_accept` as part of status orientation.
 
 ## Operating Rules
 
-* Parse an optional status filter argument: `accepted`, `in_review`, `draft`, `all`.
+* Parse an optional status filter argument: `accepted`, `draft`, `all`.
 * If no filter is provided:
-  * render `in_review` in full
   * render `draft` in full
   * render `accepted` as a count only
-* If `all` is provided, render all three groups in full.
+* If `all` is provided, render both groups in full.
 * If a specific status is provided, render only that group in full.
 * Within each rendered group, sort by `updated_at` descending.
 * Empty groups render as `[]`.
@@ -54,7 +53,7 @@ Do not call `design_read`, `design_write_draft`, `design_to_review`, or `design_
 ## Default Routine
 
 1. Call `design_list`.
-2. Group returned units by status in this order: `accepted`, `in_review`, `draft`.
+2. Group returned units by status in this order: `accepted`, `draft`.
 3. Apply the requested filter.
 4. Render YAML only.
 5. Preserve any warnings from `design_list`.
@@ -66,7 +65,6 @@ Default output:
 ```yaml
 design_status:
   accepted: 4 units
-  in_review: []
   draft: []
 ```
 
@@ -75,7 +73,6 @@ Filtered or `all` output:
 ```yaml
 design_status:
   accepted: []
-  in_review: []
   draft: []
 warnings: []
 ```

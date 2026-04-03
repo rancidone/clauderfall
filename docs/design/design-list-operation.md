@@ -47,7 +47,7 @@ For each record, produces a compact unit summary:
 
 ### 4. MCP tool `design_list`
 
-New tool in `server.py`, no required parameters. Calls `design.list()` and returns the result directly. Sits alongside `design_read`, `design_write_draft`, `design_to_review`, `design_accept`.
+New tool in `server.py`, no required parameters. Calls `design.list()` and returns the result directly. Sits alongside `design_read`, `design_write_draft`, and `design_accept`.
 
 ## Constraints
 

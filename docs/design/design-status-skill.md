@@ -6,14 +6,13 @@ There is no way to quickly orient on design progress across all units without lo
 
 ## Solution
 
-A slash command skill `/design-status` with an optional status filter argument. Default output shows only active units (in_review + draft) plus an accepted count. The filter arg expands to a specific status group.
+A slash command skill `/design-status` with an optional status filter argument. Default output shows draft units in full plus an accepted count. The filter arg expands to a specific status group.
 
 ### Invocation
 
 ```
 /design-status           # default: active units + accepted count
 /design-status accepted  # full accepted list
-/design-status in_review # in_review only
 /design-status draft     # draft only
 /design-status all       # all units across all statuses
 ```
@@ -21,22 +20,18 @@ A slash command skill `/design-status` with an optional status filter argument. 
 ### Skill Behavior
 
 1. Call `design_list` MCP tool — one round-trip, no arguments.
-2. Parse the optional argument (none, `accepted`, `in_review`, `draft`, `all`).
+2. Parse the optional argument (none, `accepted`, `draft`, `all`).
 3. Apply the view filter (see Output Format).
 4. Within each rendered group, sort by `updated_at` descending.
 5. If `design_list` returns a warning for a malformed unit, append a `warnings` key.
 
 ### Output Format — Default (no arg)
 
-Shows `in_review` and `draft` in full; collapses `accepted` to a count.
+Shows `draft` in full; collapses `accepted` to a count.
 
 ```yaml
 design_status:
   accepted: 4 units
-  in_review:
-    - unit_id: design-status-skill
-      readiness: medium
-      updated_at: "2026-04-01"
   draft:
     - unit_id: some-other-unit
       readiness: low
@@ -57,12 +52,12 @@ design_status:
 
 ### Output Format — All (`/design-status all`)
 
-All three groups in full, same structure as filtered but with all groups present.
+Both groups in full, same structure as filtered but with all groups present.
 
 ### Edge Cases
 
 - Empty group renders as `[]`, not omitted.
-- No units at all: all groups render as `[]`.
+- No units at all: both groups render as `[]`.
 - Malformed units included with a `warnings` key appended to the output.
 - Unknown filter arg: return a short error message, list valid args.
 

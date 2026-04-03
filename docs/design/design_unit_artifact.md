@@ -91,7 +91,7 @@ These fields appear necessary now.
 
 `title` is the operator-facing name for the unit.
 
-`status` is the workflow state of the artifact itself, not the design readiness judgment. It should answer whether the unit is still being drafted, is under review, or is accepted as the current working design.
+`status` is the workflow state of the artifact itself, not the design readiness judgment. It should answer whether the unit is still being drafted or is accepted as the current working design.
 
 ### Boundary
 
@@ -172,7 +172,7 @@ The current minimum viable logical shape is:
 ```yaml
 design_unit_id: string
 title: string
-status: draft | in_review | accepted
+status: draft | accepted
 scope_summary: string
 depends_on: [design_unit_id]
 children: [design_unit_id]
@@ -193,7 +193,7 @@ At minimum:
 
 - creating or opening a new design-unit artifact initializes `status: draft`
 - creating or opening a new design-unit artifact requires a fresh `readiness` and `readiness_rationale`
-- moving an existing artifact to `in_review` or `accepted` applies only to that artifact
+- moving an existing artifact to `accepted` applies only to that artifact
 - decomposition may create related units, but it does not transfer workflow state automatically across artifacts
 
 ## Readability Rule
@@ -211,7 +211,7 @@ The intended balance is:
 
 Some details remain intentionally open:
 
-- whether `status` should use exactly `draft | in_review | accepted` or a slightly different small set
+- whether `status` should use exactly `draft | accepted` or a slightly different small set
 - whether `open_questions` and `assumptions` should later distinguish operator-confirmed items from interviewer-inferred items
 - whether parent readiness should eventually carry an explicit derived signal from child readiness or remain a judgment the engine computes conversationally
 

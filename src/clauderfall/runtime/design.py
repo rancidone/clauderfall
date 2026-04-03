@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from clauderfall.runtime.artifacts import StageArtifactRuntime
@@ -28,9 +29,10 @@ DESIGN_REQUIRED_FIELDS = (
 )
 
 DESIGN_RELATIONSHIP_FIELDS = ("depends_on", "children", "parent")
-DESIGN_ALLOWED_STATUSES = {"draft", "in_review", "accepted"}
-DESIGN_MUTABLE_STATUSES = {"draft", "in_review"}
+DESIGN_ALLOWED_STATUSES = {"draft", "accepted"}
+DESIGN_MUTABLE_STATUSES = {"draft"}
 DESIGN_READINESS_VALUES = {"low", "medium", "high"}
+HEADING_PATTERN = re.compile(r"^(#{1,6})[ \t]+(.+?)\s*$", re.MULTILINE)
 
 
 @dataclass(frozen=True)
@@ -76,7 +78,7 @@ class DesignRuntimeService:
         if view == "full":
             shaped_artifacts["open_questions"] = stage_metadata.get("open_questions", [])
             shaped_artifacts["assumptions"] = stage_metadata.get("assumptions", [])
-            shaped_artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key) or ""
+            shaped_artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key, checkpoint_id=checkpoint_id) or ""
         return ArtifactRuntimeResult(
             result=result.result,
             warnings=result.warnings,
@@ -88,9 +90,41 @@ class DesignRuntimeService:
         self,
         *,
         unit_id: str,
-        markdown: str,
-        sidecar: dict[str, object],
+        markdown: str | None = None,
+        sidecar: dict[str, object] | None = None,
+        markdown_operations: list[dict[str, object]] | None = None,
+        sidecar_patch: dict[str, object] | None = None,
+        base_checkpoint_id: str | None = None,
     ) -> ArtifactRuntimeResult:
+        if markdown is not None or sidecar is not None:
+            return self._write_full_draft(
+                unit_id=unit_id,
+                markdown=markdown,
+                sidecar=sidecar,
+            )
+        return self._write_delta_draft(
+            unit_id=unit_id,
+            markdown_operations=markdown_operations,
+            sidecar_patch=sidecar_patch,
+            base_checkpoint_id=base_checkpoint_id,
+        )
+
+    def _write_full_draft(
+        self,
+        *,
+        unit_id: str,
+        markdown: str | None,
+        sidecar: dict[str, object] | None,
+    ) -> ArtifactRuntimeResult:
+        if markdown is None or sidecar is None:
+            return ArtifactRuntimeResult(
+                result=OperationResult(
+                    status=OperationStatus.ERROR,
+                    message="full design writes require both markdown and sidecar",
+                ),
+                metadata={"unit_id": unit_id},
+            )
+
         errors = _validate_design_sidecar(sidecar)
         if errors:
             return ArtifactRuntimeResult(
@@ -106,7 +140,7 @@ class DesignRuntimeService:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message="write_draft may persist only draft or in_review status",
+                    message="write_draft may persist only draft status",
                 ),
                 metadata={"unit_id": unit_id, "status": status},
             )
@@ -118,62 +152,98 @@ class DesignRuntimeService:
             flush_reason=FlushReason.CHECKPOINT,
         )
 
-    def to_review(
+    def _write_delta_draft(
         self,
         *,
         unit_id: str,
+        markdown_operations: list[dict[str, object]] | None,
+        sidecar_patch: dict[str, object] | None,
+        base_checkpoint_id: str | None,
     ) -> ArtifactRuntimeResult:
+        if not markdown_operations and not sidecar_patch:
+            return ArtifactRuntimeResult(
+                result=OperationResult(
+                    status=OperationStatus.ERROR,
+                    message="delta design writes require markdown_operations or sidecar_patch",
+                ),
+                metadata={"unit_id": unit_id},
+            )
+
         key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id)
         read_result = self.artifacts.read_artifact(key=key)
         if not read_result.result.ok:
             return read_result
 
-        stage_metadata = dict(read_result.artifacts["stage_metadata"])
-        errors = _validate_design_sidecar(stage_metadata)
+        current_checkpoint_id = str(read_result.metadata["checkpoint_id"])
+        if base_checkpoint_id is not None and base_checkpoint_id != current_checkpoint_id:
+            return ArtifactRuntimeResult(
+                result=OperationResult(
+                    status=OperationStatus.ERROR,
+                    message="base checkpoint does not match current authoritative checkpoint",
+                ),
+                metadata={
+                    "unit_id": unit_id,
+                    "base_checkpoint_id": base_checkpoint_id,
+                    "current_checkpoint_id": current_checkpoint_id,
+                },
+            )
+
+        current_markdown = self.artifacts.read_artifact_markdown(key=key) or ""
+        current_sidecar = dict(read_result.artifacts["stage_metadata"])
+        merged_sidecar = dict(current_sidecar)
+        if sidecar_patch:
+            merged_sidecar.update(sidecar_patch)
+
+        errors = _validate_design_sidecar(merged_sidecar)
         if errors:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message="design unit is missing required review fields",
+                    message="invalid design sidecar patch",
                 ),
                 metadata={"unit_id": unit_id, "errors": errors},
             )
 
-        status = stage_metadata["status"]
-        if status == "accepted":
+        status = merged_sidecar["status"]
+        if status not in DESIGN_MUTABLE_STATUSES:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message="accepted design unit cannot move back into review via to_review",
+                    message="write_draft may persist only draft status",
                 ),
                 metadata={"unit_id": unit_id, "status": status},
             )
-        if status == "in_review":
+
+        try:
+            next_markdown = _apply_markdown_operations(current_markdown, markdown_operations or [])
+        except ValueError as exc:
             return ArtifactRuntimeResult(
                 result=OperationResult(
-                    status=OperationStatus.OK,
-                    message="design unit already in review",
+                    status=OperationStatus.ERROR,
+                    message=f"invalid markdown operations: {exc}",
                 ),
-                artifacts={"version_id": read_result.artifacts["version_id"]},
-                metadata={
-                    "unit_id": unit_id,
-                    "version_id": read_result.metadata["version_id"],
-                    "checkpoint_id": read_result.metadata["checkpoint_id"],
-                    "status": status,
-                },
+                metadata={"unit_id": unit_id},
             )
 
-        return self.artifacts.transition_artifact_status(
+        result = self.artifacts.write_artifact_checkpoint(
             key=key,
-            status="in_review",
-            flush_reason=FlushReason.REVIEW_TRANSITION,
+            markdown=next_markdown,
+            stage_metadata=merged_sidecar,
+            flush_reason=FlushReason.CHECKPOINT,
+        )
+        metadata = dict(result.metadata)
+        metadata["base_checkpoint_id"] = current_checkpoint_id
+        return ArtifactRuntimeResult(
+            result=result.result,
+            warnings=result.warnings,
+            artifacts=result.artifacts,
+            metadata=metadata,
         )
 
     def accept(
         self,
         *,
         unit_id: str,
-        override: bool = False,
     ) -> ArtifactRuntimeResult:
         key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id)
         read_result = self.artifacts.read_artifact(key=key)
@@ -204,17 +274,7 @@ class DesignRuntimeService:
                     "version_id": read_result.metadata["version_id"],
                     "checkpoint_id": read_result.metadata["checkpoint_id"],
                     "status": status,
-                    "override": override,
                 },
-            )
-
-        if status != "in_review" and not override:
-            return ArtifactRuntimeResult(
-                result=OperationResult(
-                    status=OperationStatus.ERROR,
-                    message="design unit must be in_review before acceptance unless override is explicit",
-                ),
-                metadata={"unit_id": unit_id, "status": status, "override": override},
             )
 
         transition = self.artifacts.transition_artifact_status(
@@ -225,16 +285,11 @@ class DesignRuntimeService:
         if not transition.result.ok:
             return transition
 
-        warnings = transition.warnings
-        if override and status == "draft":
-            warnings = (*warnings, "Design acceptance proceeded from draft via explicit override.")
-
         metadata = dict(transition.metadata)
-        metadata["override"] = override
         metadata["accepted_from_status"] = status
         return ArtifactRuntimeResult(
             result=transition.result,
-            warnings=warnings,
+            warnings=transition.warnings,
             artifacts=transition.artifacts,
             metadata=metadata,
         )
@@ -247,7 +302,7 @@ def _validate_design_sidecar(sidecar: dict[str, object]) -> list[str]:
             errors.append(f"missing required field: {field}")
 
     if sidecar.get("status") not in DESIGN_ALLOWED_STATUSES:
-        errors.append("status must be 'draft', 'in_review', or 'accepted'")
+        errors.append("status must be 'draft' or 'accepted'")
     if sidecar.get("design_unit_id") is not None and sidecar.get("design_unit_id") == "":
         errors.append("design_unit_id must be a non-empty string")
     if not isinstance(sidecar.get("title"), str) or not sidecar.get("title"):
@@ -319,3 +374,124 @@ def _render_design_payload(
             "parent": stage_metadata.get("parent"),
         },
     }
+
+
+def _apply_markdown_operations(markdown: str, operations: list[dict[str, object]]) -> str:
+    updated = markdown
+    for operation in operations:
+        op_name = operation.get("op")
+        if not isinstance(op_name, str) or not op_name:
+            raise ValueError("each markdown operation requires a non-empty op")
+
+        if op_name == "replace_section":
+            heading = _require_string_field(operation, "heading")
+            content = _require_string_field(operation, "content")
+            updated = _replace_section(updated, heading=heading, content=content)
+            continue
+        if op_name == "append_to_section":
+            heading = _require_string_field(operation, "heading")
+            content = _require_string_field(operation, "content")
+            updated = _append_to_section(updated, heading=heading, content=content)
+            continue
+        if op_name == "insert_section_after":
+            after_heading = _require_string_field(operation, "after_heading")
+            heading_line = _require_string_field(operation, "heading_line")
+            content = _require_string_field(operation, "content")
+            updated = _insert_section_after(
+                updated,
+                after_heading=after_heading,
+                heading_line=heading_line,
+                content=content,
+            )
+            continue
+        if op_name == "delete_section":
+            heading = _require_string_field(operation, "heading")
+            updated = _delete_section(updated, heading=heading)
+            continue
+        if op_name == "append_markdown":
+            content = _require_string_field(operation, "content")
+            updated = _append_markdown(updated, content=content)
+            continue
+        raise ValueError(f"unsupported markdown operation: {op_name}")
+    return updated
+
+
+def _require_string_field(payload: dict[str, object], field: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _replace_section(markdown: str, *, heading: str, content: str) -> str:
+    start, end, heading_line = _find_section(markdown, heading)
+    section = _render_section(heading_line=heading_line, content=content)
+    return markdown[:start] + section + markdown[end:]
+
+
+def _append_to_section(markdown: str, *, heading: str, content: str) -> str:
+    start, end, heading_line = _find_section(markdown, heading)
+    existing_section = markdown[start:end]
+    existing_body = existing_section[len(heading_line) :].strip()
+    combined = existing_body
+    addition = content.strip()
+    if combined:
+        combined = f"{combined}\n\n{addition}" if addition else combined
+    else:
+        combined = addition
+    section = _render_section(heading_line=heading_line, content=combined)
+    return markdown[:start] + section + markdown[end:]
+
+
+def _insert_section_after(markdown: str, *, after_heading: str, heading_line: str, content: str) -> str:
+    _, end, _ = _find_section(markdown, after_heading)
+    inserted = _render_section(heading_line=heading_line, content=content)
+    prefix = markdown[:end].rstrip()
+    suffix = markdown[end:].lstrip("\n")
+    if suffix:
+        return f"{prefix}\n\n{inserted}\n\n{suffix}"
+    return f"{prefix}\n\n{inserted}"
+
+
+def _delete_section(markdown: str, *, heading: str) -> str:
+    start, end, _ = _find_section(markdown, heading)
+    prefix = markdown[:start].rstrip()
+    suffix = markdown[end:].lstrip("\n")
+    if prefix and suffix:
+        return f"{prefix}\n\n{suffix}"
+    return prefix or suffix
+
+
+def _append_markdown(markdown: str, *, content: str) -> str:
+    stripped = markdown.rstrip()
+    addition = content.strip()
+    if not stripped:
+        return addition
+    if not addition:
+        return stripped
+    return f"{stripped}\n\n{addition}"
+
+
+def _render_section(*, heading_line: str, content: str) -> str:
+    body = content.strip()
+    if body:
+        return f"{heading_line}\n\n{body}\n"
+    return f"{heading_line}\n"
+
+
+def _find_section(markdown: str, heading: str) -> tuple[int, int, str]:
+    matches = list(HEADING_PATTERN.finditer(markdown))
+    normalized_heading = heading.strip()
+    for index, match in enumerate(matches):
+        heading_text = match.group(2).strip()
+        if heading_text != normalized_heading:
+            continue
+        level = len(match.group(1))
+        start = match.start()
+        end = len(markdown)
+        for next_match in matches[index + 1 :]:
+            if len(next_match.group(1)) <= level:
+                end = next_match.start()
+                break
+        return start, end, match.group(0).rstrip()
+    raise ValueError(f"section not found: {heading}")

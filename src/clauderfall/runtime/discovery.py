@@ -53,7 +53,7 @@ class DiscoveryRuntimeService:
         if view == "full":
             artifacts["problem_areas"] = sidecar.get("problem_areas", [])
             artifacts["cross_cutting"] = sidecar.get("cross_cutting", {})
-            artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key) or ""
+            artifacts["markdown"] = self.artifacts.read_artifact_markdown(key=key, checkpoint_id=checkpoint_id) or ""
         return ArtifactRuntimeResult(
             result=result.result,
             warnings=result.warnings,

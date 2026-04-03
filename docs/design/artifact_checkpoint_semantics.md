@@ -83,8 +83,8 @@ A flush should happen only at meaningful checkpoints, not on every turn.
 The current default triggers remain:
 
 - when a draft becomes coherent enough that losing it would be costly
-- when review state changes materially
-- when an operator review decision is made
+- when artifact acceptance changes materially
+- when an operator acceptance decision is made
 - when decomposition creates or materially restructures units
 - when context pressure makes continued session-only state risky
 
@@ -94,7 +94,7 @@ These are product-level triggers, not a guarantee that every sentence edit becom
 
 Workflow status and readiness are checkpointed artifact state, not separate audit events.
 
-If a design unit moves from `draft` to `in_review`, or from `accepted` back to `draft`, that change should appear in a later checkpoint for the same `artifact_id`.
+If a design unit moves from `draft` to `accepted`, or from `accepted` back to `draft`, that change should appear in a later checkpoint for the same `artifact_id`.
 
 The model should not create a new artifact identity just because workflow state changed.
 

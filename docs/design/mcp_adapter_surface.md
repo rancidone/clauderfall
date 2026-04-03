@@ -34,7 +34,6 @@ The tool names should be explicit and stage-shaped:
 - `discovery_to_design`
 - `design_read`
 - `design_write_draft`
-- `design_to_review`
 - `design_accept`
 - `session_read_startup_view`
 - `session_read_thread`
@@ -179,7 +178,6 @@ The first adapter layer should map tools to runtime services like this.
 
 - `design_read` -> `RuntimeServices.design.read(...)`
 - `design_write_draft` -> `RuntimeServices.design.write_draft(...)`
-- `design_to_review` -> `RuntimeServices.design.to_review(...)`
 - `design_accept` -> `RuntimeServices.design.accept(...)`
 
 ### Session Lifecycle

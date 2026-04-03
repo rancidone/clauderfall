@@ -144,7 +144,7 @@ Examples of the intended style:
 
 Readiness and artifact status are different signals.
 
-`status` answers where the artifact is in the review workflow.
+`status` answers whether the artifact is still being drafted or has been accepted.
 
 `readiness` answers whether the design is strong enough to build from.
 

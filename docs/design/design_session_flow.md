@@ -147,9 +147,9 @@ That recommendation should include:
 
 Decomposition should be framed as a design clarification move, not as project planning.
 
-## 6. Review Readiness Check
+## 6. Acceptance Readiness Check
 
-When the unit becomes coherent and concrete enough, the engine should suggest moving it to `in_review`.
+When the unit becomes coherent and concrete enough, the engine should make the readiness judgment explicit and surface whether the current draft looks ready to accept.
 
 The trigger is not document length. The trigger is that the engine can now state, with reasonable confidence:
 
@@ -159,11 +159,11 @@ The trigger is not document length. The trigger is that the engine can now state
 - what the main remaining uncertainty is
 - what readiness judgment it currently deserves
 
-If the engine cannot do that honestly, the unit is not ready for review.
+If the engine cannot do that honestly, the unit is not ready to accept.
 
-## 7. Review Moment
+## 7. Acceptance Moment
 
-At review time, the engine should present a short review summary covering:
+At acceptance time, the engine should present a short summary covering:
 
 - scope
 - proposed design
@@ -179,7 +179,7 @@ The operator should then be able to respond in one of four ways:
 - redirect to a blocking dependency or alternative unit
 - defer build-readiness approval
 
-This keeps review explicit without making it ceremonially heavy.
+This keeps acceptance explicit without adding a separate persisted review state.
 
 ## 8. Build-Readiness Recommendation
 
@@ -196,9 +196,9 @@ If the unit remains `medium` or `low`, the engine should instead name what still
 
 The recommendation is not the approval. The operator remains the decision-maker.
 
-## 9. Post-Review Sequencing
+## 9. Post-Acceptance Sequencing
 
-After review, the engine should name the next likely unit.
+After acceptance, the engine should name the next likely unit.
 
 That recommendation should connect back to the current unit's outcome:
 
@@ -214,7 +214,7 @@ If the operator or engine then opens that next unit as a new document, the workf
 - a fresh local `readiness`
 - a fresh `readiness_rationale`
 
-This avoids accidentally carrying review-state semantics from the previously active unit into a newly opened one.
+This avoids accidentally carrying acceptance-state semantics from the previously active unit into a newly opened one.
 
 ## Example Interaction Skeleton
 
@@ -226,8 +226,8 @@ The intended interaction shape is roughly:
 4. engine opens the unit in `draft`
 5. drafting questions and artifact updates
 6. decomposition if needed
-7. engine proposes `in_review`
-8. review summary with readiness judgment
+7. engine states the current readiness and acceptance posture
+8. acceptance summary with readiness judgment
 9. operator accepts, revises, or defers build approval
 10. engine recommends the next unit
 

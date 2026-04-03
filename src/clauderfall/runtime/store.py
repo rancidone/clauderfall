@@ -25,6 +25,18 @@ CREATE TABLE IF NOT EXISTS artifacts (
 );
 """
 
+_CREATE_ARTIFACT_CHECKPOINTS = """
+CREATE TABLE IF NOT EXISTS artifact_checkpoints (
+    stage TEXT NOT NULL,
+    artifact_id TEXT NOT NULL,
+    version_id TEXT NOT NULL,
+    stage_metadata TEXT NOT NULL,
+    flush_reason TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (stage, artifact_id, version_id)
+);
+"""
+
 _CREATE_THREADS = """
 CREATE TABLE IF NOT EXISTS threads (
     thread_id TEXT PRIMARY KEY,
@@ -49,6 +61,7 @@ class ArtifactStore:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.execute(_CREATE_ARTIFACTS)
+            conn.execute(_CREATE_ARTIFACT_CHECKPOINTS)
             conn.execute(_CREATE_THREADS)
 
     def read(self, key: ArtifactKey) -> ArtifactRecord | None:
@@ -90,6 +103,26 @@ class ArtifactStore:
             for row in rows
         ]
 
+    def read_checkpoint(self, *, key: ArtifactKey, checkpoint_id: str) -> ArtifactRecord | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                """
+                SELECT version_id, stage_metadata, flush_reason, updated_at
+                FROM artifact_checkpoints
+                WHERE stage = ? AND artifact_id = ? AND version_id = ?
+                """,
+                (key.stage.value, key.artifact_id, checkpoint_id),
+            ).fetchone()
+        if row is None:
+            return None
+        return ArtifactRecord(
+            key=key,
+            version_id=row["version_id"],
+            stage_metadata=json.loads(row["stage_metadata"]),
+            flush_reason=row["flush_reason"],
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+        )
+
     def write(
         self,
         *,
@@ -122,11 +155,29 @@ class ArtifactStore:
                     updated_at_str,
                 ),
             )
+            conn.execute(
+                """
+                INSERT INTO artifact_checkpoints (stage, artifact_id, version_id, stage_metadata, flush_reason, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    key.stage.value,
+                    key.artifact_id,
+                    version_id,
+                    json.dumps(stage_metadata),
+                    flush_reason,
+                    updated_at_str,
+                ),
+            )
 
         if markdown is not None and key.stage in MARKDOWN_STAGES:
-            path = self.markdown_path(key)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(markdown)
+            current_path = self.markdown_path(key)
+            current_path.parent.mkdir(parents=True, exist_ok=True)
+            current_path.write_text(markdown)
+
+            checkpoint_path = self.checkpoint_markdown_path(key=key, checkpoint_id=version_id)
+            checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
+            checkpoint_path.write_text(markdown)
 
         return ArtifactRecord(
             key=key,
@@ -139,8 +190,11 @@ class ArtifactStore:
     def markdown_path(self, key: ArtifactKey) -> Path:
         return self.docs_root / key.stage.value / f"{key.artifact_id}.md"
 
-    def read_markdown(self, key: ArtifactKey) -> str | None:
-        path = self.markdown_path(key)
+    def checkpoint_markdown_path(self, *, key: ArtifactKey, checkpoint_id: str) -> Path:
+        return self.docs_root / key.stage.value / ".checkpoints" / key.artifact_id / f"{checkpoint_id}.md"
+
+    def read_markdown(self, key: ArtifactKey, checkpoint_id: str | None = None) -> str | None:
+        path = self.markdown_path(key) if checkpoint_id is None else self.checkpoint_markdown_path(key=key, checkpoint_id=checkpoint_id)
         if not path.exists():
             return None
         return path.read_text()

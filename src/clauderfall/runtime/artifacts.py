@@ -26,16 +26,21 @@ class StageArtifactRuntime:
         key: ArtifactKey,
         checkpoint_id: str | None = None,
     ) -> ArtifactRuntimeResult:
-        # checkpoint_id is ignored — only current state is stored
-        del checkpoint_id
-        record = self.store.read(key)
+        record = self.store.read(key) if checkpoint_id is None else self.store.read_checkpoint(key=key, checkpoint_id=checkpoint_id)
         if record is None:
+            message = f"artifact not found: {key.stage.value}/{key.artifact_id}"
+            if checkpoint_id is not None:
+                message = f"checkpoint not found: {key.stage.value}/{key.artifact_id}@{checkpoint_id}"
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message=f"artifact not found: {key.stage.value}/{key.artifact_id}",
+                    message=message,
                 ),
-                metadata={"artifact_id": key.artifact_id, "stage": key.stage.value},
+                metadata={
+                    "artifact_id": key.artifact_id,
+                    "stage": key.stage.value,
+                    **({"checkpoint_id": checkpoint_id} if checkpoint_id is not None else {}),
+                },
             )
 
         return ArtifactRuntimeResult(
@@ -44,9 +49,9 @@ class StageArtifactRuntime:
             metadata=_render_metadata(key=key, record=record),
         )
 
-    def read_artifact_markdown(self, *, key: ArtifactKey) -> str | None:
+    def read_artifact_markdown(self, *, key: ArtifactKey, checkpoint_id: str | None = None) -> str | None:
         """Return the raw markdown body for a key, or None if not found. For internal runtime use only."""
-        return self.store.read_markdown(key)
+        return self.store.read_markdown(key, checkpoint_id=checkpoint_id)
 
     def list_artifacts(self, *, stage: ArtifactStage) -> list[ArtifactRecord]:
         return self.store.list_by_stage(stage)

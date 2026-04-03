@@ -2,8 +2,8 @@
 title: Clauderfall Design Review Workflow
 doc_type: design
 status: stable
-updated: 2026-03-22
-summary: Defines how a design unit moves through drafting, review, and build-readiness approval during the Design stage.
+updated: 2026-04-02
+summary: Defines how a design unit moves through drafting, acceptance, and build-readiness approval during the Design stage.
 ---
 
 # Clauderfall Design Review Workflow
@@ -23,7 +23,7 @@ Design should advance draft artifacts by default during the interview.
 
 The engine should not ask for approval on every small revision.
 
-However, the workflow must still preserve an explicit review moment before a unit is treated as buildable.
+However, the workflow does not need a separate persisted review state. Readiness already carries the judgment signal.
 
 ## Core Signals
 
@@ -40,7 +40,6 @@ The operator also makes a separate explicit judgment about whether the unit is r
 The current recommended `status` set is:
 
 - `draft`
-- `in_review`
 - `accepted`
 
 This is intentionally small.
@@ -50,12 +49,6 @@ This is intentionally small.
 `draft` means the design is still being actively developed.
 
 The document may already be substantial. The label only means the session is still shaping the design rather than asking for a review decision.
-
-### `in_review`
-
-`in_review` means the unit is stable enough to review as the current proposed design.
-
-This is the point where the engine should be willing to summarize the unit's scope, main design choices, unresolved pressure, and readiness judgment for operator review.
 
 ### `accepted`
 
@@ -68,10 +61,9 @@ This does not automatically mean the unit has `high` readiness or is approved fo
 The default flow should be:
 
 1. work the unit in `draft`
-2. move to `in_review` when the design has stabilized enough for evaluation
-3. ask for explicit operator review of the unit's readiness
-4. mark the artifact `accepted` if the operator accepts it as the current design
-5. separately note whether the unit is approved to treat as buildable
+2. use readiness and readiness rationale to make the current judgment explicit
+3. mark the artifact `accepted` if the operator accepts it as the current design
+4. separately note whether the unit is approved to treat as buildable
 
 The key separation is:
 
@@ -80,20 +72,9 @@ The key separation is:
 
 These often happen together, but they are not the same thing.
 
-## When To Enter Review
+## Acceptance Moment
 
-The engine should suggest moving a unit to `in_review` when:
-
-- the unit boundary is coherent
-- the main design is visible and concrete
-- the readiness rating can be argued honestly
-- the main remaining uncertainty is explicit rather than hidden
-
-The engine should not push review just because the document is long enough.
-
-## Review Moment
-
-At review time, the engine should make the current judgment explicit.
+At acceptance time, the engine should make the current judgment explicit.
 
 The minimum review summary should cover:
 
@@ -127,7 +108,6 @@ This matters because the operator may choose to:
 The expected combinations are:
 
 - `draft` + `low` or `medium` is normal
-- `in_review` + any readiness is possible, though `low` should usually trigger more work
 - `accepted` + `medium` is valid when the artifact is accepted but not yet buildable
 - `accepted` + `high` is the common case for a unit that is both accepted and approved as a build candidate
 
@@ -145,7 +125,7 @@ Cross-unit transitions should be deterministic:
 
 Acceptance is not permanent closure.
 
-If later design work reveals a material issue, the engine should be able to reopen the unit by moving it back to `draft` or `in_review` and revising readiness accordingly.
+If later design work reveals a material issue, the engine should be able to reopen the unit by moving it back to `draft` and revising readiness accordingly.
 
 This avoids the false idea that design review is irreversible.
 
@@ -161,7 +141,7 @@ Those are different transitions and should not be conflated.
 The engine should explicitly flush the current artifact at meaningful checkpoints, especially when:
 
 - a draft becomes coherent enough for review
-- a review decision is made
+- an acceptance decision is made
 - context pressure threatens loss of meaningful progress
 - decomposition creates new units that change the sequencing picture
 
@@ -175,8 +155,8 @@ The workflow should avoid:
 
 - treating `accepted` as equivalent to approved-to-build in every case
 - forcing explicit approval on every draft revision
-- leaving units in `draft` indefinitely because review feels heavyweight
-- assigning `high` readiness without triggering an explicit review moment
+- leaving units in `draft` indefinitely because acceptance feels heavyweight
+- assigning `high` readiness without making the current acceptance posture explicit
 - pretending a reopened unit is a workflow failure rather than normal design iteration
 
 ## Open Question
