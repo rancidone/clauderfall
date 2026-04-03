@@ -113,6 +113,27 @@ Use `discovery_write_draft` when you have a material brief revision that should 
 * the readiness signal
 * the readiness rationale
 
+When writing the structured sidecar, include the minimum required shape explicitly:
+
+* `title`
+* `status`
+* `readiness`
+* `readiness_rationale`
+* `blocking_gaps`
+* `problem_areas`
+* `cross_cutting`
+
+Do not write an empty `problem_areas` list.
+Even a small brief should identify at least one concrete problem area with:
+
+* `problem_area_id`
+* `title`
+* `confidence`
+* `source_section`
+* `assumptions`
+
+Keep the sidecar concise, but make it structurally valid before calling `discovery_write_draft`.
+
 `discovery_write_draft` may persist `draft` or `accepted`.
 Writing `accepted` does not itself move the session into Design.
 

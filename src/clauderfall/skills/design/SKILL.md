@@ -79,6 +79,8 @@ Design does not own:
 * Make tradeoffs and unresolved decisions explicit instead of smoothing over them.
 * If the current design unit is too broad, say so and propose decomposition.
 * If readiness is weak, say so directly and identify why.
+* Do not add a ceremonial `design_to_review` step when the operator is already explicitly accepting the co-authored design and no separate review pass is needed. Use `design_accept` with explicit override instead.
+* Keep required sidecar fields concise. Do not duplicate the full design body into `readiness_rationale`, `open_questions`, or `assumptions` when a short machine-usable summary is enough.
 * Do not smuggle execution planning into the design artifact.
 * Treat MCP results as authoritative for current checkpoint, persisted status, and whether review or acceptance actually happened.
 
@@ -103,6 +105,8 @@ Typical times to call `design_read`:
 * after any warning or failure result
 * before revising the current authoritative design unit
 
+Do not reread reflexively when the current authoritative content was just written or read successfully in the same session and nothing suggests it changed.
+
 Use `design_write_draft` when you have a material design revision that should become the authoritative current checkpoint.
 
 `design_write_draft` is the normal persistence path for Design and should carry:
@@ -118,6 +122,8 @@ It does not itself accept the design artifact.
 It is also the normal reopen path when a reviewed or accepted unit needs revision again with `status: draft`.
 
 Use `design_to_review` only when the operator wants the current unit moved into explicit review state.
+
+If the operator is explicitly accepting the current unit and there is no meaningful separate review pass, prefer `design_accept` with explicit override over a synthetic `design_to_review` then `design_accept` loop.
 
 Use `design_accept` only when the operator wants the current unit accepted as the design record.
 

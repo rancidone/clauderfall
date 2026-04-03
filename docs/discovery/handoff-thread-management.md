@@ -2,20 +2,22 @@
 
 ## Problem
 
-The handoff system has no skill surface and a minimal MCP surface. Currently there is no way for a user or LLM to:
+The handoff system now has an initial packaged skill surface and a minimal MCP surface, but the overall thread-management experience is still incomplete.
 
-- Query open threads interactively
-- Archive or close threads from a skill
-- Orient at session startup via a skill
-- Manage thread lifecycle (create, update, archive) without direct MCP tool calls
+Current gaps still include:
 
-The MCP tools that exist (`session_read_thread`, `session_read_startup_view`, `session_write_handoff`, `session_archive_thread`) are functional but incomplete as a surface for both LLM-driven and user-driven thread management.
+- querying open threads beyond the compact startup view
+- filtering or searching active threads interactively
+- managing lifecycle cleanup from a richer skill surface
+- handling new-thread identity more explicitly than write-time upsert
+
+The current MCP tools (`session_read_thread`, `session_read_startup_view`, `session_write_handoff`, `session_archive_thread`) are functional but still incomplete as a surface for both LLM-driven and user-driven thread management.
 
 ## Known Problem Areas
 
-- No skill entry point for thread startup orientation
-- No skill for listing, querying, or filtering open threads
-- No skill for archiving or closing a thread
+- No list/query/filter tool for open threads beyond startup orientation
+- No explicit create-thread primitive or stronger thread identity flow
+- No richer management surface for listing, filtering, or bulk cleanup
 - MCP surface may be missing operations needed to support the above
 
 ## What Needs to be Explored
