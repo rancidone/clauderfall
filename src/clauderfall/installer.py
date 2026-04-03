@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tomllib
 from pathlib import Path
+from typing import Any
 
 from clauderfall import __version__
 
@@ -285,6 +286,10 @@ def add_claude_user_mcp_server(
 ) -> dict[str, object]:
     """Register one user-scoped Claude MCP server through the Claude CLI."""
 
+    subprocess.run(
+        ["claude", "mcp", "remove", server_name, "--scope", "user"],
+        check=False,
+    )
     cmd = ["claude", "mcp", "add", server_name, "--scope", "user"]
     if debug:
         cmd += ["--env", "CLAUDERFALL_DEBUG=1"]
@@ -325,9 +330,16 @@ def update_codex_mcp_config(
     config_path = target_repo / CODEX_MCP_CONFIG_PATH
     config_path.parent.mkdir(parents=True, exist_ok=True)
     existing = load_toml_file(config_path)
-    mcp_servers = existing.get("mcp_servers", {})
-    mcp_servers[server_name] = {"command": command, "args": args, "env": env or {}}
-    config_path.write_text(render_codex_config(mcp_servers))
+    updated = dict(existing)
+    mcp_servers = dict(existing.get("mcp_servers", {}))
+    server_config: dict[str, object] = {"command": command}
+    if args:
+        server_config["args"] = args
+    if env:
+        server_config["env"] = env
+    mcp_servers[server_name] = server_config
+    updated["mcp_servers"] = mcp_servers
+    config_path.write_text(render_toml_document(updated))
     return config_path
 
 
@@ -338,13 +350,19 @@ def remove_server_from_toml_config(*, config_path: Path, server_name: str) -> bo
         return False
 
     existing = load_toml_file(config_path)
+    updated = dict(existing)
     mcp_servers = dict(existing.get("mcp_servers", {}))
     if server_name not in mcp_servers:
         return False
 
     del mcp_servers[server_name]
     if mcp_servers:
-        config_path.write_text(render_codex_config(mcp_servers))
+        updated["mcp_servers"] = mcp_servers
+    else:
+        updated.pop("mcp_servers", None)
+
+    if updated:
+        config_path.write_text(render_toml_document(updated))
     else:
         config_path.unlink()
     return True
@@ -358,20 +376,82 @@ def load_toml_file(path: Path) -> dict[str, object]:
     return tomllib.loads(path.read_text())
 
 
-def render_codex_config(mcp_servers: dict[str, object]) -> str:
-    """Render the minimal Codex MCP config for Clauderfall installs."""
+def render_toml_document(data: dict[str, object]) -> str:
+    """Render a small TOML document while preserving unrelated config sections."""
 
     lines: list[str] = []
-    for name, server in sorted(mcp_servers.items()):
-        lines.append(f"[mcp_servers.{name}]")
-        lines.append(f'command = "{server["command"]}"')
-        if server.get("args"):
-            rendered_args = ", ".join(f'"{arg}"' for arg in server["args"])
-            lines.append(f"args = [{rendered_args}]")
-        if server.get("env"):
-            rendered_env = ", ".join(
-                f'{key} = "{value}"' for key, value in sorted(server["env"].items())
-            )
-            lines.append(f"env = {{ {rendered_env} }}")
+
+    scalar_items = [
+        (key, value)
+        for key, value in data.items()
+        if not isinstance(value, dict)
+    ]
+    table_items = [
+        (key, value)
+        for key, value in data.items()
+        if isinstance(value, dict)
+    ]
+
+    for key, value in scalar_items:
+        lines.append(f"{key} = {_render_toml_value(value)}")
+    if scalar_items and table_items:
         lines.append("")
+
+    for index, (key, value) in enumerate(table_items):
+        _render_toml_table(lines=lines, path=[key], table=value)
+        if index != len(table_items) - 1:
+            lines.append("")
+
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _render_toml_table(*, lines: list[str], path: list[str], table: dict[str, Any]) -> None:
+    header = ".".join(path)
+    lines.append(f"[{header}]")
+
+    scalar_items = [
+        (key, value)
+        for key, value in table.items()
+        if not isinstance(value, dict) or _should_inline_toml_table(path=path, key=key, value=value)
+    ]
+    child_tables = [
+        (key, value)
+        for key, value in table.items()
+        if isinstance(value, dict) and not _should_inline_toml_table(path=path, key=key, value=value)
+    ]
+
+    for key, value in scalar_items:
+        lines.append(f"{key} = {_render_toml_value(value)}")
+
+    for key, value in child_tables:
+        lines.append("")
+        _render_toml_table(lines=lines, path=[*path, key], table=value)
+
+
+def _render_toml_value(value: object) -> str:
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    if isinstance(value, list):
+        rendered_items = ", ".join(_render_toml_value(item) for item in value)
+        return f"[{rendered_items}]"
+    if isinstance(value, dict):
+        rendered_items = ", ".join(
+            f"{key} = {_render_toml_value(item)}"
+            for key, item in sorted(value.items())
+        )
+        return f"{{ {rendered_items} }}"
+    raise TypeError(f"unsupported TOML value: {value!r}")
+
+
+def _should_inline_toml_table(*, path: list[str], key: str, value: object) -> bool:
+    if not isinstance(value, dict):
+        return False
+    if path == ["mcp_servers"]:
+        return False
+    del key
+    return all(not isinstance(item, dict) for item in value.values())

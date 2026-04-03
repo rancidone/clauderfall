@@ -5,6 +5,7 @@ from pathlib import Path
 
 from clauderfall.installer import (
     CODEX_MCP_CONFIG_PATH,
+    add_claude_user_mcp_server,
     install_claude_global,
     install_codex_global,
     install_global_clauderfall,
@@ -52,6 +53,30 @@ def test_update_codex_mcp_config_writes_env_when_present(tmp_path: Path) -> None
     content = config_path.read_text()
 
     assert 'env = { CLAUDERFALL_DEBUG = "1" }' in content
+
+
+def test_update_codex_mcp_config_preserves_unrelated_settings(tmp_path: Path) -> None:
+    config_path = tmp_path / CODEX_MCP_CONFIG_PATH
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        'model = "gpt-5"\n'
+        "approval_policy = \"on-request\"\n\n"
+        "[mcp_servers.existing]\n"
+        'command = "/tmp/existing"\n'
+    )
+
+    update_codex_mcp_config(
+        target_repo=tmp_path,
+        server_name="clauderfall",
+        command="/tmp/clauderfall",
+        args=[],
+    )
+
+    loaded = config_path.read_text()
+    assert 'model = "gpt-5"' in loaded
+    assert 'approval_policy = "on-request"' in loaded
+    assert "[mcp_servers.existing]" in loaded
+    assert "[mcp_servers.clauderfall]" in loaded
 
 
 def test_list_packaged_skill_dirs_discovers_skill_directories(tmp_path: Path) -> None:
@@ -260,6 +285,42 @@ def test_register_claude_global_uses_user_scope(monkeypatch) -> None:
     assert result["installed_skills"] == ["design", "discovery"]
 
 
+def test_add_claude_user_mcp_server_replaces_existing_registration(monkeypatch) -> None:
+    calls: list[tuple[list[str], bool]] = []
+
+    def fake_run(cmd: list[str], check: bool) -> None:
+        calls.append((cmd, check))
+
+    monkeypatch.setattr("clauderfall.installer.subprocess.run", fake_run)
+
+    result = add_claude_user_mcp_server(
+        server_name="clauderfall",
+        command="/tmp/clauderfall-mcp",
+        args=[],
+        debug=True,
+    )
+
+    assert calls == [
+        (["claude", "mcp", "remove", "clauderfall", "--scope", "user"], False),
+        (
+            [
+                "claude",
+                "mcp",
+                "add",
+                "clauderfall",
+                "--scope",
+                "user",
+                "--env",
+                "CLAUDERFALL_DEBUG=1",
+                "--",
+                "/tmp/clauderfall-mcp",
+            ],
+            True,
+        ),
+    ]
+    assert result["debug"] is True
+
+
 def test_register_codex_global_writes_user_config(monkeypatch) -> None:
     calls: list[tuple[Path, str, str, list[str], dict[str, str] | None]] = []
 
@@ -338,3 +399,28 @@ def test_remove_global_helpers_remove_skills_and_registration(monkeypatch) -> No
     assert claude_result["removed_skills"] == ["design", "discovery"]
     assert codex_result["removed_server"] is True
     assert codex_result["removed_skills"] == ["design", "discovery"]
+
+
+def test_remove_codex_global_preserves_unrelated_config(tmp_path: Path) -> None:
+    config_path = tmp_path / CODEX_MCP_CONFIG_PATH
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        'model = "gpt-5"\n\n'
+        "[mcp_servers.clauderfall]\n"
+        'command = "/tmp/clauderfall"\n\n'
+        "[mcp_servers.other]\n"
+        'command = "/tmp/other"\n'
+    )
+
+    from clauderfall.installer import remove_server_from_toml_config
+
+    removed = remove_server_from_toml_config(
+        config_path=config_path,
+        server_name="clauderfall",
+    )
+
+    content = config_path.read_text()
+    assert removed is True
+    assert 'model = "gpt-5"' in content
+    assert "[mcp_servers.other]" in content
+    assert "[mcp_servers.clauderfall]" not in content
