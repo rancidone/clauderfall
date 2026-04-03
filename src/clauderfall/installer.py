@@ -50,6 +50,7 @@ def install_codex_global(
     source_repo_root: Path,
     server_name: str,
     python_executable: str | None = None,
+    debug: bool = False,
 ) -> dict[str, object]:
     """Install Clauderfall globally and register it in user-scoped Codex config."""
 
@@ -62,11 +63,13 @@ def install_codex_global(
         server_name=server_name,
         command=install_result["launcher"],
         args=[],
+        env={"CLAUDERFALL_DEBUG": "1"} if debug else None,
     )
     return {
         **install_result,
         "server_name": server_name,
         "config_path": str(config_path),
+        "debug": debug,
     }
 
 
@@ -121,7 +124,7 @@ def register_claude_global(*, repo_root: Path, server_name: str, mode: str, debu
     }
 
 
-def register_codex_global(*, repo_root: Path, server_name: str, mode: str) -> dict[str, object]:
+def register_codex_global(*, repo_root: Path, server_name: str, mode: str, debug: bool = False) -> dict[str, object]:
     """Register the source-tree Clauderfall server globally for Codex development use."""
 
     command = resolve_codex_command(repo_root=repo_root.resolve(), mode=mode)
@@ -130,6 +133,7 @@ def register_codex_global(*, repo_root: Path, server_name: str, mode: str) -> di
         server_name=server_name,
         command=command,
         args=[],
+        env={"CLAUDERFALL_DEBUG": "1"} if debug else None,
     )
     installed_skills = install_packaged_skills(
         source_repo_root=repo_root.resolve(),
@@ -141,6 +145,7 @@ def register_codex_global(*, repo_root: Path, server_name: str, mode: str) -> di
         "command": command,
         "config_path": str(config_path),
         "installed_skills": installed_skills,
+        "debug": debug,
     }
 
 
@@ -307,14 +312,21 @@ def virtualenv_bin_dir(install_root: Path) -> Path:
     return install_root / ".venv" / "bin"
 
 
-def update_codex_mcp_config(*, target_repo: Path, server_name: str, command: str, args: list[str]) -> Path:
+def update_codex_mcp_config(
+    *,
+    target_repo: Path,
+    server_name: str,
+    command: str,
+    args: list[str],
+    env: dict[str, str] | None = None,
+) -> Path:
     """Upsert the Codex MCP server entry for Clauderfall in one TOML config root."""
 
     config_path = target_repo / CODEX_MCP_CONFIG_PATH
     config_path.parent.mkdir(parents=True, exist_ok=True)
     existing = load_toml_file(config_path)
     mcp_servers = existing.get("mcp_servers", {})
-    mcp_servers[server_name] = {"command": command, "args": args}
+    mcp_servers[server_name] = {"command": command, "args": args, "env": env or {}}
     config_path.write_text(render_codex_config(mcp_servers))
     return config_path
 
@@ -356,6 +368,10 @@ def render_codex_config(mcp_servers: dict[str, object]) -> str:
         if server.get("args"):
             rendered_args = ", ".join(f'"{arg}"' for arg in server["args"])
             lines.append(f"args = [{rendered_args}]")
+        if server.get("env"):
+            rendered_env = ", ".join(
+                f'{key} = "{value}"' for key, value in sorted(server["env"].items())
+            )
+            lines.append(f"env = {{ {rendered_env} }}")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
-

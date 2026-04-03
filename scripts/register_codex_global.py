@@ -30,6 +30,12 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("venv", "path"),
         help="How Codex should launch the server. Default: venv",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
+        help="Register the MCP server with CLAUDERFALL_DEBUG=1 to enable debug logging to the SQLite DB.",
+    )
     return parser
 
 
@@ -41,6 +47,7 @@ def main() -> int:
         repo_root=REPO_ROOT,
         server_name=args.server_name,
         mode=args.mode,
+        debug=args.debug,
     )
     print(f"Registered Codex MCP server '{args.server_name}' with command: {result['command']}")
     print(f"Installed skills: {', '.join(result['installed_skills']) or '(none)'}")
