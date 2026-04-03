@@ -30,6 +30,7 @@ HARNESS_ENABLED = os.environ.get("CLAUDERFALL_LLM_HARNESS", "").strip() in {"1",
 SKIP_REASON = "LLM harness tests require CLAUDERFALL_LLM_HARNESS=1 and CLAUDERFALL_LLM_BASE_URL"
 
 MAX_TURNS = 8
+MAX_TOKENS = int(os.environ.get("CLAUDERFALL_LLM_HARNESS_MAX_TOKENS", "1024"))
 
 
 def _skill_prompt(skill_name: str) -> str:
@@ -109,9 +110,19 @@ def _chat_once(
         messages=messages,
         tools=tools,
         tool_choice="auto",
-        max_tokens=2048,
+        max_tokens=MAX_TOKENS,
     )
     return response.choices[0].message
+
+
+def _parse_tool_arguments(*, tool_name: str, raw_arguments: str) -> dict[str, Any]:
+    try:
+        return json.loads(raw_arguments)
+    except json.JSONDecodeError as exc:
+        snippet = raw_arguments[:400]
+        pytest.fail(
+            f"{tool_name} produced invalid JSON tool arguments: {exc}. Raw prefix: {snippet!r}"
+        )
 
 
 def _run_skill_until_tool_call(
@@ -141,7 +152,10 @@ def _run_skill_until_tool_call(
         if msg.tool_calls:
             for tc in msg.tool_calls:
                 if tc.function.name == target_tool:
-                    return json.loads(tc.function.arguments)
+                    return _parse_tool_arguments(
+                        tool_name=tc.function.name,
+                        raw_arguments=tc.function.arguments,
+                    )
 
         # Append assistant turn
         messages.append(msg.model_dump(exclude_unset=True))
@@ -433,7 +447,10 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
     assert second.tool_calls, "session_handoff stopped before resolving the handoff write path"
 
     second_call = second.tool_calls[0]
-    second_args = json.loads(second_call.function.arguments)
+    second_args = _parse_tool_arguments(
+        tool_name=second_call.function.name,
+        raw_arguments=second_call.function.arguments,
+    )
     assert second_args["thread_id"] == "session-continuity-skill-surface"
 
     if second_call.function.name == "session_read_thread":
@@ -452,10 +469,29 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
             }
         )
         third = _chat_once(client=client, model=model, messages=messages, tools=tools)
-        assert third.tool_calls, "session_handoff did not write after reading the matching active thread"
-        write_call = third.tool_calls[0]
-        assert write_call.function.name == "session_write_handoff"
-        arguments = json.loads(write_call.function.arguments)
+        if third.tool_calls:
+            write_call = third.tool_calls[0]
+            assert write_call.function.name == "session_write_handoff"
+            arguments = _parse_tool_arguments(
+                tool_name=write_call.function.name,
+                raw_arguments=write_call.function.arguments,
+            )
+        else:
+            messages.append(third.model_dump(exclude_unset=True))
+            messages.append(
+                {
+                    "role": "user",
+                    "content": "Persist that handoff now with session_write_handoff.",
+                }
+            )
+            fourth = _chat_once(client=client, model=model, messages=messages, tools=tools)
+            assert fourth.tool_calls, "session_handoff did not write after explicit persistence confirmation"
+            write_call = fourth.tool_calls[0]
+            assert write_call.function.name == "session_write_handoff"
+            arguments = _parse_tool_arguments(
+                tool_name=write_call.function.name,
+                raw_arguments=write_call.function.arguments,
+            )
     else:
         assert second_call.function.name == "session_write_handoff"
         arguments = second_args
@@ -495,3 +531,61 @@ def test_session_handoff_writes_new_thread_with_required_fields(tmp_path: Path) 
         "thread_markdown",
     ):
         assert write_input.get(field), f"session_write_handoff missing required field: {field}"
+
+
+@pytest.mark.skipif(not HARNESS_ENABLED, reason=SKIP_REASON)
+def test_session_handoff_does_not_write_without_explicit_persistence_intent(tmp_path: Path) -> None:
+    """session_handoff should not persist when the operator has not asked to save yet."""
+    tools = _mcp_tools(tmp_path)
+    system = _skill_prompt("session_handoff")
+    client = _make_client()
+    model = _model()
+
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system},
+        {
+            "role": "user",
+            "content": (
+                "Adjust the carry-forward summary so it drops the stale item, but do not save anything yet."
+            ),
+        },
+    ]
+
+    forbidden_calls = {"session_write_handoff", "session_archive_thread"}
+    text = ""
+
+    for _ in range(3):
+        msg = _chat_once(client=client, model=model, messages=messages, tools=tools)
+        assert not any(tc.function.name in forbidden_calls for tc in (msg.tool_calls or [])), (
+            "session_handoff attempted persistence despite no explicit persistence intent"
+        )
+        if not msg.tool_calls:
+            text = msg.content if isinstance(msg.content, str) else json.dumps(msg.model_dump(exclude_unset=True))
+            break
+
+        messages.append(msg.model_dump(exclude_unset=True))
+        for tc in msg.tool_calls:
+            if tc.function.name == "session_read_startup_view":
+                tool_content = _session_startup_result(active_threads=[])
+            elif tc.function.name == "session_read_thread":
+                args = _parse_tool_arguments(tool_name=tc.function.name, raw_arguments=tc.function.arguments)
+                tool_content = _session_thread_result(
+                    thread_id=args["thread_id"],
+                    title="Carry Forward Thread",
+                    current_intent_summary="Old summary with stale item.",
+                    next_suggested_action="Clean up the handoff note later.",
+                    thread_markdown="# Carry Forward Thread\n\nOld summary with stale item.",
+                )
+            else:
+                tool_content = _tool_success()
+
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": tool_content,
+                }
+            )
+
+    assert text, "session_handoff did not produce a non-persistence reply within the turn budget"
+    assert "save" in text.lower() or "persist" in text.lower() or "write" in text.lower()

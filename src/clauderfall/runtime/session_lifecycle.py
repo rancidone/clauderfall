@@ -97,12 +97,6 @@ class SessionLifecycleService:
         )
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="active thread handoff written"),
-            artifacts={"thread_id": thread_id},
-            metadata={
-                "thread_id": thread_id,
-                "startup_index_updated": True,
-                "projection_stale": False,
-            },
         )
 
     def session_archive_thread(self, *, thread_id: str, closure_summary: str) -> ArtifactRuntimeResult:
@@ -115,9 +109,4 @@ class SessionLifecycleService:
         self.session.archive_thread(thread_id, closure_summary=closure_summary)
         return ArtifactRuntimeResult(
             result=OperationResult(status=OperationStatus.OK, message="thread archived"),
-            artifacts={"thread_id": thread_id},
-            metadata={
-                "thread_id": thread_id,
-                "active_removed": True,
-            },
         )

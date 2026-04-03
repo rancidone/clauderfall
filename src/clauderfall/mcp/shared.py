@@ -52,6 +52,10 @@ def resolve_docs_root(*, repo_root: Path, docs_root: str | Path | None) -> Path:
 def map_runtime_result(result: ArtifactRuntimeResult) -> dict[str, Any]:
     """Map the shared runtime result envelope into the published MCP shape."""
 
+    mapped: dict[str, Any] = {
+        "result": MCP_RESULT_BY_RUNTIME_STATUS[result.result.status],
+    }
+
     artifacts = {
         name: _serialize_value(value)
         for name, value in result.artifacts.items()
@@ -63,12 +67,13 @@ def map_runtime_result(result: ArtifactRuntimeResult) -> dict[str, Any]:
     warnings = list(result.warnings)
     if result.result.warnings:
         warnings.extend(result.result.warnings)
-    return {
-        "result": MCP_RESULT_BY_RUNTIME_STATUS[result.result.status],
-        "warnings": warnings,
-        "artifacts": artifacts,
-        "metadata": metadata,
-    }
+    if warnings:
+        mapped["warnings"] = warnings
+    if artifacts:
+        mapped["artifacts"] = artifacts
+    if metadata:
+        mapped["metadata"] = metadata
+    return mapped
 
 
 def validation_failure(*, code: str, message: str, metadata: dict[str, Any] | None = None) -> dict[str, Any]:

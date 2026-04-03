@@ -12,4 +12,10 @@ if [[ -f "$repo_root/.env" ]]; then
 fi
 
 cd "$repo_root"
-exec uv run pytest tests/test_skill_harness.py "$@"
+pytest_args=(tests/test_skill_harness.py)
+
+if [[ -n "${CLAUDERFALL_LLM_HARNESS_WORKERS:-}" ]]; then
+  pytest_args+=(-n "$CLAUDERFALL_LLM_HARNESS_WORKERS")
+fi
+
+exec uv run pytest "${pytest_args[@]}" "$@"

@@ -471,8 +471,7 @@ def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
     startup = services.session_lifecycle.session_read_startup_view()
 
     assert write.result.ok is True
-    assert write.metadata["startup_index_updated"] is True
-    assert write.metadata["projection_stale"] is False
+    assert write.metadata == {}
     assert startup.metadata["rebuilt"] is False
     assert startup.artifacts["active_threads"][0]["thread_id"] == "thread-1"
 
@@ -495,7 +494,7 @@ def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_pa
     active = services.session_lifecycle.session_read_thread(thread_id="thread-1")
 
     assert archived.result.ok is True
-    assert archived.metadata["active_removed"] is True
+    assert archived.metadata == {}
     assert startup.artifacts["active_threads"] == []
     assert startup.artifacts["recent_completed_threads"][0]["thread_id"] == "thread-1"
     assert active.result.ok is False
@@ -543,12 +542,14 @@ def test_mcp_result_mapping_uses_shared_success_warning_failure_statuses() -> No
     )
 
     assert success["result"] == "success"
-    assert success["warnings"] == []
     assert success["artifacts"]["value"] == "x"
     assert success["metadata"]["count"] == 1
     assert warning["result"] == "warning"
     assert warning["warnings"] == ["projection_stale"]
     assert failure["result"] == "failure"
+    assert "warnings" not in success
+    assert "artifacts" not in warning
+    assert "metadata" not in failure
 
 
 def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) -> None:
@@ -593,7 +594,6 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
     )
 
     assert write["result"] == "success"
-    assert write["warnings"] == []
     assert "version_id" in write["metadata"]
     assert read["result"] == "success"
     assert read["artifacts"]["status"] == "draft"
@@ -618,7 +618,7 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
     active = server.call_tool("session_read_thread", {"thread_id": "thread-1"})
 
     assert handoff["result"] == "success"
-    assert handoff["metadata"]["startup_index_updated"] is True
+    assert handoff == {"result": "success"}
     assert startup["result"] == "success"
     assert startup["artifacts"]["active_threads"][0]["thread_id"] == "thread-1"
     assert "thread_markdown" not in startup["artifacts"]
@@ -744,7 +744,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 },
             },
         )
-        assert startup_write["result"]["structuredContent"]["metadata"]["startup_index_updated"] is True
+        assert startup_write["result"]["structuredContent"] == {"result": "success"}
 
         startup_read = _stdio_request(
             proc,
