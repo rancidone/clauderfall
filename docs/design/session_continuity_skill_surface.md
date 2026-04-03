@@ -92,7 +92,7 @@ Both session continuity skills should follow the shared skill/MCP contract alrea
 - skills must treat MCP results as authoritative
 - skills must not imply persistence or lifecycle change unless the corresponding MCP call succeeded
 
-These skills should not revert to raw file editing or prompt-only continuity state.
+For Clauderfall-managed session-state artifacts, these skills should use MCP as the only write path and should not revert to raw file editing or prompt-only continuity state.
 
 ## `session_continue`
 
@@ -122,6 +122,7 @@ Its job is to help the operator answer:
 - archive threads as part of ordinary startup orientation
 - auto-resume the newest thread without making that choice visible
 - silently attach new work to an existing active thread
+- treat ordinary Discovery or Design progress after thread drill-in as implicit continuity persistence
 
 ## Interaction Shape
 

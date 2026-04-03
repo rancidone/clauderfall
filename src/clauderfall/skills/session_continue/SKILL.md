@@ -43,6 +43,7 @@ Session continuation does not own:
 * archiving threads
 * reopening archived work implicitly
 * inventing Discovery or Design state changes
+* direct mutation of Clauderfall-managed session-state artifacts
 
 ## MCP Contract
 
@@ -74,6 +75,8 @@ Do not call `session_write_handoff` or `session_archive_thread` as part of ordin
 * Inspecting a thread is not the same as committing to continue it.
 * Treat MCP results as authoritative for active-thread existence and current thread content.
 * Stay in continuation until the operator explicitly asks to save, hand off, checkpoint, archive, or otherwise persist state.
+* If the operator resumes the underlying Discovery or Design work after a thread read, keep session state unchanged unless they explicitly ask to persist continuity state.
+* For Clauderfall-managed session-state artifacts, MCP is the only write path. Do not manually edit the corresponding on-disk artifact file.
 
 ## Default Routine
 
@@ -105,5 +108,6 @@ If the operator wants to:
 * save or update carry-forward state, switch to `session_handoff`
 * close completed work, use `session_archive_thread` only with explicit operator intent
 * start new Discovery or Design work, do not silently attach it to an existing thread
+* answer the underlying Discovery or Design question after drill-in, continue that substantive work without writing handoff state unless the operator later asks to save it
 
 Do not imply that continuation state changed unless a write operation actually ran.

@@ -43,6 +43,7 @@ Session handoff does not own:
 * automatic thread selection without enough context
 * implicit archive transitions
 * hidden persistence through prose alone
+* direct mutation of Clauderfall-managed session-state artifacts
 
 ## MCP Contract
 
@@ -95,6 +96,7 @@ Content rules:
 * Reuse authoritative in-turn session state when nothing suggests it changed.
 * Do not claim the handoff is saved until `session_write_handoff` returns success or warning.
 * Do not call `session_write_handoff` unless the operator explicitly wants persistence now.
+* For Clauderfall-managed session-state artifacts, MCP is the only write path. Do not manually edit the corresponding on-disk artifact file.
 * Do not archive by default.
 * If the operator says the work is completed, ask whether they want the thread archived rather than assuming it.
 * If current thread state is unclear, read it before overwriting it.

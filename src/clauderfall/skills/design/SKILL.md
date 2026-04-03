@@ -65,7 +65,7 @@ Design owns:
 
 Design does not own:
 
-* direct mutation of authoritative artifact files as the normal workflow path
+* direct mutation of Clauderfall-managed design artifact files
 * implicit checkpoint creation
 * implicit workflow transitions into review or acceptance
 * treating high readiness as equivalent to persisted acceptance
@@ -79,10 +79,12 @@ Design does not own:
 * Make tradeoffs and unresolved decisions explicit instead of smoothing over them.
 * If the current design unit is too broad, say so and propose decomposition.
 * If readiness is weak, say so directly and identify why.
-* Do not add a ceremonial `design_to_review` step when the operator is already explicitly accepting the co-authored design and no separate review pass is needed. Use `design_accept` with explicit override instead.
+* Do not invent a separate review-state workflow. Use readiness to express design confidence and `design_accept` when the operator wants to accept the design record.
 * Keep required sidecar fields concise. Do not duplicate the full design body into `readiness_rationale`, `open_questions`, or `assumptions` when a short machine-usable summary is enough.
 * Do not smuggle execution planning into the design artifact.
 * Treat MCP results as authoritative for current checkpoint, persisted status, and whether review or acceptance actually happened.
+* For Clauderfall-managed design artifacts, MCP is the only write path. Do not manually edit the corresponding on-disk artifact file.
+* Do not write or update session handoff state as a side effect of ordinary design progress. Session persistence requires separate explicit operator intent.
 
 ## MCP Contract
 
@@ -92,7 +94,6 @@ The Design MCP surface is:
 
 * `design_read`
 * `design_write_draft`
-* `design_to_review`
 * `design_accept`
 
 Use `design_read` when you need authoritative current state rather than conversational memory alone.
@@ -101,7 +102,7 @@ Typical times to call `design_read`:
 
 * at session start when current unit state is unclear
 * after compaction or context loss
-* before attempting review or acceptance
+* before attempting acceptance
 * after any warning or failure result
 * before revising the current authoritative design unit
 
@@ -109,27 +110,22 @@ Do not reread reflexively when the current authoritative content was just writte
 
 Use `design_write_draft` when you have a material design revision that should become the authoritative current checkpoint.
 
-`design_write_draft` is the normal persistence path for Design and should carry:
-
-* the revised readable design body
-* the structured sidecar content
-* the current workflow status
-* the readiness signal
-* the readiness rationale
-
-`design_write_draft` may persist `draft` or `in_review`.
-It does not itself accept the design artifact.
+`design_write_draft` is the normal persistence path for Design.
+It may write either a full revision or a narrow delta against the current checkpoint.
+It may carry either a full sidecar or a metadata-only sidecar patch.
+It may persist `draft`, but it does not itself accept the artifact.
 It is also the normal reopen path when a reviewed or accepted unit needs revision again with `status: draft`.
-
-Use `design_to_review` only when the operator wants the current unit moved into explicit review state.
-
-If the operator is explicitly accepting the current unit and there is no meaningful separate review pass, prefer `design_accept` with explicit override over a synthetic `design_to_review` then `design_accept` loop.
+For small iterative updates, prefer delta writes so checkpoint cost tracks the changed section or metadata field.
+For small design answers, do not resend the full document or full sidecar. Read the current checkpoint, then update only the affected section(s) with `markdown_operations` and only the changed metadata fields with `sidecar_patch`.
+Treat `sidecar_patch` as the default path for metadata changes such as readiness, rationale, open questions, assumptions, scope summary, or relationships when the rest of the sidecar is unchanged.
+Treat section-level `markdown_operations` as the default path for localized document edits. Prefer targeted section replacement or append operations over full markdown replacement when the surrounding document is unchanged.
 
 Use `design_accept` only when the operator wants the current unit accepted as the design record.
 
-Do not imply that review or acceptance happened unless the corresponding MCP operation returns a persisted success or warning result that confirms the state change.
+Do not imply that acceptance happened unless the corresponding MCP operation returns a persisted success or warning result that confirms the state change.
 
-Do not use raw file edits as the primary persistence path when the corresponding MCP operation exists.
+For Clauderfall-managed design artifacts, use `design_write_draft` as the only write path.
+Do not use raw file edits for those artifacts.
 
 ## Interviewing Rules
 
@@ -167,7 +163,7 @@ For each turn:
    * propose a concrete design revision
 4. draft the assistant reply in Design voice
 5. draft the revised visible design artifact or summarize the exact delta
-6. if the revision should become authoritative, persist it through `design_write_draft`
+6. if the revision should become authoritative, persist it through `design_write_draft`, using `markdown_operations` and `sidecar_patch` by default for small localized changes
 7. surface any tradeoffs, unresolved decisions, readiness impacts, or relevant MCP outcomes
 8. state whether the current unit looks design-ready, partially ready, or not ready
 
@@ -179,7 +175,7 @@ For each turn:
 4. Read authoritative state through `design_read` when needed rather than relying on stale session memory.
 5. Persist material draft progress through `design_write_draft` instead of treating visible prose alone as saved state.
 6. Keep sequencing heuristic and conversational rather than pretending there is a formal dependency graph.
-7. Use `design_to_review` for explicit review transitions and `design_accept` for explicit artifact acceptance.
+7. Use `design_accept` for explicit artifact acceptance.
 8. Decompose into child design units when the current boundary is still too large or unclear.
 9. Keep readiness local to the design unit being discussed.
 
@@ -206,7 +202,6 @@ If a parent unit depends on child units, parent readiness must reflect that depe
 Readiness transitions should be driven by explicit document events, not conversational drift:
 
 * opening a new design-unit document initializes a fresh local readiness judgment
-* proposing review moves the current unit toward `in_review`
 * operator acceptance changes artifact `status`, not necessarily readiness
 * reopening a unit resets the workflow state based on the revised document, not the prior accepted label
 

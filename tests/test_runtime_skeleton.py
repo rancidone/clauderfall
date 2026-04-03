@@ -59,7 +59,7 @@ def test_artifact_store_lists_stage_records_by_updated_at_desc(tmp_path: Path) -
     newer_design = services.store.write(
         key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="newer-design-unit"),
         markdown="# Newer Design Unit\n\nBody.",
-        stage_metadata={"title": "Newer Design Unit", "status": "in_review", "readiness": "high"},
+        stage_metadata={"title": "Newer Design Unit", "status": "accepted", "readiness": "high"},
         flush_reason="checkpoint",
     )
 
@@ -322,39 +322,63 @@ def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> N
     assert "stage_metadata" not in result.artifacts
 
 
-def test_design_to_review_requires_persisted_valid_draft_and_writes_review_checkpoint(tmp_path: Path) -> None:
+def test_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.design.write_draft(
+    first = services.design.write_draft(
         unit_id="unit-auth-session",
-        markdown="# Auth Session Design\n\nReady for review.",
+        markdown="# Auth Session Design\n\nDraft body.",
         sidecar={
             "design_unit_id": "unit-auth-session",
             "title": "Auth Session Design",
             "status": "draft",
-            "scope_summary": "Defines session issuance and revocation behavior.",
+            "scope_summary": "Defines session issuance, invalidation, and consistency boundaries.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "medium",
+            "readiness_rationale": "Main shape is clear but still evolving.",
+            "open_questions": ["Should revocation be synchronous across all replicas?"],
+            "assumptions": [],
+        },
+    )
+    second = services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nRevised body.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance, invalidation, and consistency boundaries.",
             "depends_on": [],
             "children": [],
             "parent": None,
             "readiness": "high",
-            "readiness_rationale": "Main flow and failure handling are concrete enough to review.",
+            "readiness_rationale": "Main shape is now concrete enough to review.",
             "open_questions": [],
             "assumptions": [],
         },
     )
 
-    result = services.design.to_review(unit_id="unit-auth-session")
-    current = services.design.read(unit_id="unit-auth-session")
+    historical = services.design.read(
+        unit_id="unit-auth-session",
+        checkpoint_id=first.metadata["checkpoint_id"],
+        view="full",
+    )
+    current = services.design.read(unit_id="unit-auth-session", view="full")
 
-    assert result.result.ok is True
-    assert result.metadata["previous_version_id"] != result.metadata["version_id"]
-    assert current.artifacts["workflow_status"] == "in_review"
+    assert second.metadata["checkpoint_id"] != first.metadata["checkpoint_id"]
+    assert historical.result.ok is True
+    assert historical.artifacts["markdown"] == "# Auth Session Design\n\nDraft body."
+    assert historical.artifacts["readiness"] == "medium"
+    assert current.artifacts["markdown"] == "# Auth Session Design\n\nRevised body."
+    assert current.artifacts["readiness"] == "high"
 
 
-def test_design_accept_requires_review_without_override(tmp_path: Path) -> None:
+def test_design_accept_transitions_draft_to_accepted(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     services.design.write_draft(
         unit_id="unit-auth-session",
-        markdown="# Auth Session Design\n\nStill draft.",
+        markdown="# Auth Session Design\n\nAccepted from draft.",
         sidecar={
             "design_unit_id": "unit-auth-session",
             "title": "Auth Session Design",
@@ -364,19 +388,21 @@ def test_design_accept_requires_review_without_override(tmp_path: Path) -> None:
             "children": [],
             "parent": None,
             "readiness": "high",
-            "readiness_rationale": "Concrete enough to build, but not yet formally reviewed.",
+            "readiness_rationale": "Concrete enough to accept directly.",
             "open_questions": [],
             "assumptions": [],
         },
     )
 
     result = services.design.accept(unit_id="unit-auth-session")
+    current = services.design.read(unit_id="unit-auth-session")
 
-    assert result.result.ok is False
-    assert "in_review" in result.result.message
+    assert result.result.ok is True
+    assert result.metadata["accepted_from_status"] == "draft"
+    assert current.artifacts["workflow_status"] == "accepted"
 
 
-def test_design_accept_supports_review_and_explicit_draft_override(tmp_path: Path) -> None:
+def test_design_accept_is_idempotent_for_accepted_units(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     base_sidecar = {
         "design_unit_id": "unit-auth-session",
@@ -393,28 +419,17 @@ def test_design_accept_supports_review_and_explicit_draft_override(tmp_path: Pat
     }
 
     services.design.write_draft(
-        unit_id="unit-review-path",
-        markdown="# Auth Session Design\n\nReview path.",
-        sidecar={**base_sidecar, "design_unit_id": "unit-review-path"},
+        unit_id="unit-accepted-path",
+        markdown="# Auth Session Design\n\nAccepted path.",
+        sidecar={**base_sidecar, "design_unit_id": "unit-accepted-path"},
     )
-    services.design.to_review(unit_id="unit-review-path")
-    normal = services.design.accept(unit_id="unit-review-path")
+    first = services.design.accept(unit_id="unit-accepted-path")
+    second = services.design.accept(unit_id="unit-accepted-path")
 
-    assert normal.result.ok is True
-    assert normal.metadata["override"] is False
-    assert normal.metadata["accepted_from_status"] == "in_review"
-
-    services.design.write_draft(
-        unit_id="unit-override-path",
-        markdown="# Auth Session Design\n\nOverride path.",
-        sidecar={**base_sidecar, "design_unit_id": "unit-override-path"},
-    )
-    override = services.design.accept(unit_id="unit-override-path", override=True)
-
-    assert override.result.ok is True
-    assert override.metadata["override"] is True
-    assert override.metadata["accepted_from_status"] == "draft"
-    assert override.warnings == ("Design acceptance proceeded from draft via explicit override.",)
+    assert first.result.ok is True
+    assert first.metadata["accepted_from_status"] == "draft"
+    assert second.result.ok is True
+    assert second.metadata["status"] == "accepted"
 
 
 def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units(tmp_path: Path) -> None:
@@ -425,10 +440,10 @@ def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units
         sidecar={
             "design_unit_id": "healthy-unit",
             "title": "Healthy Unit",
-            "status": "in_review",
+            "status": "draft",
             "scope_summary": "Well-formed unit.",
             "readiness": "high",
-            "readiness_rationale": "The design is ready for review.",
+            "readiness_rationale": "The design is ready to accept.",
             "open_questions": [],
             "assumptions": [],
         },
@@ -454,7 +469,7 @@ def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units
     assert [unit["unit_id"] for unit in result.artifacts["units"]] == ["broken-unit", "healthy-unit"]
     assert result.artifacts["units"][0]["malformed"] is True
     assert result.artifacts["units"][0]["title"] is None
-    assert result.artifacts["units"][1]["status"] == "in_review"
+    assert result.artifacts["units"][1]["status"] == "draft"
     assert result.warnings == ("design unit broken-unit is malformed: missing title, readiness",)
 
 
@@ -479,7 +494,6 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
         markdown="# Auth Session Design\n\nAccepted body.",
         sidecar=accepted_sidecar,
     )
-    services.design.to_review(unit_id="unit-auth-session")
     accepted = services.design.accept(unit_id="unit-auth-session")
 
     reopened = services.design.write_draft(
@@ -499,6 +513,125 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
     assert reopened.metadata["version_id"] != accepted.metadata["version_id"]
     assert current.artifacts["workflow_status"] == "draft"
     assert current.artifacts["readiness"] == "medium"
+
+
+def test_design_write_draft_supports_metadata_only_delta_updates(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance and revocation behavior.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "medium",
+            "readiness_rationale": "Tradeoffs are visible but one open question remains.",
+            "open_questions": ["Should revocation be synchronous?"],
+            "assumptions": [],
+        },
+    )
+
+    updated = services.design.write_draft(
+        unit_id="unit-auth-session",
+        sidecar_patch={
+            "readiness": "high",
+            "readiness_rationale": "The remaining open question was resolved in review.",
+            "open_questions": [],
+        },
+    )
+    current = services.design.read(unit_id="unit-auth-session", view="full")
+
+    assert updated.result.ok is True
+    assert updated.metadata["base_checkpoint_id"]
+    assert current.artifacts["readiness"] == "high"
+    assert current.artifacts["open_questions"] == []
+    assert current.artifacts["markdown"] == "# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text."
+
+
+def test_design_write_draft_supports_section_level_markdown_deltas(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    initial = services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\n## Main App\n\nOld text.\n\n## Tradeoffs\n\nInitial tradeoff text.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance and revocation behavior.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "medium",
+            "readiness_rationale": "Main shape is visible but tradeoffs need more detail.",
+            "open_questions": ["Should revocation be synchronous?"],
+            "assumptions": [],
+        },
+    )
+
+    updated = services.design.write_draft(
+        unit_id="unit-auth-session",
+        base_checkpoint_id=initial.metadata["checkpoint_id"],
+        markdown_operations=[
+            {"op": "replace_section", "heading": "Main App", "content": "New text."},
+            {"op": "append_to_section", "heading": "Tradeoffs", "content": "Added detail."},
+            {
+                "op": "insert_section_after",
+                "after_heading": "Tradeoffs",
+                "heading_line": "## Open Questions",
+                "content": "- None right now.",
+            },
+        ],
+        sidecar_patch={
+            "readiness": "high",
+            "readiness_rationale": "The main sections are now concrete enough to review.",
+            "open_questions": [],
+        },
+    )
+    current = services.design.read(unit_id="unit-auth-session", view="full")
+
+    assert updated.result.ok is True
+    assert current.artifacts["readiness"] == "high"
+    assert "## Main App\n\nNew text." in current.artifacts["markdown"]
+    assert "## Tradeoffs\n\nInitial tradeoff text.\n\nAdded detail." in current.artifacts["markdown"]
+    assert "## Open Questions\n\n- None right now." in current.artifacts["markdown"]
+
+
+def test_design_write_draft_rejects_stale_base_checkpoint_on_delta_update(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    initial = services.design.write_draft(
+        unit_id="unit-auth-session",
+        markdown="# Auth Session Design\n\nBody.",
+        sidecar={
+            "design_unit_id": "unit-auth-session",
+            "title": "Auth Session Design",
+            "status": "draft",
+            "scope_summary": "Defines session issuance and revocation behavior.",
+            "depends_on": [],
+            "children": [],
+            "parent": None,
+            "readiness": "medium",
+            "readiness_rationale": "Still drafting.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+    )
+    services.design.write_draft(
+        unit_id="unit-auth-session",
+        sidecar_patch={"readiness_rationale": "New authoritative checkpoint."},
+    )
+
+    stale = services.design.write_draft(
+        unit_id="unit-auth-session",
+        base_checkpoint_id=initial.metadata["checkpoint_id"],
+        sidecar_patch={"readiness": "high"},
+    )
+
+    assert stale.result.ok is False
+    assert "base checkpoint" in stale.result.message
 
 
 def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
@@ -580,7 +713,6 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
         "design_read",
         "design_list",
         "design_write_draft",
-        "design_to_review",
         "design_accept",
         "session_read_startup_view",
         "session_read_thread",
@@ -670,6 +802,57 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
     assert "markdown" not in read["artifacts"]
 
 
+def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    first = server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-1",
+            "markdown": "# Design\n\nDraft body.",
+            "sidecar": {
+                "design_unit_id": "unit-1",
+                "title": "Design",
+                "status": "draft",
+                "scope_summary": "Scope summary.",
+                "readiness": "medium",
+                "readiness_rationale": "Still evolving.",
+                "open_questions": ["One question"],
+                "assumptions": [],
+            },
+        },
+    )
+    server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-1",
+            "markdown": "# Design\n\nRevised body.",
+            "sidecar": {
+                "design_unit_id": "unit-1",
+                "title": "Design",
+                "status": "draft",
+                "scope_summary": "Scope summary.",
+                "readiness": "high",
+                "readiness_rationale": "Concrete enough to review.",
+                "open_questions": [],
+                "assumptions": [],
+            },
+        },
+    )
+
+    historical = server.call_tool(
+        "design_read",
+        {
+            "unit_id": "unit-1",
+            "checkpoint_id": first["metadata"]["checkpoint_id"],
+            "view": "full",
+        },
+    )
+
+    assert historical["result"] == "success"
+    assert historical["artifacts"]["markdown"] == "# Design\n\nDraft body."
+    assert historical["artifacts"]["readiness"] == "medium"
+
+
 def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
@@ -710,6 +893,71 @@ def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
     assert result["artifacts"]["units"][0]["unit_id"] == "broken-unit"
     assert result["artifacts"]["units"][0]["malformed"] is True
     assert result["warnings"] == ["design unit broken-unit is malformed: missing title, readiness"]
+
+
+def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    initial = server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-auth-session",
+            "markdown": "# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text.",
+            "sidecar": {
+                "design_unit_id": "unit-auth-session",
+                "title": "Auth Session Design",
+                "status": "draft",
+                "scope_summary": "Defines session issuance and revocation behavior.",
+                "readiness": "medium",
+                "readiness_rationale": "One open question remains.",
+                "open_questions": ["Should revocation be synchronous?"],
+                "assumptions": [],
+            },
+        },
+    )
+
+    updated = server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-auth-session",
+            "base_checkpoint_id": initial["metadata"]["checkpoint_id"],
+            "markdown_operations": [
+                {"op": "append_to_section", "heading": "Tradeoffs", "content": "Added detail."}
+            ],
+            "sidecar_patch": {
+                "readiness": "high",
+                "readiness_rationale": "The tradeoff is now settled.",
+                "open_questions": [],
+            },
+        },
+    )
+    read = server.call_tool(
+        "design_read",
+        {"unit_id": "unit-auth-session", "view": "full"},
+    )
+
+    assert updated["result"] == "success"
+    assert updated["metadata"]["base_checkpoint_id"] == initial["metadata"]["checkpoint_id"]
+    assert read["artifacts"]["readiness"] == "high"
+    assert "Added detail." in read["artifacts"]["markdown"]
+
+
+def test_design_write_draft_tool_schema_guides_delta_updates(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    tool = next(tool for tool in server.list_tools() if tool.name == "design_write_draft")
+    schema = tool.input_schema
+    sidecar_patch = schema["properties"]["sidecar_patch"]
+    markdown_operations = schema["properties"]["markdown_operations"]
+
+    assert "Partial sidecar update" in sidecar_patch["description"]
+    assert sidecar_patch["additionalProperties"] is False
+    assert "readiness" in sidecar_patch["properties"]
+    assert "open_questions" in sidecar_patch["properties"]
+    assert "Checkpoint-relative markdown deltas" in markdown_operations["description"]
+    assert markdown_operations["items"]["properties"]["op"]["enum"] == [
+        "replace_section",
+        "append_to_section",
+        "insert_section_after",
+    ]
 
 
 def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_path: Path) -> None:

@@ -224,18 +224,20 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
     )
     server.register_tool(
         name="design_write_draft",
-        description="Persist a Design draft checkpoint without acceptance.",
+        description="Persist a Design draft checkpoint from either a full replacement or a checkpoint-relative delta update.",
         input_schema={
             "type": "object",
             "properties": {
                 "unit_id": {"type": "string"},
                 "markdown": {"type": "string"},
+                "base_checkpoint_id": {"type": "string"},
                 "sidecar": {
                     "type": "object",
+                    "description": "Full sidecar replacement. Use when creating a new design unit or replacing the entire metadata record.",
                     "properties": {
                         "design_unit_id": {"type": "string"},
                         "title": {"type": "string"},
-                        "status": {"type": "string", "enum": ["draft", "in_review"]},
+                        "status": {"type": "string", "enum": ["draft"]},
                         "scope_summary": {"type": "string"},
                         "readiness": {"type": "string", "enum": ["low", "medium", "high"]},
                         "readiness_rationale": {"type": "string"},
@@ -250,22 +252,48 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
                         "readiness", "readiness_rationale", "open_questions", "assumptions",
                     ],
                 },
+                "sidecar_patch": {
+                    "type": "object",
+                    "description": "Partial sidecar update for small edits. Prefer this over full sidecar replacement when only a few metadata fields changed.",
+                    "properties": {
+                        "design_unit_id": {"type": "string"},
+                        "title": {"type": "string"},
+                        "status": {"type": "string", "enum": ["draft"]},
+                        "scope_summary": {"type": "string"},
+                        "readiness": {"type": "string", "enum": ["low", "medium", "high"]},
+                        "readiness_rationale": {"type": "string"},
+                        "open_questions": {"type": "array", "items": {"type": "string"}},
+                        "assumptions": {"type": "array", "items": {"type": "string"}},
+                        "depends_on": {"type": "array", "items": {"type": "string"}},
+                        "children": {"type": "array", "items": {"type": "string"}},
+                        "parent": {"type": ["string", "null"]},
+                    },
+                    "additionalProperties": False,
+                },
+                "markdown_operations": {
+                    "type": "array",
+                    "description": "Checkpoint-relative markdown deltas for localized edits. Prefer these over full markdown replacement when only one or a few sections changed.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "op": {
+                                "type": "string",
+                                "enum": ["replace_section", "append_to_section", "insert_section_after"],
+                            },
+                            "heading": {"type": "string"},
+                            "after_heading": {"type": "string"},
+                            "heading_line": {"type": "string"},
+                            "content": {"type": "string"},
+                        },
+                        "required": ["op"],
+                        "additionalProperties": False,
+                    },
+                },
             },
-            "required": ["unit_id", "markdown", "sidecar"],
-            "additionalProperties": False,
-        },
-        handler=_design_write_draft,
-    )
-    server.register_tool(
-        name="design_to_review",
-        description="Move the current Design unit into explicit review state.",
-        input_schema={
-            "type": "object",
-            "properties": {"unit_id": {"type": "string"}},
             "required": ["unit_id"],
             "additionalProperties": False,
         },
-        handler=_design_to_review,
+        handler=_design_write_draft,
     )
     server.register_tool(
         name="design_accept",
@@ -274,7 +302,6 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
             "type": "object",
             "properties": {
                 "unit_id": {"type": "string"},
-                "override": {"type": "boolean"},
             },
             "required": ["unit_id"],
             "additionalProperties": False,
@@ -356,6 +383,7 @@ def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[
     return map_runtime_result(
         services.discovery.read(
             brief_id=require_string(payload, "brief_id"),
+            checkpoint_id=optional_string(payload, "checkpoint_id"),
             view=view,
         )
     )
@@ -387,6 +415,7 @@ def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
     return map_runtime_result(
         services.design.read(
             unit_id=require_string(payload, "unit_id"),
+            checkpoint_id=optional_string(payload, "checkpoint_id"),
             view=view,
         )
     )
@@ -398,25 +427,39 @@ def _design_list(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
 
 
 def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    sidecar = payload.get("sidecar")
+    if sidecar is not None and not isinstance(sidecar, dict):
+        raise MCPValidationError("sidecar must be an object when present")
+
+    sidecar_patch = payload.get("sidecar_patch")
+    if sidecar_patch is not None and not isinstance(sidecar_patch, dict):
+        raise MCPValidationError("sidecar_patch must be an object when present")
+
+    markdown = payload.get("markdown")
+    if markdown is not None and (not isinstance(markdown, str) or not markdown):
+        raise MCPValidationError("markdown must be a non-empty string when present")
+
+    markdown_operations = payload.get("markdown_operations")
+    if markdown_operations is not None:
+        if not isinstance(markdown_operations, list):
+            raise MCPValidationError("markdown_operations must be an array when present")
+        if not all(isinstance(operation, dict) for operation in markdown_operations):
+            raise MCPValidationError("markdown_operations entries must be objects")
+
     return map_runtime_result(
         services.design.write_draft(
             unit_id=require_string(payload, "unit_id"),
-            markdown=require_string(payload, "markdown"),
-            sidecar=require_object(payload, "sidecar"),
+            markdown=markdown,
+            sidecar=sidecar,
+            sidecar_patch=sidecar_patch,
+            markdown_operations=markdown_operations,
+            base_checkpoint_id=optional_string(payload, "base_checkpoint_id"),
         )
     )
 
-
-def _design_to_review(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(services.design.to_review(unit_id=require_string(payload, "unit_id")))
-
-
 def _design_accept(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     return map_runtime_result(
-        services.design.accept(
-            unit_id=require_string(payload, "unit_id"),
-            override=optional_bool(payload, "override"),
-        )
+        services.design.accept(unit_id=require_string(payload, "unit_id"))
     )
 
 

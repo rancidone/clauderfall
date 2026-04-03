@@ -107,7 +107,6 @@ Workflow transitions should be attempted only through their named MCP operations
 That means:
 
 - Discovery uses `discovery_to_design`
-- Design uses `design_to_review`
 - Design uses `design_accept`
 
 The skill should not describe those transitions as completed unless the MCP result confirms the persisted effect.
@@ -258,7 +257,6 @@ The Design skill should treat the Design MCP surface as:
 
 - `design_read`
 - `design_write_draft`
-- `design_to_review`
 - `design_accept`
 
 ### `design_read`
@@ -271,7 +269,7 @@ Typical cases:
 - checking checkpoint, status, and readiness state
 - resuming after compaction
 - loading the full design unit before revising it
-- confirming whether the unit is `draft`, `in_review`, or `accepted`
+- confirming whether the unit is `draft` or `accepted`
 
 ### `design_write_draft`
 
@@ -279,31 +277,28 @@ Use when the skill has a revised design unit draft to persist.
 
 The skill should supply:
 
-- revised readable design-unit content
-- structured sidecar content
+- either full revised readable design-unit content or a small markdown delta against the current checkpoint
+- either full structured sidecar content or a metadata-only sidecar patch
 - the current intended workflow status
 - readiness signal and rationale
 
 This is the normal persistence operation for Design drafting and revision.
 
+For small iterative edits, prefer delta writes so token cost tracks the changed section or metadata field instead of the full unit length.
+For small localized revisions, the skill should default to:
+
+- `markdown_operations` for section-level document edits
+- `sidecar_patch` for partial metadata updates
+
+The skill should avoid resending the full markdown body or the full sidecar when only one section or a few metadata fields changed.
+
 It may persist:
 
 - `draft`
-- `in_review`
 
 It should not be treated as artifact acceptance.
 
 It is also the normal reopen path when a previously reviewed or accepted unit needs revision by writing a new checkpoint with `status: draft`.
-
-### `design_to_review`
-
-Use when the current unit is stable enough to enter explicit review state and the operator wants that state change recorded.
-
-The skill should call this only after:
-
-- the current draft exists as a persisted checkpoint
-- the design unit's readiness and rationale are visible
-- the operator intends to move from shaping into review
 
 ### `design_accept`
 
@@ -321,9 +316,8 @@ The normal Design pattern should be:
 1. `design_read` when authoritative state is needed
 2. interview and revise the visible design unit
 3. `design_write_draft` to persist revised checkpoints during drafting
-4. `design_to_review` when the operator wants explicit review state
-5. additional `design_write_draft` with `status: draft` if review reveals needed revision
-6. `design_accept` when the operator wants the accepted design record
+4. additional `design_write_draft` with `status: draft` if acceptance reveals needed revision
+5. `design_accept` when the operator wants the accepted design record
 
 ## Skill Prompt Implications
 
@@ -333,7 +327,9 @@ A stage skill prompt should say, in substance:
 
 - keep the visible artifact in the conversation
 - use MCP for authoritative reads, writes, and transitions
-- do not treat file edits as the primary persistence path
+- for Clauderfall-managed artifacts, use MCP as the only write path
+- do not directly edit the corresponding on-disk artifact files
+- do not write session continuity state as an implicit side effect of stage drafting
 - do not imply that status changed unless the corresponding MCP operation succeeded
 - treat readiness as a judgment that may inform transitions, not as a transition by itself
 
