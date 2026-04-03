@@ -58,6 +58,7 @@ These docs define:
 - `session_recent_state_artifact.md` - Defines the recent-session-state artifact contract spanning the repo index, active thread artifacts, and archived thread history.
 - `session_handoff_write_update_flow.md` - Defines the thread-first handoff write path and derived repo-index projection behavior for recent session state.
 - `session_start_drill_in_flow.md` - Defines the startup orientation flow from the repo-level recent-session index into optional active-thread drill-in or a new direction.
+- `session_continuity_skill_surface.md` - Defines the packaged skill surface for startup orientation and handoff persistence over the session lifecycle MCP interface.
 - `session_archive_transition_mechanics.md` - Defines the immediate completion-to-archive transition and failure semantics for leaving the active layer.
 - `session_lifecycle_runtime_interface.md` - Defines the deterministic backend runtime and MCP-facing interface boundary for recent-session lifecycle operations.
 - `session_lifecycle_mcp_interface.md` - Defines the high-level MCP operations, inputs, outputs, and error semantics for recent-session lifecycle work.

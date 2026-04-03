@@ -69,6 +69,7 @@ Use these values consistently:
 - `design/session_recent_state_artifact.md` - Design doc for the recent-session-state artifact contract across startup index, active threads, and archived history.
 - `design/session_handoff_write_update_flow.md` - Design doc for the thread-first handoff write path and recoverable repo-index projection.
 - `design/session_start_drill_in_flow.md` - Design doc for startup orientation from the repo-level index into explicit thread drill-in or a new direction.
+- `design/session_continuity_skill_surface.md` - Design doc for the packaged session skill surface over lifecycle startup and handoff operations.
 - `design/session_archive_transition_mechanics.md` - Design doc for the immediate completion-to-archive transition and consistent archived-state requirement.
 - `design/session_lifecycle_runtime_interface.md` - Design doc for deterministic backend lifecycle operations and an MCP-facing interface for recent-session state.
 - `design/session_lifecycle_mcp_interface.md` - Design doc for concrete high-level MCP lifecycle operations, payloads, and error semantics.
