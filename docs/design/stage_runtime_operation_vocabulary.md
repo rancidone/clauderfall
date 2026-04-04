@@ -2,7 +2,7 @@
 title: Stage Runtime Operation Vocabulary
 doc_type: design
 status: draft
-updated: 2026-04-02
+updated: 2026-04-03
 summary: Defines the standardized cross-stage operation vocabulary for the shared Clauderfall runtime and MCP interfaces.
 ---
 
@@ -119,6 +119,19 @@ Example:
 - `session_archive_thread`
 
 This is domain-specific enough to remain a named verb, but broad enough to standardize where archival exists.
+
+### `delete`
+
+Use `delete` only for explicit destructive removal of authoritative persisted state.
+
+Examples:
+
+- `discovery_delete`
+- `design_delete`
+
+Do not rename this to softer verbs when the operation actually removes runtime state and checkpoint history.
+
+Deletion should remain exceptional and operator-directed.
 
 ### `resolve`
 

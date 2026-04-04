@@ -2,7 +2,7 @@
 title: Clauderfall Design Docs Index
 doc_type: index
 status: stable
-updated: 2026-03-27
+updated: 2026-04-03
 summary: Canonical index for the active Clauderfall product and engine-level documentation set.
 ---
 
@@ -35,9 +35,10 @@ These docs define:
 - `mcp_adapter_surface.md` - Defines the first MCP-facing adapter layer over the v2 runtime services, including flat tool naming, response mapping, and thin-handler boundaries.
 - `shared_stage_runtime_substrate.md` - Defines the common runtime substrate shared by Discovery, Design, session lifecycle, and future TODO work.
 - `stage_runtime_operation_vocabulary.md` - Defines the standardized cross-stage operation vocabulary for shared runtime services and MCP interfaces.
-- `stage_artifact_runtime_interface.md` - Defines the shared artifact-level runtime interface beneath stage-specific services for authoritative reads, checkpoint writes, and status-aware transitions.
-- `discovery_runtime_mcp_interface.md` - Defines the minimal Discovery runtime and MCP-facing operation set for reading the working brief, checkpointing draft progress, and handing off into Design.
-- `design_runtime_mcp_interface.md` - Defines the minimal Design runtime and MCP-facing operation set for reading the current unit, checkpointing draft progress, moving into review, and accepting the current design record.
+- `stage_artifact_runtime_interface.md` - Defines the shared artifact-level runtime interface beneath stage-specific services for authoritative reads, checkpoint writes, status-aware transitions, and explicit deletion.
+- `artifact_deletion_control_surface.md` - Defines the explicit destructive cleanup surface for removing superseded or mistaken Discovery briefs and Design units from runtime state.
+- `discovery_runtime_mcp_interface.md` - Defines the Discovery runtime and MCP-facing operation set for reading the working brief, checkpointing draft progress, handing off into Design, and deleting obsolete briefs.
+- `design_runtime_mcp_interface.md` - Defines the Design runtime and MCP-facing operation set for reading the current unit, checkpointing draft progress, accepting the design record, and deleting obsolete units.
 - `artifact_persistence_format.md` - Defines the physical persistence format for readable stage artifacts and their structured metadata.
 - `artifact_checkpoint_semantics.md` - Defines artifact identity, flush checkpoints, and revision semantics for persisted artifacts.
 - `artifact_checkpoint_metadata.md` - Defines the required metadata envelope recorded for each artifact checkpoint.

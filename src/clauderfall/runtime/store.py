@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sqlite3
 import uuid
 from datetime import UTC, datetime
@@ -186,6 +187,36 @@ class ArtifactStore:
             flush_reason=flush_reason,
             updated_at=updated_at,
         )
+
+    def delete(self, key: ArtifactKey) -> dict[str, object]:
+        with self._connect() as conn:
+            artifact_cursor = conn.execute(
+                "DELETE FROM artifacts WHERE stage = ? AND artifact_id = ?",
+                (key.stage.value, key.artifact_id),
+            )
+            checkpoint_cursor = conn.execute(
+                "DELETE FROM artifact_checkpoints WHERE stage = ? AND artifact_id = ?",
+                (key.stage.value, key.artifact_id),
+            )
+
+        current_markdown_deleted = False
+        current_path = self.markdown_path(key)
+        if current_path.exists():
+            current_path.unlink()
+            current_markdown_deleted = True
+
+        checkpoint_markdown_deleted = False
+        checkpoint_dir = self.docs_root / key.stage.value / ".checkpoints" / key.artifact_id
+        if checkpoint_dir.exists():
+            shutil.rmtree(checkpoint_dir)
+            checkpoint_markdown_deleted = True
+
+        return {
+            "artifact_rows_deleted": artifact_cursor.rowcount,
+            "checkpoint_rows_deleted": checkpoint_cursor.rowcount,
+            "current_markdown_deleted": current_markdown_deleted,
+            "checkpoint_markdown_deleted": checkpoint_markdown_deleted,
+        }
 
     def markdown_path(self, key: ArtifactKey) -> Path:
         return self.docs_root / key.stage.value / f"{key.artifact_id}.md"

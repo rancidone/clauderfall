@@ -2,8 +2,8 @@
 title: Design Runtime MCP Interface
 doc_type: design
 status: ready
-updated: 2026-04-02
-summary: Defines the Design runtime and MCP-facing operation set for reading the current unit, checkpointing draft progress through full or delta writes, and accepting the current design record.
+updated: 2026-04-03
+summary: Defines the Design runtime and MCP-facing operation set for reading the current unit, checkpointing draft progress through full or delta writes, accepting the current design record, and explicitly deleting obsolete units.
 ---
 
 # Design Runtime MCP Interface
@@ -21,6 +21,7 @@ Design should expose a small high-level operation set:
 - `read`
 - `write_draft`
 - `accept`
+- `delete`
 
 ## Why This Boundary
 
@@ -61,6 +62,7 @@ The initial Design runtime/MCP surface should expose exactly these operations:
 - `read`
 - `write_draft`
 - `accept`
+- `delete`
 
 These names should follow the shared vocabulary in [stage_runtime_operation_vocabulary.md](/home/maddie/repos/clauderfall/docs/design/stage_runtime_operation_vocabulary.md) while still staying stage-shaped.
 
@@ -158,6 +160,27 @@ Accept the current Design artifact as the operator-approved design record for th
 
 `accept` should be explicit.
 
+## 4. `delete`
+
+## Purpose
+
+Delete a Design unit and all of its persisted runtime state when the operator explicitly wants it removed.
+
+## Design Position
+
+`delete` should be reserved for cleanup of superseded or mistaken units.
+
+It should not be used as a substitute for acceptance, reopening, or decomposition.
+
+`delete` should remove:
+
+- the current unit record
+- all persisted checkpoints for that unit
+- the current Markdown document
+- all checkpoint Markdown files
+
+After deletion, `read` and `list` should no longer surface that `unit_id`.
+
 Design acceptance is a distinct workflow decision and should not be smuggled into `write_draft` or inferred from high readiness alone.
 
 `accept` should record artifact acceptance, not automatic build approval.
@@ -193,7 +216,13 @@ This should match the style already used in [session_lifecycle_mcp_interface.md]
 
 Responses should stay operational and concise.
 
-The runtime should return references and structured state, not long explanatory prose, unless a short human-readable message is needed to explain a warning or failure.
+Explicit `read` operations may return structured artifact state, including readable body content in full view.
+
+`write_draft` and `accept` are write-like operations at the MCP boundary and should therefore return status-only success by default.
+
+If the caller needs post-write or post-acceptance state, it should perform an explicit `read`.
+
+Failure and warning results may still include concise structured detail when needed to explain why the operation did not complete cleanly.
 
 ## Operation Semantics
 

@@ -2,7 +2,7 @@
 title: MCP Adapter Surface
 doc_type: design
 status: ready
-updated: 2026-04-02
+updated: 2026-04-03
 summary: Defines the first MCP-facing adapter layer over the v2 runtime services, including tool naming, response mapping, and thin-handler boundaries.
 ---
 
@@ -32,9 +32,11 @@ The tool names should be explicit and stage-shaped:
 - `discovery_read`
 - `discovery_write_draft`
 - `discovery_to_design`
+- `discovery_delete`
 - `design_read`
 - `design_write_draft`
 - `design_accept`
+- `design_delete`
 - `session_read_startup_view`
 - `session_read_thread`
 - `session_write_handoff`
@@ -137,6 +139,8 @@ Where the runtime already returns warning codes or short warning strings, the MC
 
 This field should not turn into a generic document dump surface.
 
+Write-like MCP operations should usually omit `artifacts` entirely.
+
 ### `metadata`
 
 `metadata` should contain concise operational fields such as:
@@ -146,6 +150,8 @@ This field should not turn into a generic document dump surface.
 - booleans like `override`, `rebuilt`, or `projection_stale`
 - counts used for startup or lifecycle orientation
 
+Write-like MCP operations should usually omit `metadata` entirely.
+
 ## Returned Content Rule
 
 The MCP adapter should preserve the content boundary already implied by the runtime interface docs.
@@ -154,13 +160,14 @@ For Discovery and Design:
 
 - `*_read` tools may return readable artifact bodies in full view
 - short view should remain compact and structured
-- write and transition tools should return references and operational metadata, not full artifact bodies by default
+- write and transition tools should return status only by default
+- if a write or transition needs follow-up state inspection, the caller should perform an explicit read
 
 For session lifecycle:
 
 - `session_read_thread` may return the readable thread artifact because drill-in explicitly asks for thread detail
 - `session_read_startup_view` should remain compact
-- lifecycle write and archive tools should return references and metadata, not full thread Markdown bodies
+- lifecycle write and archive tools should return status only by default
 
 This keeps MCP aligned with the token-economy goal instead of turning every operation into a large read response.
 

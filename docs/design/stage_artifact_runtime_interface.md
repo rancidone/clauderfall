@@ -2,8 +2,8 @@
 title: Stage Artifact Runtime Interface
 doc_type: design
 status: ready
-updated: 2026-03-27
-summary: Defines the shared artifact-level runtime interface beneath stage-specific Discovery and Design services for authoritative reads, checkpoint writes, and status-aware transitions.
+updated: 2026-04-03
+summary: Defines the shared artifact-level runtime interface beneath stage-specific Discovery and Design services for authoritative reads, checkpoint writes, status-aware transitions, and explicit artifact deletion.
 ---
 
 # Stage Artifact Runtime Interface
@@ -24,6 +24,7 @@ This layer should own the cross-stage artifact operations that are genuinely the
 - checkpoint writes
 - current-checkpoint resolution
 - status-aware checkpoint transitions
+- explicit destructive artifact deletion
 - structured operation results
 
 It should not own stage policy.
@@ -72,6 +73,7 @@ The shared stage-artifact runtime interface should own:
 - writing a new checkpoint for an existing artifact identity
 - persisting workflow status and readiness fields as checkpointed artifact state
 - applying deterministic status transitions that produce a new current checkpoint
+- deleting an artifact's persisted runtime state when explicitly requested
 - returning structured operation results with references and metadata
 
 These are common artifact-runtime concerns.
@@ -97,6 +99,7 @@ The shared artifact runtime layer should provide reusable operations shaped roug
 - `read_artifact`
 - `write_artifact_checkpoint`
 - `transition_artifact_status`
+- `delete_artifact`
 
 These are backend interface concepts, not necessarily final MCP tool names.
 
@@ -108,6 +111,8 @@ Stage-specific services should wrap them in stage-shaped operations such as:
 - Design `read`
 - Design `write_draft`
 - Design `accept`
+- Discovery `delete`
+- Design `delete`
 
 ## 1. `read_artifact`
 
@@ -177,6 +182,23 @@ This operation should:
 - return structured confirmation of the transition
 
 This operation still should not decide whether the requested transition is desirable.
+
+## 4. `delete_artifact`
+
+## Purpose
+
+Remove one artifact's authoritative persisted state when the operator explicitly wants that artifact deleted.
+
+## Design Position
+
+`delete_artifact` should:
+
+- remove the current artifact record
+- remove all persisted checkpoints for that artifact
+- remove current and checkpoint Markdown files for that artifact
+- return a structured result describing whether any state was deleted
+
+This operation is intentionally destructive and should not be part of ordinary drafting flow.
 
 The stage-specific service should decide that.
 

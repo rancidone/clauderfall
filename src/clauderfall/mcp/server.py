@@ -194,6 +194,19 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
         },
         handler=_discovery_to_design,
     )
+    server.register_tool(
+        name="discovery_delete",
+        description="Delete one Discovery brief and all of its persisted runtime state.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "brief_id": {"type": "string"},
+            },
+            "required": ["brief_id"],
+            "additionalProperties": False,
+        },
+        handler=_discovery_delete,
+    )
 
 
 def _register_design_tools(server: ClauderfallMCPServer) -> None:
@@ -308,6 +321,19 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
         },
         handler=_design_accept,
     )
+    server.register_tool(
+        name="design_delete",
+        description="Delete one Design unit and all of its persisted runtime state.",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "unit_id": {"type": "string"},
+            },
+            "required": ["unit_id"],
+            "additionalProperties": False,
+        },
+        handler=_design_delete,
+    )
 
 
 def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
@@ -380,45 +406,59 @@ def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[
     view = payload.get("view", "short")
     if view not in {"short", "full"}:
         raise MCPValidationError("view must be 'short' or 'full'")
-    return map_runtime_result(
+    result = map_runtime_result(
         services.discovery.read(
             brief_id=require_string(payload, "brief_id"),
             checkpoint_id=optional_string(payload, "checkpoint_id"),
             view=view,
         )
     )
+    if view == "short":
+        return _compact_short_read_result(result, artifact_fields=["brief_id", "title", "status", "readiness"])
+    return result
 
 
 def _discovery_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.discovery.write_draft(
             brief_id=require_string(payload, "brief_id"),
             markdown=require_string(payload, "markdown"),
             sidecar=require_object(payload, "sidecar"),
         )
-    )
+    ))
 
 
 def _discovery_to_design(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.discovery.to_design(
             brief_id=require_string(payload, "brief_id"),
             override=optional_bool(payload, "override"),
         )
-    )
+    ))
+
+
+def _discovery_delete(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    return _status_only_result(map_runtime_result(
+        services.discovery.delete(
+            brief_id=require_string(payload, "brief_id"),
+        )
+    ))
 
 
 def _design_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     view = payload.get("view", "short")
     if view not in {"short", "full"}:
         raise MCPValidationError("view must be 'short' or 'full'")
-    return map_runtime_result(
+    result = map_runtime_result(
         services.design.read(
             unit_id=require_string(payload, "unit_id"),
             checkpoint_id=optional_string(payload, "checkpoint_id"),
             view=view,
         )
     )
+    if view == "short":
+        return _compact_short_read_result(result, artifact_fields=["unit_id", "title", "status", "readiness"])
+    return result
 
 
 def _design_list(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
@@ -446,7 +486,7 @@ def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> d
         if not all(isinstance(operation, dict) for operation in markdown_operations):
             raise MCPValidationError("markdown_operations entries must be objects")
 
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.design.write_draft(
             unit_id=require_string(payload, "unit_id"),
             markdown=markdown,
@@ -455,17 +495,23 @@ def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> d
             markdown_operations=markdown_operations,
             base_checkpoint_id=optional_string(payload, "base_checkpoint_id"),
         )
-    )
+    ))
 
 def _design_accept(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.design.accept(unit_id=require_string(payload, "unit_id"))
-    )
+    ))
+
+
+def _design_delete(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    return _status_only_result(map_runtime_result(
+        services.design.delete(unit_id=require_string(payload, "unit_id"))
+    ))
 
 
 def _session_read_startup_view(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     del payload
-    return map_runtime_result(services.session_lifecycle.session_read_startup_view())
+    return _compact_startup_read_result(map_runtime_result(services.session_lifecycle.session_read_startup_view()))
 
 
 def _session_read_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
@@ -481,7 +527,7 @@ def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -
         except ValueError as exc:
             raise MCPValidationError(f"flush_reason must be one of: {', '.join(reason.value for reason in FlushReason)}") from exc
 
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.session_lifecycle.session_write_handoff(
             thread_id=require_string(payload, "thread_id"),
             title=require_string(payload, "title"),
@@ -490,16 +536,72 @@ def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -
             thread_markdown=require_string(payload, "thread_markdown"),
             flush_reason=flush_reason,
         )
-    )
+    ))
 
 
 def _session_archive_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     archived_thread_markdown = payload.get("archived_thread_markdown")
     if archived_thread_markdown is not None:
         raise MCPValidationError("archived_thread_markdown is not supported by the current runtime service")
-    return map_runtime_result(
+    return _status_only_result(map_runtime_result(
         services.session_lifecycle.session_archive_thread(
             thread_id=require_string(payload, "thread_id"),
             closure_summary=require_string(payload, "closure_summary"),
         )
-    )
+    ))
+
+
+def _status_only_result(result: dict[str, Any]) -> dict[str, Any]:
+    if result.get("result") == "success" and not result.get("warnings"):
+        return {"result": "success"}
+    if result.get("result") == "success":
+        return {"result": "success", "warnings": result["warnings"]}
+    return result
+
+
+def _compact_startup_read_result(result: dict[str, Any]) -> dict[str, Any]:
+    if result.get("result") != "success":
+        return result
+    artifacts = result.get("artifacts", {})
+    return {
+        "result": "success",
+        "artifacts": {
+            "active_threads": [
+                {
+                    "thread_id": thread["thread_id"],
+                    "title": thread["title"],
+                }
+                for thread in artifacts.get("active_threads", [])
+            ],
+            "recent_completed_threads": [
+                {
+                    "thread_id": thread["thread_id"],
+                    "title": thread["title"],
+                }
+                for thread in artifacts.get("recent_completed_threads", [])
+            ],
+        },
+    }
+
+
+def _compact_short_read_result(result: dict[str, Any], *, artifact_fields: list[str]) -> dict[str, Any]:
+    if result.get("result") != "success":
+        return result
+    artifacts = result.get("artifacts", {})
+    compact_artifacts = {
+        field: artifacts[field]
+        for field in artifact_fields
+        if field in artifacts
+    }
+    metadata = result.get("metadata", {})
+    compact: dict[str, Any] = {
+        "result": "success",
+        "artifacts": compact_artifacts,
+    }
+    checkpoint_id = metadata.get("checkpoint_id")
+    if checkpoint_id is not None:
+        compact["metadata"] = {"checkpoint_id": checkpoint_id}
+    warnings = result.get("warnings")
+    if warnings:
+        compact["warnings"] = warnings
+    return compact

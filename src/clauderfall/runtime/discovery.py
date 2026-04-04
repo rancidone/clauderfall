@@ -139,7 +139,7 @@ class DiscoveryRuntimeService:
             result=OperationResult(status=OperationStatus.OK, message="discovery transitioned to design"),
             warnings=warnings,
             artifacts={
-                "design_start_context": start_context,
+                "design_handoff": _render_design_handoff_payload(start_context),
             },
             metadata={
                 "brief_id": brief_id,
@@ -149,6 +149,24 @@ class DiscoveryRuntimeService:
                 "status": status,
             },
         )
+
+    def delete(self, *, brief_id: str) -> ArtifactRuntimeResult:
+        return self.artifacts.delete_artifact(
+            key=ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=brief_id),
+        )
+
+
+def _render_design_handoff_payload(start_context: dict[str, object]) -> dict[str, object]:
+    recommendation = dict(start_context["design_start_recommendation"])
+    return {
+        "recommended_focus": recommendation["focus"],
+        "rationale": recommendation["rationale"],
+        "caution": recommendation["caution"],
+        "regenerated_after_reentry": dict(start_context["design_start_context_metadata"]).get(
+            "regenerated_after_reentry",
+            False,
+        ),
+    }
 
 
 def _render_discovery_short_payload(

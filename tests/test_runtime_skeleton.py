@@ -18,6 +18,12 @@ from clauderfall.runtime import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+LARGE_BODY = "# Heading\n\n" + ("payload line\n" * 2000)
+COMPACT_MCP_BUDGET_BYTES = 300
+
+
+def _payload_size_bytes(payload: dict[str, object]) -> int:
+    return len(json.dumps(payload, sort_keys=True))
 
 
 def test_artifact_store_round_trips_current_record(tmp_path: Path) -> None:
@@ -67,6 +73,34 @@ def test_artifact_store_lists_stage_records_by_updated_at_desc(tmp_path: Path) -
 
     assert [record.key.artifact_id for record in records] == ["newer-design-unit", "older-design-unit"]
     assert records[0].version_id == newer_design.version_id
+
+
+def test_artifact_store_delete_removes_rows_and_markdown_history(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id="disc-delete")
+    first = services.store.write(
+        key=key,
+        markdown="# Discovery\n\nFirst.",
+        stage_metadata={"title": "Discovery", "status": "draft", "readiness": "low"},
+        flush_reason="checkpoint",
+    )
+    services.store.write(
+        key=key,
+        markdown="# Discovery\n\nSecond.",
+        stage_metadata={"title": "Discovery", "status": "accepted", "readiness": "high"},
+        flush_reason="checkpoint",
+    )
+
+    deletion = services.store.delete(key)
+
+    assert deletion["artifact_rows_deleted"] == 1
+    assert deletion["checkpoint_rows_deleted"] == 2
+    assert deletion["current_markdown_deleted"] is True
+    assert deletion["checkpoint_markdown_deleted"] is True
+    assert services.store.read(key) is None
+    assert services.store.read_checkpoint(key=key, checkpoint_id=first.version_id) is None
+    assert not services.store.markdown_path(key).exists()
+    assert not services.store.checkpoint_markdown_path(key=key, checkpoint_id=first.version_id).exists()
 
 
 def test_runtime_services_wiring_exposes_shared_substrate_components(tmp_path: Path) -> None:
@@ -196,6 +230,47 @@ def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -
     assert "problem_areas" not in result.artifacts
 
 
+def test_discovery_delete_removes_artifact_and_is_retry_safe(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.discovery.write_draft(
+        brief_id="disc-1",
+        markdown="# Discovery\n\nBody.",
+        sidecar={
+            "title": "Auth Discovery",
+            "status": "draft",
+            "readiness": "medium",
+            "readiness_rationale": "Enough to persist.",
+            "blocking_gaps": [],
+            "problem_areas": [
+                {
+                    "problem_area_id": "auth-session",
+                    "title": "Auth Session Boundaries",
+                    "confidence": "medium",
+                    "source_section": "## Auth Session Boundaries",
+                    "assumptions": [],
+                }
+            ],
+            "cross_cutting": {
+                "global_constraints": [],
+                "shared_assumptions": [],
+                "systemic_risks": [],
+                "open_questions": [],
+                "source_sections": [],
+            },
+        },
+    )
+
+    deleted = services.discovery.delete(brief_id="disc-1")
+    missing = services.discovery.read(brief_id="disc-1")
+    repeat = services.discovery.delete(brief_id="disc-1")
+
+    assert deleted.result.ok is True
+    assert deleted.metadata["deleted"] is True
+    assert missing.result.ok is False
+    assert repeat.result.status == OperationStatus.WARNING
+    assert repeat.warnings == ("artifact_not_found",)
+
+
 def test_discovery_to_design_blocks_without_acceptance_or_override(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     services.discovery.write_draft(
@@ -267,7 +342,9 @@ def test_discovery_to_design_supports_normal_and_override_handoff(tmp_path: Path
 
     assert normal.result.ok is True
     assert normal.metadata["override"] is False
-    assert normal.artifacts["design_start_context"]["design_start_recommendation"]["caution"] is None
+    assert normal.artifacts["design_handoff"]["recommended_focus"] == "Auth Session Boundaries"
+    assert normal.artifacts["design_handoff"]["caution"] is None
+    assert "design_start_context" not in normal.artifacts
 
     override_sidecar = dict(accepted_sidecar)
     override_sidecar["status"] = "draft"
@@ -284,7 +361,7 @@ def test_discovery_to_design_supports_normal_and_override_handoff(tmp_path: Path
     assert override.result.ok is True
     assert override.warnings
     assert override.metadata["override"] is True
-    assert override.artifacts["design_start_context"]["design_start_recommendation"]["caution"] == (
+    assert override.artifacts["design_handoff"]["caution"] == (
         "Revocation guarantees remain weak."
     )
 
@@ -430,6 +507,33 @@ def test_design_accept_is_idempotent_for_accepted_units(tmp_path: Path) -> None:
     assert first.metadata["accepted_from_status"] == "draft"
     assert second.result.ok is True
     assert second.metadata["status"] == "accepted"
+
+
+def test_design_delete_removes_unit_from_read_and_list(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    services.design.write_draft(
+        unit_id="unit-1",
+        markdown="# Unit\n\nBody.",
+        sidecar={
+            "design_unit_id": "unit-1",
+            "title": "Unit 1",
+            "status": "draft",
+            "scope_summary": "Test scope.",
+            "readiness": "medium",
+            "readiness_rationale": "Enough to persist.",
+            "open_questions": [],
+            "assumptions": [],
+        },
+    )
+
+    deleted = services.design.delete(unit_id="unit-1")
+    read = services.design.read(unit_id="unit-1")
+    listed = services.design.list()
+
+    assert deleted.result.ok is True
+    assert deleted.metadata["deleted"] is True
+    assert read.result.ok is False
+    assert listed.artifacts["units"] == []
 
 
 def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units(tmp_path: Path) -> None:
@@ -710,10 +814,12 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
         "discovery_read",
         "discovery_write_draft",
         "discovery_to_design",
+        "discovery_delete",
         "design_read",
         "design_list",
         "design_write_draft",
         "design_accept",
+        "design_delete",
         "session_read_startup_view",
         "session_read_thread",
         "session_write_handoff",
@@ -795,16 +901,95 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
     )
 
     assert write["result"] == "success"
-    assert "version_id" in write["metadata"]
+    assert write == {"result": "success"}
     assert read["result"] == "success"
     assert read["artifacts"]["status"] == "draft"
     assert read["artifacts"]["readiness"] == "medium"
     assert "markdown" not in read["artifacts"]
 
 
+def test_mcp_discovery_to_design_returns_compact_handoff_shape(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    sidecar = {
+        "title": "Auth Discovery",
+        "status": "accepted",
+        "readiness": "high",
+        "readiness_rationale": "Framing is strong enough for Design.",
+        "blocking_gaps": [],
+        "problem_areas": [
+            {
+                "problem_area_id": "auth-session",
+                "title": "Auth Session Boundaries",
+                "confidence": "high",
+                "source_section": "## Auth Session Boundaries",
+                "assumptions": [],
+            }
+        ],
+        "cross_cutting": {
+            "global_constraints": ["Must preserve operator trust."],
+            "shared_assumptions": [],
+            "systemic_risks": ["Token leaks are costly."],
+            "open_questions": [],
+            "source_sections": ["## Cross-Cutting Constraints"],
+        },
+    }
+
+    server.call_tool(
+        "discovery_write_draft",
+        {
+            "brief_id": "disc-1",
+            "markdown": "# Accepted Discovery\n\nReady body.",
+            "sidecar": sidecar,
+        },
+    )
+    handoff = server.call_tool("discovery_to_design", {"brief_id": "disc-1"})
+
+    assert handoff == {"result": "success"}
+
+
+def test_mcp_discovery_delete_removes_runtime_state(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    server.call_tool(
+        "discovery_write_draft",
+        {
+            "brief_id": "disc-1",
+            "markdown": "# Discovery\n\nBody.",
+            "sidecar": {
+                "title": "Auth Discovery",
+                "status": "draft",
+                "readiness": "medium",
+                "readiness_rationale": "Enough to persist.",
+                "blocking_gaps": [],
+                "problem_areas": [
+                    {
+                        "problem_area_id": "auth-session",
+                        "title": "Auth Session Boundaries",
+                        "confidence": "medium",
+                        "source_section": "## Auth Session Boundaries",
+                        "assumptions": [],
+                    }
+                ],
+                "cross_cutting": {
+                    "global_constraints": [],
+                    "shared_assumptions": [],
+                    "systemic_risks": [],
+                    "open_questions": [],
+                    "source_sections": [],
+                },
+            },
+        },
+    )
+
+    deleted = server.call_tool("discovery_delete", {"brief_id": "disc-1"})
+    missing = server.call_tool("discovery_read", {"brief_id": "disc-1"})
+
+    assert deleted == {"result": "success"}
+    assert missing["result"] == "failure"
+
+
 def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
     server = create_server(tmp_path)
-    first = server.call_tool(
+    server.call_tool(
         "design_write_draft",
         {
             "unit_id": "unit-1",
@@ -821,6 +1006,7 @@ def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
             },
         },
     )
+    first = server.call_tool("design_read", {"unit_id": "unit-1"})
     server.call_tool(
         "design_write_draft",
         {
@@ -895,9 +1081,39 @@ def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
     assert result["warnings"] == ["design unit broken-unit is malformed: missing title, readiness"]
 
 
+def test_mcp_design_delete_removes_unit_and_returns_warning_when_missing(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-1",
+            "markdown": "# Unit\n\nBody.",
+            "sidecar": {
+                "design_unit_id": "unit-1",
+                "title": "Unit 1",
+                "status": "draft",
+                "scope_summary": "Test scope.",
+                "readiness": "medium",
+                "readiness_rationale": "Enough to persist.",
+                "open_questions": [],
+                "assumptions": [],
+            },
+        },
+    )
+
+    deleted = server.call_tool("design_delete", {"unit_id": "unit-1"})
+    listed = server.call_tool("design_list")
+    repeat = server.call_tool("design_delete", {"unit_id": "unit-1"})
+
+    assert deleted == {"result": "success"}
+    assert listed["artifacts"]["units"] == []
+    assert repeat["result"] == "warning"
+    assert repeat["warnings"] == ["artifact_not_found"]
+
+
 def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
     server = create_server(tmp_path)
-    initial = server.call_tool(
+    server.call_tool(
         "design_write_draft",
         {
             "unit_id": "unit-auth-session",
@@ -914,6 +1130,7 @@ def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
             },
         },
     )
+    initial = server.call_tool("design_read", {"unit_id": "unit-auth-session"})
 
     updated = server.call_tool(
         "design_write_draft",
@@ -935,8 +1152,7 @@ def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
         {"unit_id": "unit-auth-session", "view": "full"},
     )
 
-    assert updated["result"] == "success"
-    assert updated["metadata"]["base_checkpoint_id"] == initial["metadata"]["checkpoint_id"]
+    assert updated == {"result": "success"}
     assert read["artifacts"]["readiness"] == "high"
     assert "Added detail." in read["artifacts"]["markdown"]
 
@@ -979,11 +1195,177 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
     assert handoff["result"] == "success"
     assert handoff == {"result": "success"}
     assert startup["result"] == "success"
-    assert startup["artifacts"]["active_threads"][0]["thread_id"] == "thread-1"
+    assert startup["artifacts"]["active_threads"][0] == {
+        "thread_id": "thread-1",
+        "title": "Implement MCP Adapter",
+    }
     assert "thread_markdown" not in startup["artifacts"]
     assert active["result"] == "success"
     assert active["artifacts"]["thread_markdown"] == "# Thread 1\n\nMCP adapter work."
     assert active["metadata"]["thread_id"] == "thread-1"
+
+
+def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    discovery_sidecar = {
+        "title": "Auth Discovery",
+        "status": "accepted",
+        "readiness": "high",
+        "readiness_rationale": "Framing is strong enough for Design.",
+        "blocking_gaps": [],
+        "problem_areas": [
+            {
+                "problem_area_id": "auth-session",
+                "title": "Auth Session Boundaries",
+                "confidence": "high",
+                "source_section": "## Auth Session Boundaries",
+                "assumptions": [],
+            }
+        ],
+        "cross_cutting": {
+            "global_constraints": ["Must preserve operator trust."],
+            "shared_assumptions": [],
+            "systemic_risks": ["Token leaks are costly."],
+            "open_questions": [],
+            "source_sections": ["## Cross-Cutting Constraints"],
+        },
+    }
+    design_sidecar = {
+        "design_unit_id": "unit-1",
+        "title": "Design",
+        "status": "draft",
+        "scope_summary": "Scope summary.",
+        "readiness": "medium",
+        "readiness_rationale": "Still evolving.",
+        "open_questions": ["One question"],
+        "assumptions": [],
+    }
+
+    discovery_write = server.call_tool(
+        "discovery_write_draft",
+        {"brief_id": "disc-1", "markdown": LARGE_BODY, "sidecar": discovery_sidecar},
+    )
+    discovery_handoff = server.call_tool("discovery_to_design", {"brief_id": "disc-1"})
+    design_write = server.call_tool(
+        "design_write_draft",
+        {"unit_id": "unit-1", "markdown": LARGE_BODY, "sidecar": design_sidecar},
+    )
+    design_list = server.call_tool("design_list")
+    design_accept = server.call_tool("design_accept", {"unit_id": "unit-1"})
+    session_write = server.call_tool(
+        "session_write_handoff",
+        {
+            "thread_id": "thread-1",
+            "title": "Large Thread",
+            "current_intent_summary": "Keep the response compact.",
+            "next_suggested_action": "Read the thread only when explicitly requested.",
+            "thread_markdown": LARGE_BODY,
+        },
+    )
+    startup_view = server.call_tool("session_read_startup_view")
+    session_archive = server.call_tool(
+        "session_archive_thread",
+        {"thread_id": "thread-1", "closure_summary": "Archived."},
+    )
+
+    compact_results = {
+        "discovery_write_draft": discovery_write,
+        "discovery_to_design": discovery_handoff,
+        "discovery_delete": server.call_tool("discovery_delete", {"brief_id": "disc-1"}),
+        "design_write_draft": design_write,
+        "design_list": design_list,
+        "design_accept": design_accept,
+        "design_delete": server.call_tool("design_delete", {"unit_id": "unit-1"}),
+        "session_read_startup_view": startup_view,
+        "session_write_handoff": session_write,
+        "session_archive_thread": session_archive,
+    }
+
+    for tool_name, result in compact_results.items():
+        assert _payload_size_bytes(result) < COMPACT_MCP_BUDGET_BYTES, f"{tool_name} response is too large"
+        encoded = json.dumps(result)
+        assert LARGE_BODY not in encoded, f"{tool_name} leaked full artifact body into the response"
+        assert "\"markdown\"" not in encoded, f"{tool_name} should not expose markdown bodies"
+        assert "\"thread_markdown\"" not in encoded, f"{tool_name} should not expose thread markdown bodies"
+
+
+def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+    server.call_tool(
+        "discovery_write_draft",
+        {
+            "brief_id": "disc-1",
+            "markdown": LARGE_BODY,
+            "sidecar": {
+                "title": "Auth Discovery",
+                "status": "accepted",
+                "readiness": "high",
+                "readiness_rationale": "Framing is strong enough for Design.",
+                "blocking_gaps": [],
+                "problem_areas": [
+                    {
+                        "problem_area_id": "auth-session",
+                        "title": "Auth Session Boundaries",
+                        "confidence": "high",
+                        "source_section": "## Auth Session Boundaries",
+                        "assumptions": [],
+                    }
+                ],
+                "cross_cutting": {
+                    "global_constraints": [],
+                    "shared_assumptions": [],
+                    "systemic_risks": [],
+                    "open_questions": [],
+                    "source_sections": ["## Cross-Cutting Constraints"],
+                },
+            },
+        },
+    )
+    server.call_tool(
+        "design_write_draft",
+        {
+            "unit_id": "unit-1",
+            "markdown": LARGE_BODY,
+            "sidecar": {
+                "design_unit_id": "unit-1",
+                "title": "Design",
+                "status": "draft",
+                "scope_summary": "Scope summary.",
+                "readiness": "medium",
+                "readiness_rationale": "Still evolving.",
+                "open_questions": [],
+                "assumptions": [],
+            },
+        },
+    )
+    server.call_tool(
+        "session_write_handoff",
+        {
+            "thread_id": "thread-1",
+            "title": "Large Thread",
+            "current_intent_summary": "Keep the response compact.",
+            "next_suggested_action": "Read the thread only when explicitly requested.",
+            "thread_markdown": LARGE_BODY,
+        },
+    )
+
+    discovery_short = server.call_tool("discovery_read", {"brief_id": "disc-1"})
+    discovery_full = server.call_tool("discovery_read", {"brief_id": "disc-1", "view": "full"})
+    design_short = server.call_tool("design_read", {"unit_id": "unit-1"})
+    design_full = server.call_tool("design_read", {"unit_id": "unit-1", "view": "full"})
+    thread_full = server.call_tool("session_read_thread", {"thread_id": "thread-1"})
+
+    assert _payload_size_bytes(discovery_short) < COMPACT_MCP_BUDGET_BYTES
+    assert "markdown" not in discovery_short["artifacts"]
+    assert _payload_size_bytes(design_short) < COMPACT_MCP_BUDGET_BYTES
+    assert "markdown" not in design_short["artifacts"]
+
+    assert _payload_size_bytes(discovery_full) > 5000
+    assert discovery_full["artifacts"]["markdown"] == LARGE_BODY
+    assert _payload_size_bytes(design_full) > 5000
+    assert design_full["artifacts"]["markdown"] == LARGE_BODY
+    assert _payload_size_bytes(thread_full) > 5000
+    assert thread_full["artifacts"]["thread_markdown"] == LARGE_BODY
 
 
 def test_mcp_validation_failure_stays_at_adapter_boundary(tmp_path: Path) -> None:
@@ -1083,7 +1465,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
             },
         )
         assert discovery_write["result"]["isError"] is False
-        assert discovery_write["result"]["structuredContent"]["result"] == "success"
+        assert discovery_write["result"]["structuredContent"] == {"result": "success"}
 
         startup_write = _stdio_request(
             proc,
@@ -1118,7 +1500,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
             },
         )
         active_threads = startup_read["result"]["structuredContent"]["artifacts"]["active_threads"]
-        assert active_threads[0]["thread_id"] == "thread-1"
+        assert active_threads[0] == {"thread_id": "thread-1", "title": "Implement MCP Adapter"}
 
         invalid_read = _stdio_request(
             proc,

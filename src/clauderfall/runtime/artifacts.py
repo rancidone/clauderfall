@@ -118,6 +118,35 @@ class StageArtifactRuntime:
             },
         )
 
+    def delete_artifact(self, *, key: ArtifactKey) -> ArtifactRuntimeResult:
+        deletion = self.store.delete(key)
+        if not any(
+            (
+                deletion["artifact_rows_deleted"],
+                deletion["checkpoint_rows_deleted"],
+                deletion["current_markdown_deleted"],
+                deletion["checkpoint_markdown_deleted"],
+            )
+        ):
+            return ArtifactRuntimeResult(
+                result=OperationResult(
+                    status=OperationStatus.WARNING,
+                    message="artifact already absent",
+                ),
+                warnings=("artifact_not_found",),
+                metadata={"artifact_id": key.artifact_id, "stage": key.stage.value, "deleted": False},
+            )
+
+        return ArtifactRuntimeResult(
+            result=OperationResult(status=OperationStatus.OK, message="artifact deleted"),
+            metadata={
+                "artifact_id": key.artifact_id,
+                "stage": key.stage.value,
+                "deleted": True,
+                **deletion,
+            },
+        )
+
 
 def _render_payload(*, key: ArtifactKey, record: ArtifactRecord, include_stage_metadata: bool = False) -> dict[str, object]:
     payload: dict[str, object] = {

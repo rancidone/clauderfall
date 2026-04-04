@@ -294,6 +294,11 @@ class DesignRuntimeService:
             metadata=metadata,
         )
 
+    def delete(self, *, unit_id: str) -> ArtifactRuntimeResult:
+        return self.artifacts.delete_artifact(
+            key=ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=unit_id),
+        )
+
 
 def _validate_design_sidecar(sidecar: dict[str, object]) -> list[str]:
     errors: list[str] = []

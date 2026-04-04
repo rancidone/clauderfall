@@ -2,8 +2,8 @@
 title: Discovery Runtime MCP Interface
 doc_type: design
 status: ready
-updated: 2026-03-27
-summary: Defines the minimal Discovery runtime and MCP-facing operation set for reading the working brief, checkpointing draft progress, and transitioning accepted Discovery output into Design.
+updated: 2026-04-03
+summary: Defines the Discovery runtime and MCP-facing operation set for reading the working brief, checkpointing draft progress, transitioning accepted Discovery output into Design, and explicitly deleting obsolete briefs.
 ---
 
 # Discovery Runtime MCP Interface
@@ -21,6 +21,7 @@ Discovery should expose a minimal high-level operation set:
 - `read`
 - `write_draft`
 - `to_design`
+- `delete`
 
 This is intentionally small.
 
@@ -47,6 +48,7 @@ The initial Discovery runtime/MCP surface should expose exactly these operations
 - `read`
 - `write_draft`
 - `to_design`
+- `delete`
 
 These names should follow the shared vocabulary in [stage_runtime_operation_vocabulary.md](/home/maddie/repos/clauderfall/docs/design/stage_runtime_operation_vocabulary.md) while still staying stage-shaped.
 
@@ -118,6 +120,27 @@ The runtime should preserve the separation between:
 
 The LLM may recommend readiness in the draft content, and `write_draft` should persist that readiness judgment explicitly.
 
+## 4. `delete`
+
+## Purpose
+
+Delete a Discovery brief and all of its persisted runtime state when the operator explicitly wants it removed.
+
+## Design Position
+
+`delete` should be exceptional.
+
+It should be used for cleanup of superseded or mistaken Discovery briefs, not for ordinary workflow transitions.
+
+`delete` should remove:
+
+- the current brief record
+- all persisted checkpoints for that brief
+- the current Markdown document
+- all checkpoint Markdown files
+
+After deletion, `read` should fail for that `brief_id`.
+
 But `write_draft` should not treat that judgment as an automatic transition.
 
 ## 3. `to_design`
@@ -164,7 +187,13 @@ This should match the style already used in [session_lifecycle_mcp_interface.md]
 
 Responses should stay operational and concise.
 
-The runtime should return references and structured state, not large prose explanations, unless a human-readable message is needed to explain a failure or warning.
+Explicit `read` operations may return structured artifact state, including readable body content in full view.
+
+`write_draft` and `to_design` are write-like operations at the MCP boundary and should therefore return status-only success by default.
+
+If the caller needs post-write or post-transition state, it should perform an explicit `read`.
+
+Failure and warning results may still include concise structured detail when needed to explain why the operation did not complete cleanly.
 
 ## Operation Semantics
 
