@@ -25,6 +25,14 @@ DISCOVERY_REQUIRED_FIELDS = (
     "cross_cutting",
 )
 
+DISCOVERY_CROSS_CUTTING_FIELDS = (
+    "global_constraints",
+    "shared_assumptions",
+    "systemic_risks",
+    "open_questions",
+    "source_sections",
+)
+
 
 @dataclass(frozen=True)
 class DiscoveryRuntimeService:
@@ -199,21 +207,30 @@ def _validate_discovery_sidecar(sidecar: dict[str, object]) -> list[str]:
         errors.append("readiness must be 'low', 'medium', or 'high'")
     if not isinstance(sidecar.get("readiness_rationale"), str) or not sidecar.get("readiness_rationale"):
         errors.append("readiness_rationale must be a non-empty string")
-    if not isinstance(sidecar.get("blocking_gaps"), list):
+    blocking_gaps = sidecar.get("blocking_gaps")
+    if not isinstance(blocking_gaps, list):
         errors.append("blocking_gaps must be a list")
+    else:
+        errors.extend(_validate_string_list("blocking_gaps", blocking_gaps))
     if not isinstance(sidecar.get("problem_areas"), list) or not sidecar.get("problem_areas"):
         errors.append("problem_areas must be a non-empty list")
     else:
         for i, area in enumerate(sidecar["problem_areas"]):  # type: ignore[union-attr]
-            errors.extend(_validate_problem_area(i, area))  # type: ignore[arg-type]
-    if not isinstance(sidecar.get("cross_cutting"), dict):
+            errors.extend(_validate_problem_area(i, area))
+
+    cross_cutting = sidecar.get("cross_cutting")
+    if not isinstance(cross_cutting, dict):
         errors.append("cross_cutting must be an object")
+    else:
+        errors.extend(_validate_cross_cutting(cross_cutting))
     return errors
 
 
-def _validate_problem_area(index: int, area: dict[str, object]) -> list[str]:
+def _validate_problem_area(index: int, area: object) -> list[str]:
     errors: list[str] = []
     prefix = f"problem_areas[{index}]"
+    if not isinstance(area, dict):
+        return [f"{prefix} must be an object"]
     for field in ("problem_area_id", "title", "confidence", "source_section"):
         if not area.get(field):
             errors.append(f"{prefix}: missing required field: {field}")
@@ -223,17 +240,50 @@ def _validate_problem_area(index: int, area: dict[str, object]) -> list[str]:
         errors.append(f"{prefix}: assumptions must be a list")
     else:
         for j, assumption in enumerate(area["assumptions"]):  # type: ignore[union-attr]
-            errors.extend(_validate_assumption(f"{prefix}.assumptions[{j}]", assumption))  # type: ignore[arg-type]
+            errors.extend(_validate_assumption(f"{prefix}.assumptions[{j}]", assumption))
     return errors
 
 
-def _validate_assumption(prefix: str, assumption: dict[str, object]) -> list[str]:
+def _validate_assumption(prefix: str, assumption: object) -> list[str]:
     errors: list[str] = []
+    if not isinstance(assumption, dict):
+        return [f"{prefix} must be an object"]
     for field in ("assumption_id", "statement", "status"):
         if not assumption.get(field):
             errors.append(f"{prefix}: missing required field: {field}")
     if "status" in assumption and assumption["status"] not in {"confirmed", "inferred", "unknown"}:
         errors.append(f"{prefix}: status must be 'confirmed', 'inferred', or 'unknown'")
+    return errors
+
+
+def _validate_cross_cutting(cross_cutting: dict[str, object]) -> list[str]:
+    errors: list[str] = []
+    for field in DISCOVERY_CROSS_CUTTING_FIELDS:
+        if field not in cross_cutting:
+            errors.append(f"cross_cutting: missing required field: {field}")
+
+    for field in ("global_constraints", "systemic_risks", "open_questions", "source_sections"):
+        value = cross_cutting.get(field)
+        if not isinstance(value, list):
+            errors.append(f"cross_cutting.{field} must be a list")
+        else:
+            errors.extend(_validate_string_list(f"cross_cutting.{field}", value))
+
+    shared_assumptions = cross_cutting.get("shared_assumptions")
+    if not isinstance(shared_assumptions, list):
+        errors.append("cross_cutting.shared_assumptions must be a list")
+    else:
+        for index, assumption in enumerate(shared_assumptions):
+            errors.extend(_validate_assumption(f"cross_cutting.shared_assumptions[{index}]", assumption))
+
+    return errors
+
+
+def _validate_string_list(prefix: str, values: list[object]) -> list[str]:
+    errors: list[str] = []
+    for index, value in enumerate(values):
+        if not isinstance(value, str) or not value:
+            errors.append(f"{prefix}[{index}] must be a non-empty string")
     return errors
 
 

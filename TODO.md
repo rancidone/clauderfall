@@ -12,60 +12,24 @@ For the current feat:
 - stop and surface any real design gap that blocks implementation; do not invent missing design
 - stop, summarize progress, and hand off when remaining context reaches about 60%
 
-Current feat: Remove SQLite as the authoritative substrate for Discovery and Design artifacts.
+Current feat: Close out the Discovery/Design artifact storage cutover and choose the next implementation target.
 
 Next slice:
 
-1. Ground the substrate cutover in the active storage docs.
-- Read:
-  - `docs/discovery/session-state-and-storage-rediscovery.md`
-  - `docs/design/artifact_persistence_format.md`
-  - `docs/design/artifact_filesystem_layout.md`
-  - `docs/design/artifact_checkpoint_semantics.md`
-  - `docs/design/artifact_checkpoint_metadata.md`
-- Confirm the runtime target is paired Markdown plus YAML with filesystem checkpoint history, not SQLite-backed metadata plus loose Markdown.
+1. Decide whether active docs need a small clarification pass after the cutover.
+- Focus only on docs that still imply DB-shaped runtime semantics for Discovery/Design artifacts.
+- Do not churn docs if the implementation already matches active design truth closely enough.
 
-2. Design the shared filesystem-backed artifact store shape.
-- Replace the current `artifacts` and `artifact_checkpoints` SQLite authority with repo-native artifact directories.
-- Keep the current logical contract:
-  - current artifact
-  - immutable checkpoints
-  - structured metadata adjacent to readable Markdown
-- Avoid a second migration-only abstraction if the final runtime shape is already clear.
+2. Decide whether to remove temporary compatibility aliases from artifact deletion metadata.
+- Current runtime code now prefers filesystem-shaped deletion metadata.
+- Old DB-shaped alias keys still exist for compatibility and should be removed only when no longer needed.
 
-3. Refactor `ArtifactStore` and `StageArtifactRuntime`.
-- Remove SQLite authority from:
-  - `src/clauderfall/runtime/store.py`
-  - `src/clauderfall/runtime/artifacts.py`
-- Rebuild read/write/checkpoint/delete behavior on filesystem artifact pairs.
-- Preserve current stage-level runtime behavior for Discovery and Design while changing only the persistence substrate.
-
-4. Migrate Discovery and Design artifact persistence.
-- Persist current artifact state under the documented filesystem layout.
-- Persist immutable checkpoints under the documented checkpoint layout.
-- Keep short reads and full reads stable at the MCP boundary if possible.
-- Preserve existing validation and transition semantics while changing storage.
-
-5. Add a deliberate migration path from SQLite-backed artifact metadata.
-- Read existing `artifacts` / `artifact_checkpoints` rows.
-- Materialize filesystem-backed current artifacts and checkpoint history.
-- Stop treating SQLite rows as authoritative after migration.
-- Keep any fallback import-only and temporary.
-
-6. Update tests around filesystem authority.
-- Replace DB-oriented artifact assertions with filesystem assertions.
-- Add coverage for:
-  - current artifact pair creation
-  - checkpoint history creation
-  - checkpoint reads
-  - delete behavior
-  - migration from legacy SQLite-backed artifact metadata
-
-7. Update active docs if implementation changes active design truth.
-- Keep the storage story consistent across runtime, MCP, skills, and docs.
+3. Replace this closeout feat with the next real implementation target once the doc/cleanup decision is made.
+- Keep `TODO.md` aligned with the repo’s actual remaining work.
 
 Bug notes:
-- Discovery write path: `discovery_write_draft` sidecar validation is too easy to violate during normal use. Investigate whether the fix belongs in MCP contract shape, validation error ergonomics, schema design, or discovery skill guidance.
+- Discovery write path validation was tightened in runtime validation/error reporting.
+- If normal skill usage still produces avoidable shape errors, inspect skill guidance before changing the MCP contract.
 
 Completed:
 - runtime skeleton
@@ -75,3 +39,31 @@ Completed:
 - session lifecycle runtime
 - session storage cutover to markdown/yaml artifacts
 - MCP adapter (implementation complete; tests pending)
+- storage docs reviewed for artifact cutover target:
+  - `docs/discovery/session-state-and-storage-rediscovery.md`
+  - `docs/design/artifact_persistence_format.md`
+  - `docs/design/artifact_filesystem_layout.md`
+  - `docs/design/artifact_checkpoint_semantics.md`
+  - `docs/design/artifact_checkpoint_metadata.md`
+- `ArtifactStore` refactored to use filesystem-backed current artifacts and checkpoint history
+- Discovery and Design artifact persistence moved to paired Markdown plus YAML files under the documented filesystem layout
+- legacy artifact migration added from SQLite-backed `artifacts` / `artifact_checkpoints` rows into filesystem authority
+- migration edge cases covered:
+  - legacy stage directories no longer suppress migration incorrectly
+  - legacy current rows without checkpoint-history rows still materialize correctly
+- filesystem-authority tests added and updated for:
+  - current artifact pair creation
+  - checkpoint history creation
+  - checkpoint reads
+  - delete behavior
+  - migration from legacy SQLite-backed artifact metadata
+- stale DB-oriented session assertions removed from runtime tests
+- Discovery write validation hardened for nested sidecar shape errors, with clearer runtime/MCP failure detail
+- artifact deletion metadata shifted toward filesystem-shaped semantics, with temporary DB-shaped compatibility aliases retained
+- checkpoint metadata coverage added for:
+  - `created_at`
+  - `flush_reason`
+  - `is_current`
+  - current-checkpoint flip after later writes
+- current full-suite verification status:
+  - `73 passed, 7 skipped`

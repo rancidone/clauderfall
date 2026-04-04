@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
+
+import yaml
 
 from clauderfall.mcp import create_server, map_runtime_result
 from clauderfall.runtime import (
@@ -46,6 +49,10 @@ def test_artifact_store_round_trips_current_record(tmp_path: Path) -> None:
     assert current.version_id == record.version_id
     assert current.stage_metadata["status"] == "draft"
     assert isinstance(current, ArtifactRecord)
+    assert (tmp_path / "design" / "auth-session" / "current" / "artifact.md").exists()
+    assert (tmp_path / "design" / "auth-session" / "current" / "artifact.meta.yaml").exists()
+    assert (tmp_path / "design" / "auth-session" / "checkpoints" / record.version_id / "artifact.md").exists()
+    assert (tmp_path / "design" / "auth-session" / "checkpoints" / record.version_id / "artifact.meta.yaml").exists()
 
 
 def test_artifact_store_lists_stage_records_by_updated_at_desc(tmp_path: Path) -> None:
@@ -75,6 +82,48 @@ def test_artifact_store_lists_stage_records_by_updated_at_desc(tmp_path: Path) -
     assert records[0].version_id == newer_design.version_id
 
 
+def test_artifact_store_writes_required_checkpoint_metadata_and_updates_is_current(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+    key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id="metadata-check")
+
+    first = services.store.write(
+        key=key,
+        markdown="# First\n\nBody.",
+        stage_metadata={"title": "Metadata Check", "status": "draft", "readiness": "medium"},
+        flush_reason="checkpoint",
+    )
+    second = services.store.write(
+        key=key,
+        markdown="# Second\n\nBody.",
+        stage_metadata={"title": "Metadata Check", "status": "accepted", "readiness": "high"},
+        flush_reason="review_decision",
+    )
+
+    first_metadata = yaml.safe_load(
+        services.store.checkpoint_metadata_path(key=key, checkpoint_id=first.version_id).read_text()
+    )
+    second_metadata = yaml.safe_load(
+        services.store.checkpoint_metadata_path(key=key, checkpoint_id=second.version_id).read_text()
+    )
+    current_metadata = yaml.safe_load(services.store.current_metadata_path(key).read_text())
+
+    assert first_metadata["artifact_id"] == "metadata-check"
+    assert first_metadata["checkpoint_id"] == first.version_id
+    assert first_metadata["flush_reason"] == "checkpoint"
+    assert first_metadata["is_current"] is False
+    assert first_metadata["created_at"]
+
+    assert second_metadata["artifact_id"] == "metadata-check"
+    assert second_metadata["checkpoint_id"] == second.version_id
+    assert second_metadata["flush_reason"] == "review_decision"
+    assert second_metadata["is_current"] is True
+    assert second_metadata["created_at"]
+
+    assert current_metadata["checkpoint_id"] == second.version_id
+    assert current_metadata["flush_reason"] == "review_decision"
+    assert current_metadata["is_current"] is True
+
+
 def test_artifact_store_delete_removes_rows_and_markdown_history(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id="disc-delete")
@@ -93,6 +142,8 @@ def test_artifact_store_delete_removes_rows_and_markdown_history(tmp_path: Path)
 
     deletion = services.store.delete(key)
 
+    assert deletion["artifact_deleted"] is True
+    assert deletion["checkpoint_count_deleted"] == 2
     assert deletion["artifact_rows_deleted"] == 1
     assert deletion["checkpoint_rows_deleted"] == 2
     assert deletion["current_markdown_deleted"] is True
@@ -101,6 +152,171 @@ def test_artifact_store_delete_removes_rows_and_markdown_history(tmp_path: Path)
     assert services.store.read_checkpoint(key=key, checkpoint_id=first.version_id) is None
     assert not services.store.markdown_path(key).exists()
     assert not services.store.checkpoint_markdown_path(key=key, checkpoint_id=first.version_id).exists()
+
+
+def test_artifact_store_migrates_legacy_sqlite_rows_into_filesystem_artifacts(tmp_path: Path) -> None:
+    db_path = tmp_path / "clauderfall.db"
+    artifact_id = "legacy-design-unit"
+    first_checkpoint = "checkpoint-1"
+    second_checkpoint = "checkpoint-2"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE artifacts (
+                stage TEXT NOT NULL,
+                artifact_id TEXT NOT NULL,
+                version_id TEXT NOT NULL,
+                stage_metadata TEXT NOT NULL,
+                flush_reason TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (stage, artifact_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE artifact_checkpoints (
+                stage TEXT NOT NULL,
+                artifact_id TEXT NOT NULL,
+                version_id TEXT NOT NULL,
+                stage_metadata TEXT NOT NULL,
+                flush_reason TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (stage, artifact_id, version_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO artifacts (stage, artifact_id, version_id, stage_metadata, flush_reason, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "design",
+                artifact_id,
+                second_checkpoint,
+                json.dumps({"title": "Legacy Design Unit", "status": "accepted", "readiness": "high"}),
+                "review_decision",
+                "2026-03-27T12:00:00+00:00",
+            ),
+        )
+        conn.executemany(
+            """
+            INSERT INTO artifact_checkpoints (stage, artifact_id, version_id, stage_metadata, flush_reason, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    "design",
+                    artifact_id,
+                    first_checkpoint,
+                    json.dumps({"title": "Legacy Design Unit", "status": "draft", "readiness": "medium"}),
+                    "checkpoint",
+                    "2026-03-27T10:00:00+00:00",
+                ),
+                (
+                    "design",
+                    artifact_id,
+                    second_checkpoint,
+                    json.dumps({"title": "Legacy Design Unit", "status": "accepted", "readiness": "high"}),
+                    "review_decision",
+                    "2026-03-27T12:00:00+00:00",
+                ),
+            ],
+        )
+
+    legacy_stage_dir = tmp_path / "design"
+    legacy_stage_dir.mkdir(parents=True, exist_ok=True)
+    (legacy_stage_dir / f"{artifact_id}.md").write_text("# Legacy Design Unit\n\nAccepted body.")
+    legacy_checkpoint_dir = legacy_stage_dir / ".checkpoints" / artifact_id
+    legacy_checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    (legacy_checkpoint_dir / f"{first_checkpoint}.md").write_text("# Legacy Design Unit\n\nDraft body.")
+    (legacy_checkpoint_dir / f"{second_checkpoint}.md").write_text("# Legacy Design Unit\n\nAccepted body.")
+
+    services = build_runtime_services(tmp_path)
+    key = ArtifactKey(stage=ArtifactStage.DESIGN, artifact_id=artifact_id)
+
+    current = services.store.read(key)
+    previous = services.store.read_checkpoint(key=key, checkpoint_id=first_checkpoint)
+
+    assert current is not None
+    assert current.version_id == second_checkpoint
+    assert current.stage_metadata["status"] == "accepted"
+    assert previous is not None
+    assert previous.stage_metadata["status"] == "draft"
+    assert services.store.read_markdown(key) == "# Legacy Design Unit\n\nAccepted body."
+    assert services.store.read_markdown(key, checkpoint_id=first_checkpoint) == "# Legacy Design Unit\n\nDraft body."
+    assert (tmp_path / "design" / artifact_id / "current" / "artifact.meta.yaml").exists()
+    assert (tmp_path / "design" / artifact_id / "checkpoints" / first_checkpoint / "artifact.meta.yaml").exists()
+    assert (tmp_path / "design" / artifact_id / "checkpoints" / second_checkpoint / "artifact.meta.yaml").exists()
+
+
+def test_artifact_store_migrates_legacy_current_row_without_checkpoint_history(tmp_path: Path) -> None:
+    db_path = tmp_path / "clauderfall.db"
+    artifact_id = "legacy-discovery-brief"
+    checkpoint_id = "current-only-checkpoint"
+
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE artifacts (
+                stage TEXT NOT NULL,
+                artifact_id TEXT NOT NULL,
+                version_id TEXT NOT NULL,
+                stage_metadata TEXT NOT NULL,
+                flush_reason TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (stage, artifact_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE artifact_checkpoints (
+                stage TEXT NOT NULL,
+                artifact_id TEXT NOT NULL,
+                version_id TEXT NOT NULL,
+                stage_metadata TEXT NOT NULL,
+                flush_reason TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                PRIMARY KEY (stage, artifact_id, version_id)
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO artifacts (stage, artifact_id, version_id, stage_metadata, flush_reason, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "discovery",
+                artifact_id,
+                checkpoint_id,
+                json.dumps({"title": "Legacy Discovery", "status": "draft", "readiness": "medium"}),
+                "checkpoint",
+                "2026-03-27T12:00:00+00:00",
+            ),
+        )
+
+    legacy_stage_dir = tmp_path / "discovery"
+    legacy_stage_dir.mkdir(parents=True, exist_ok=True)
+    (legacy_stage_dir / f"{artifact_id}.md").write_text("# Legacy Discovery\n\nCurrent body.")
+
+    services = build_runtime_services(tmp_path)
+    key = ArtifactKey(stage=ArtifactStage.DISCOVERY, artifact_id=artifact_id)
+
+    current = services.store.read(key)
+    migrated_checkpoint = services.store.read_checkpoint(key=key, checkpoint_id=checkpoint_id)
+
+    assert current is not None
+    assert current.version_id == checkpoint_id
+    assert migrated_checkpoint is not None
+    assert migrated_checkpoint.version_id == checkpoint_id
+    assert services.store.read_markdown(key) == "# Legacy Discovery\n\nCurrent body."
+    assert services.store.read_markdown(key, checkpoint_id=checkpoint_id) == "# Legacy Discovery\n\nCurrent body."
+    assert (tmp_path / "discovery" / artifact_id / "current" / "artifact.meta.yaml").exists()
+    assert (tmp_path / "discovery" / artifact_id / "checkpoints" / checkpoint_id / "artifact.meta.yaml").exists()
 
 
 def test_runtime_services_wiring_exposes_shared_substrate_components(tmp_path: Path) -> None:
@@ -266,9 +482,40 @@ def test_discovery_delete_removes_artifact_and_is_retry_safe(tmp_path: Path) -> 
 
     assert deleted.result.ok is True
     assert deleted.metadata["deleted"] is True
+    assert deleted.metadata["artifact_deleted"] is True
     assert missing.result.ok is False
     assert repeat.result.status == OperationStatus.WARNING
     assert repeat.warnings == ("artifact_not_found",)
+
+
+def test_discovery_write_returns_nested_shape_errors_instead_of_crashing(tmp_path: Path) -> None:
+    services = build_runtime_services(tmp_path)
+
+    result = services.discovery.write(
+        brief_id="disc-invalid",
+        markdown="# Discovery\n\nBody.",
+        sidecar={
+            "title": "Broken Discovery",
+            "status": "draft",
+            "readiness": "medium",
+            "readiness_rationale": "Has obvious shape errors.",
+            "blocking_gaps": [""],
+            "problem_areas": ["not-an-object"],
+            "cross_cutting": {
+                "global_constraints": ["Preserve auditability."],
+                "shared_assumptions": ["not-an-object"],
+                "systemic_risks": [],
+                "open_questions": [],
+            },
+        },
+    )
+
+    assert result.result.ok is False
+    assert result.result.message == "invalid discovery sidecar"
+    assert "blocking_gaps[0] must be a non-empty string" in result.metadata["errors"]
+    assert "problem_areas[0] must be an object" in result.metadata["errors"]
+    assert "cross_cutting: missing required field: source_sections" in result.metadata["errors"]
+    assert "cross_cutting.shared_assumptions[0] must be an object" in result.metadata["errors"]
 
 
 def test_discovery_to_design_blocks_without_acceptance_or_override(tmp_path: Path) -> None:
@@ -1396,6 +1643,36 @@ def test_mcp_discovery_write_rejects_stringified_sidecar_with_specific_error(tmp
     )
 
 
+def test_mcp_discovery_write_returns_field_errors_for_invalid_nested_sidecar_shape(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool(
+        "discovery_write",
+        {
+            "brief_id": "disc-1",
+            "markdown": "# Discovery\n\nBody.",
+            "sidecar": {
+                "title": "Broken Discovery",
+                "status": "draft",
+                "readiness": "medium",
+                "readiness_rationale": "Has obvious shape errors.",
+                "blocking_gaps": [""],
+                "problem_areas": ["not-an-object"],
+                "cross_cutting": {
+                    "global_constraints": ["Preserve auditability."],
+                    "shared_assumptions": ["not-an-object"],
+                    "systemic_risks": [],
+                    "open_questions": [],
+                },
+            },
+        },
+    )
+
+    assert result["result"] == "failure"
+    assert "blocking_gaps[0] must be a non-empty string" in result["metadata"]["errors"]
+    assert "problem_areas[0] must be an object" in result["metadata"]["errors"]
+
+
 def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path) -> None:
     proc = subprocess.Popen(
         [
@@ -1599,7 +1876,6 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         default_proc.wait(timeout=5)
 
     # Session threads are now filesystem-backed under docs/session
-    assert (tmp_path / "clauderfall.db").exists()
     assert (tmp_path / "docs" / "session" / "active" / "thread-default-docs" / "current" / "artifact.md").exists()
 
     docs_root = tmp_path / "docs" / "clauderfall"
@@ -1659,8 +1935,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         proc.wait(timeout=5)
     assert (docs_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
 
-    # Session threads are in SQLite — verify DB exists at repo root
-    assert (tmp_path / "clauderfall.db").exists()
+    assert (docs_root / "session" / "recent-session" / "current" / "artifact.meta.yaml").exists()
 
 
 def _stdio_request(proc: subprocess.Popen[str], message: dict[str, object]) -> dict[str, object]:

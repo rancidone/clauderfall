@@ -122,8 +122,8 @@ class StageArtifactRuntime:
         deletion = self.store.delete(key)
         if not any(
             (
-                deletion["artifact_rows_deleted"],
-                deletion["checkpoint_rows_deleted"],
+                deletion["artifact_deleted"],
+                deletion["checkpoint_count_deleted"],
                 deletion["current_markdown_deleted"],
                 deletion["checkpoint_markdown_deleted"],
             )

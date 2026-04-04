@@ -15,7 +15,7 @@ from clauderfall.runtime.types import (
 
 @dataclass
 class SessionLifecycleService:
-    """Lifecycle-shaped recent-session runtime backed by SQLite."""
+    """Lifecycle-shaped recent-session runtime backed by filesystem artifacts."""
 
     session: SessionStore
 
