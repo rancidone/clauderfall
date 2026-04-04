@@ -2,8 +2,8 @@
 title: Session Handoff Write/Update Flow
 doc_type: design
 status: ready
-updated: 2026-03-27
-summary: Defines the handoff write path for active thread artifacts and the derived repo-level recent-session index projection.
+updated: 2026-04-04
+summary: Defines the handoff write path for active thread state records and the derived repo-level recent-session index projection.
 ---
 
 # Session Handoff Write/Update Flow
@@ -12,7 +12,7 @@ summary: Defines the handoff write path for active thread artifacts and the deri
 
 This document defines how Clauderfall should persist handoff updates for recent session state.
 
-The goal is to keep handoff cheap and reliable by making the active thread artifact the only LLM-authored state update, while still preserving a startup-oriented repo-level recent-session index.
+The goal is to keep handoff cheap and reliable by making the active thread state record the only LLM-authored state update, while still preserving a startup-oriented repo-level recent-session index.
 
 ## Design Position
 
@@ -20,8 +20,8 @@ The handoff path should be thread first.
 
 On handoff, Clauderfall should:
 
-1. write the active thread artifact and its structured metadata
-2. treat that artifact metadata as the only authoritative thread-state source
+1. write the active thread state record and its structured metadata
+2. treat that record metadata as the only authoritative thread-state source
 3. update the repo-level recent-session index as a derived projection from structured thread metadata
 
 The repo-level index should not be a co-authored peer document that the handoff step asks the model to keep in sync manually.
@@ -34,7 +34,7 @@ The main constraint is operational, not philosophical.
 
 Asking the LLM to update both:
 
-- the active thread artifact
+- the active thread state record
 - the repo-level recent-session index
 
 would require an additional synchronization pass during handoff and again during startup-oriented maintenance.
@@ -51,8 +51,8 @@ The system should therefore optimize for:
 
 For an active thread handoff, the default write path should be:
 
-1. persist the readable active thread artifact
-2. persist the structured sidecar for that thread artifact
+1. persist the active thread state record
+2. persist the structured metadata for that thread
 3. mark that write as the new authoritative thread state
 4. derive or refresh the repo-level recent-session index entry for that thread from explicit structured metadata
 
@@ -60,11 +60,10 @@ The required structured metadata for this path comes from the recent-session art
 
 - `thread_id`
 - `title`
-- `current_intent_summary`
-- `next_suggested_action`
+- `work_items`
 - `updated_at`
 
-The handoff write is successful once the authoritative thread artifact and sidecar are durable.
+The handoff write is successful once the authoritative thread Markdown artifact and metadata sidecar are durable.
 
 Repo-index refresh is required system behavior, but it is logically downstream of the authoritative thread write rather than part of the authored handoff payload.
 
@@ -72,8 +71,8 @@ Repo-index refresh is required system behavior, but it is logically downstream o
 
 Authority should remain strict:
 
-- the active thread artifact owns thread-specific carry-forward state
-- the thread sidecar owns explicit structured metadata for projection
+- the active thread state record owns thread-specific carry-forward state
+- the thread metadata owns explicit structured fields for projection
 - the repo-level recent-session index owns startup-oriented aggregation only
 
 The repo-level index must not become a second editable source of truth for thread metadata.
@@ -86,13 +85,13 @@ Clauderfall should not require atomic dual-document authoring to consider handof
 
 Instead, the failure model should be:
 
-- if thread artifact persistence fails, handoff fails
-- if thread artifact persistence succeeds and repo-index refresh fails, handoff still succeeds for the thread
+- if thread state persistence fails, handoff fails
+- if thread state persistence succeeds and repo-index refresh fails, handoff still succeeds for the thread
 - if repo-index refresh lags or fails, the system should treat the index as stale and recoverable
 
 This keeps the expensive part of the write path small and preserves the most important guarantee:
 
-- the thread's carry-forward state was captured correctly
+- the thread's next-work state was captured correctly
 
 ## Recovery And Refresh
 
@@ -100,7 +99,7 @@ Because the repo-level index is derived, it should be recoverable without re-aut
 
 Recovery should be projection-based:
 
-- read authoritative thread sidecars from the active layer
+- read authoritative thread metadata from the active layer
 - rebuild the relevant repo-index entries
 - rewrite the repo-level recent-session index
 
@@ -113,7 +112,7 @@ This recovery path should be available both:
 - after a failed index refresh during handoff
 - during session startup if the system detects stale or missing repo-level projection data
 
-The recovery mechanism should not require rereading full prose artifacts when structured metadata is sufficient.
+The recovery mechanism should not require rereading broader thread narrative when structured metadata is sufficient.
 
 ## Freshness Detection
 
@@ -165,14 +164,14 @@ This design preserves the session-lifecycle constraints:
 - authoritative recent state is captured in one place per active thread
 - startup can begin from a compact repo-level view
 - projection drift is recoverable without asking the model to rewrite multiple documents
-- token-heavy rereads of thread prose are avoided when structured metadata is available
+- token-heavy rereads of thread narrative are avoided when structured metadata is available
 
 ## Tradeoffs
 
 ## Benefits
 
 - handoff remains a single authored thread update rather than a dual-write authoring task
-- authority stays clear and local to the active thread artifact
+- authority stays clear and local to the active thread state record
 - repo-level startup state can be repaired mechanically
 - the system avoids synchronization-by-prompting as a core correctness mechanism
 

@@ -2,8 +2,8 @@
 title: Session Recent State Artifact
 doc_type: design
 status: ready
-updated: 2026-03-27
-summary: Defines the recent-session-state artifact contract spanning the repo-level startup index, active thread artifacts, and archived thread history.
+updated: 2026-04-04
+summary: Defines the recent-session-state artifact contract spanning the repo-level startup index, active thread state records, and archived thread history.
 ---
 
 # Session Recent State Artifact
@@ -19,14 +19,14 @@ The goal is to support reliable handoff and token-efficient session startup with
 Clauderfall should represent recent session state as three related layers:
 
 - one repo-level recent-session index artifact
-- one active artifact per active thread
+- one active state record per active thread
 - one history layer for archived completed threads
 
 The repo-level index is the default startup entry point.
 
-It should support quick orientation across the current working context without forcing the operator to load every active thread artifact up front.
+It should support quick orientation across the current working context without forcing the operator to load every active thread state record up front.
 
-The active thread artifact is authoritative for that thread's current carry-forward state.
+The active thread state record is authoritative for that thread's current carry-forward state.
 
 The history layer preserves completed threads for later inspection while keeping them out of active startup context.
 
@@ -50,7 +50,7 @@ It should contain:
 
 - compact projections of active threads
 - a bounded `last N` view of recent completed threads
-- explicit references into active thread artifacts and archived history
+- explicit references into active thread state records and archived history
 
 It should not duplicate the full state of every active thread.
 
@@ -60,35 +60,36 @@ Its job is orientation first:
 - show what recently completed
 - let the operator decide whether to drill into a thread
 
-## Active Thread Artifact
+## Active Thread State Record
 
-Each active thread should have its own persisted active artifact.
+Each active thread should have its own persisted active state record.
 
-This artifact is authoritative for the thread's current carry-forward state.
+This record is authoritative for the thread's current carry-forward state.
 
-It should stay bounded and contain only the information needed to continue or hand off the thread honestly.
+It should stay bounded and contain only the ordered next work items plus the readable context needed to execute them honestly.
 
-An active thread artifact is active by virtue of existing in the active layer.
+An active thread state record is active by virtue of existing in the active layer.
 
 It does not need a persistent `status` field to restate that fact.
 
 ### Authoritative Active-Thread Fields
 
-The minimum authoritative metadata for an active thread artifact should be:
+The minimum authoritative metadata for an active thread state record should be:
 
 - `thread_id`
 - `title`
-- `current_intent_summary`
-- `next_suggested_action`
+- `work_items`
 - `updated_at`
 
 These fields should be explicit structured metadata.
 
-They should not be recovered heuristically from prose.
+The readable thread note should live in the paired Markdown artifact.
+
+`work_items` should not be recovered heuristically from prose.
 
 ## Archived History Record
 
-When a thread completes, its active artifact should leave the active layer immediately.
+When a thread completes, its active state record should leave the active layer immediately.
 
 Clauderfall should write an archived history record with this compact metadata:
 
@@ -106,7 +107,7 @@ It does not make the thread unreadable.
 
 ## Authority And Projection
 
-The active thread artifact should be authoritative for thread-specific state.
+The active thread state record should be authoritative for thread-specific state.
 
 The repo-level recent-session index should be a persisted projection over thread metadata, not a co-equal editable source of truth for the same facts.
 
@@ -114,13 +115,11 @@ This keeps startup cheap without creating a second thread-state record that must
 
 For active threads:
 
-- the thread artifact owns canonical thread metadata
+- the thread state record owns canonical thread metadata
 - the repo index owns startup-oriented aggregation
 - any thread fields shown in the repo index must come from explicit structured thread metadata
 
-The current artifact persistence format already prefers Markdown plus an adjacent YAML sidecar.
-
-That sidecar is the right source for reliable projection.
+The current session persistence format should keep these fields explicit and structured while storing readable carry-forward context in the paired Markdown artifact.
 
 ## Startup View
 
@@ -128,10 +127,9 @@ The repo-level recent-session index should expose a compact per-thread startup v
 
 - `thread_id`
 - `title`
-- `current_intent_summary`
+- `work_items`
 - `last_updated_at`
 - `thread_artifact_ref`
-- `next_suggested_action`
 
 For recent completed work retained in the bounded `last N` startup view, the index should expose:
 
@@ -147,13 +145,13 @@ This keeps startup oriented around current work while preserving light visibilit
 
 The lifecycle boundary between active carry-forward state and history should be strict.
 
-The active layer contains only active thread artifacts.
+The active layer contains only active thread state records.
 
 Completed threads should not remain as lightweight inactive active artifacts.
 
 When a thread completes:
 
-- the active artifact leaves the active layer
+- the active state record leaves the active layer
 - the archived history record is written
 - the repo-level index updates its bounded recent-completions view
 

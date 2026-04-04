@@ -82,14 +82,13 @@ class ArtifactRuntimeResult:
 
 
 class ActiveThreadMetadata(BaseModel):
-    """Authoritative structured metadata for one active thread artifact."""
+    """Authoritative structured metadata for one active thread handoff artifact."""
 
     model_config = ConfigDict(use_enum_values=True)
 
     thread_id: str
     title: str
-    current_intent_summary: str
-    next_suggested_action: str
+    work_items: list[str] = Field(default_factory=list)
     updated_at: datetime
 
 
@@ -100,9 +99,8 @@ class StartupActiveThreadEntry(BaseModel):
 
     thread_id: str
     title: str
-    current_intent_summary: str
+    work_items: list[str] = Field(default_factory=list)
     last_updated_at: datetime
-    next_suggested_action: str
 
 
 class ArchivedThreadRecord(BaseModel):

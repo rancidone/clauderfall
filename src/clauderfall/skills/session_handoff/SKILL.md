@@ -34,9 +34,9 @@ Session handoff is responsible for:
 
 * deciding what carry-forward state needs to be preserved
 * producing a clear active-thread title
-* compressing current intent into a short summary
-* producing one concrete next suggested action
-* writing or updating the authoritative active-thread record
+* extracting the concrete next work items that should survive the session boundary
+* capturing only the state needed to execute those items safely
+* writing or updating the authoritative active-thread state record
 
 Session handoff does not own:
 
@@ -79,16 +79,15 @@ A normal handoff write should provide:
 
 * `thread_id`
 * `title`
-* `current_intent_summary`
-* `next_suggested_action`
+* `work_items`
 * `thread_markdown`
 
 Content rules:
 
 * `title` identifies the workstream
-* `current_intent_summary` is short and specific
-* `next_suggested_action` is one concrete continuation step
-* `thread_markdown` preserves the minimum readable context needed to resume safely
+* `work_items` is an ordered list of concrete next actions
+* `thread_markdown` captures only the readable context needed to work those items safely
+* do not preserve broad narrative notes when the next session does not need them
 
 ## Operating Rules
 
@@ -110,9 +109,8 @@ Content rules:
 4. Draft the handoff payload:
    * title
    * thread_id
-   * current intent summary
-   * next suggested action
-   * readable thread markdown
+   * work items
+   * thread markdown
 5. Show the proposed handoff compactly.
 6. If the operator has not explicitly asked to persist yet, stop after the proposal and wait.
 7. Persist it through `session_write_handoff`.

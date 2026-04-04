@@ -65,7 +65,7 @@ Do not call `session_write_handoff` or `session_archive_thread` as part of ordin
 
 ## Operating Rules
 
-* Start from compact startup orientation, not full thread prose.
+* Start from compact startup orientation, not full thread state.
 * Do not assume the most recent thread is the thread the operator wants.
 * Reuse authoritative in-turn session state when nothing suggests it changed.
 * If there are multiple active threads, present them plainly in `updated_at` descending order and let the operator choose.
@@ -84,11 +84,10 @@ Do not call `session_write_handoff` or `session_archive_thread` as part of ordin
 2. Summarize active threads compactly in `updated_at` descending order using:
    * `thread_id`
    * `title`
-   * `current_intent_summary`
-   * `next_suggested_action`
+   * `work_items`
 3. Keep the "start something new" path visible even when active threads exist.
 4. If the operator chooses a thread, call `session_read_thread`.
-5. After drill-in, summarize the current intent, next suggested action, and any key carry-forward notes from `thread_markdown`.
+5. After drill-in, summarize the work items and the key carry-forward details from `thread_markdown`.
 6. Ask the smallest next question needed to decide whether to continue, update the handoff, or start something new.
 
 ## Response Shape

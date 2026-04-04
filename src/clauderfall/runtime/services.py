@@ -30,7 +30,7 @@ def build_runtime_services(docs_root: Path, *, repo_root: Path | None = None) ->
     db_path = (repo_root if repo_root is not None else docs_root) / "clauderfall.db"
     _configure_debug_log(db_path)
     store = ArtifactStore(db_path=db_path, docs_root=docs_root)
-    session = SessionStore(db_path=db_path)
+    session = SessionStore(docs_root=docs_root, legacy_db_path=db_path)
     artifacts = StageArtifactRuntime(store=store)
     discovery = DiscoveryRuntimeService(artifacts=artifacts)
     design = DesignRuntimeService(artifacts=artifacts)

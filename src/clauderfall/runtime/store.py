@@ -38,21 +38,6 @@ CREATE TABLE IF NOT EXISTS artifact_checkpoints (
 );
 """
 
-_CREATE_THREADS = """
-CREATE TABLE IF NOT EXISTS threads (
-    thread_id TEXT PRIMARY KEY,
-    status TEXT NOT NULL DEFAULT 'active',
-    title TEXT NOT NULL DEFAULT '',
-    current_intent_summary TEXT NOT NULL DEFAULT '',
-    next_suggested_action TEXT NOT NULL DEFAULT '',
-    thread_markdown TEXT NOT NULL DEFAULT '',
-    closure_summary TEXT,
-    updated_at TEXT NOT NULL,
-    closed_at TEXT
-);
-"""
-
-
 class ArtifactStore:
     """Persist and load current artifact records via SQLite plus flat markdown files."""
 
@@ -63,7 +48,6 @@ class ArtifactStore:
         with self._connect() as conn:
             conn.execute(_CREATE_ARTIFACTS)
             conn.execute(_CREATE_ARTIFACT_CHECKPOINTS)
-            conn.execute(_CREATE_THREADS)
 
     def read(self, key: ArtifactKey) -> ArtifactRecord | None:
         with self._connect() as conn:

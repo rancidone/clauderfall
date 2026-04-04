@@ -743,16 +743,14 @@ def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
     services.session_lifecycle.session_write_handoff(
         thread_id="thread-b",
         title="Second Thread",
-        current_intent_summary="Still shaping the design runtime.",
-        next_suggested_action="Decide whether to split review logic.",
-        thread_markdown="# Thread B\n\nWorking notes.",
+        work_items=["Decide whether to split review logic."],
+        thread_markdown="# Second Thread\n\nStill shaping the design runtime.",
     )
     services.session_lifecycle.session_write_handoff(
         thread_id="thread-a",
         title="First Thread",
-        current_intent_summary="Finishing session lifecycle implementation.",
-        next_suggested_action="Verify archive semantics.",
-        thread_markdown="# Thread A\n\nWorking notes.",
+        work_items=["Verify archive semantics."],
+        thread_markdown="# First Thread\n\nFinishing session lifecycle implementation.",
     )
 
     startup = services.session_lifecycle.session_read_startup_view()
@@ -769,16 +767,17 @@ def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
     write = services.session_lifecycle.session_write_handoff(
         thread_id="thread-1",
         title="Implement Session Lifecycle",
-        current_intent_summary="Add bounded recovery and archive enforcement.",
-        next_suggested_action="Test startup rebuild and archive recovery paths.",
-        thread_markdown="# Thread 1\n\nSession lifecycle work.",
+        work_items=["Test startup rebuild and archive recovery paths."],
+        thread_markdown="# Thread 1\n\nAdd bounded recovery and archive enforcement.",
     )
     startup = services.session_lifecycle.session_read_startup_view()
 
     assert write.result.ok is True
-    assert write.metadata == {}
+    assert write.metadata["thread_id"] == "thread-1"
     assert startup.metadata["rebuilt"] is False
     assert startup.artifacts["active_threads"][0]["thread_id"] == "thread-1"
+    assert (tmp_path / "session" / "active" / "thread-1" / "current" / "artifact.md").exists()
+    assert (tmp_path / "session" / "recent-session" / "current" / "artifact.meta.yaml").exists()
 
 
 def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_path: Path) -> None:
@@ -786,9 +785,8 @@ def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_pa
     services.session_lifecycle.session_write_handoff(
         thread_id="thread-1",
         title="Implement Session Lifecycle",
-        current_intent_summary="Add bounded recovery and archive enforcement.",
-        next_suggested_action="Summarize completion and archive it.",
-        thread_markdown="# Thread 1\n\nSession lifecycle work.",
+        work_items=["Summarize completion and archive it."],
+        thread_markdown="# Thread 1\n\nAdd bounded recovery and archive enforcement.",
     )
 
     archived = services.session_lifecycle.session_archive_thread(
@@ -803,6 +801,8 @@ def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_pa
     assert startup.artifacts["active_threads"] == []
     assert startup.artifacts["recent_completed_threads"][0]["thread_id"] == "thread-1"
     assert active.result.ok is False
+    assert not (tmp_path / "session" / "active" / "thread-1").exists()
+    assert (tmp_path / "session" / "archive" / "thread-1" / "current" / "artifact.md").exists()
 
 
 def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
@@ -1184,9 +1184,8 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
         {
             "thread_id": "thread-1",
             "title": "Implement MCP Adapter",
-            "current_intent_summary": "Wire thin handlers over runtime services.",
-            "next_suggested_action": "Add lifecycle coverage after the read path works.",
-            "thread_markdown": "# Thread 1\n\nMCP adapter work.",
+            "work_items": ["Add lifecycle coverage after the read path works."],
+            "thread_markdown": "# Thread 1\n\nWire thin handlers over runtime services.",
         },
     )
     startup = server.call_tool("session_read_startup_view")
@@ -1198,10 +1197,11 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
     assert startup["artifacts"]["active_threads"][0] == {
         "thread_id": "thread-1",
         "title": "Implement MCP Adapter",
+        "work_items": ["Add lifecycle coverage after the read path works."],
     }
-    assert "thread_markdown" not in startup["artifacts"]
     assert active["result"] == "success"
-    assert active["artifacts"]["thread_markdown"] == "# Thread 1\n\nMCP adapter work."
+    assert active["artifacts"]["work_items"] == ["Add lifecycle coverage after the read path works."]
+    assert active["artifacts"]["thread_markdown"] == "# Thread 1\n\nWire thin handlers over runtime services."
     assert active["metadata"]["thread_id"] == "thread-1"
 
 
@@ -1257,8 +1257,7 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
         {
             "thread_id": "thread-1",
             "title": "Large Thread",
-            "current_intent_summary": "Keep the response compact.",
-            "next_suggested_action": "Read the thread only when explicitly requested.",
+            "work_items": ["Read the thread only when explicitly requested."],
             "thread_markdown": LARGE_BODY,
         },
     )
@@ -1343,8 +1342,7 @@ def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path)
         {
             "thread_id": "thread-1",
             "title": "Large Thread",
-            "current_intent_summary": "Keep the response compact.",
-            "next_suggested_action": "Read the thread only when explicitly requested.",
+            "work_items": ["Read the thread only when explicitly requested."],
             "thread_markdown": LARGE_BODY,
         },
     )
@@ -1376,6 +1374,26 @@ def test_mcp_validation_failure_stays_at_adapter_boundary(tmp_path: Path) -> Non
     assert result["result"] == "failure"
     assert result["warnings"] == ["invalid_input"]
     assert "view must be 'short' or 'full'" in result["metadata"]["message"]
+
+
+def test_mcp_discovery_write_rejects_stringified_sidecar_with_specific_error(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool(
+        "discovery_write",
+        {
+            "brief_id": "disc-1",
+            "markdown": "# Discovery\n\nBody.",
+            "sidecar": '{"title":"Discovery","status":"draft"}',
+        },
+    )
+
+    assert result["result"] == "failure"
+    assert result["warnings"] == ["invalid_input"]
+    assert (
+        result["metadata"]["message"]
+        == "sidecar is required and must be an object; got string. Do not JSON-encode sidecar."
+    )
 
 
 def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path) -> None:
@@ -1478,9 +1496,8 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                     "arguments": {
                         "thread_id": "thread-1",
                         "title": "Implement MCP Adapter",
-                        "current_intent_summary": "Wire thin handlers over runtime services.",
-                        "next_suggested_action": "Verify stdio round trips.",
-                        "thread_markdown": "# Thread 1\n\nMCP adapter work.",
+                        "work_items": ["Verify stdio round trips."],
+                        "thread_markdown": "# Thread 1\n\nWire thin handlers over runtime services.",
                     },
                 },
             },
@@ -1500,7 +1517,11 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
             },
         )
         active_threads = startup_read["result"]["structuredContent"]["artifacts"]["active_threads"]
-        assert active_threads[0] == {"thread_id": "thread-1", "title": "Implement MCP Adapter"}
+        assert active_threads[0] == {
+            "thread_id": "thread-1",
+            "title": "Implement MCP Adapter",
+            "work_items": ["Verify stdio round trips."],
+        }
 
         invalid_read = _stdio_request(
             proc,
@@ -1565,9 +1586,8 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                     "arguments": {
                         "thread_id": "thread-default-docs",
                         "title": "Default Docs Root",
-                        "current_intent_summary": "Write into docs by default.",
-                        "next_suggested_action": "Verify default path.",
-                        "thread_markdown": "# Default Docs Root\n\nStored under docs.",
+                        "work_items": ["Verify default path."],
+                        "thread_markdown": "# Default Docs Root\n\nWrite into docs by default.",
                     },
                 },
             },
@@ -1578,9 +1598,9 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         default_proc.terminate()
         default_proc.wait(timeout=5)
 
-    # Session threads are now in SQLite only — no markdown files
+    # Session threads are now filesystem-backed under docs/session
     assert (tmp_path / "clauderfall.db").exists()
-    assert not (tmp_path / "session").exists()
+    assert (tmp_path / "docs" / "session" / "active" / "thread-default-docs" / "current" / "artifact.md").exists()
 
     docs_root = tmp_path / "docs" / "clauderfall"
     proc = subprocess.Popen(
@@ -1626,9 +1646,8 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                     "arguments": {
                         "thread_id": "thread-custom-root",
                         "title": "Custom Root",
-                        "current_intent_summary": "Write into docs/clauderfall instead of repo root.",
-                        "next_suggested_action": "Verify artifact paths.",
-                        "thread_markdown": "# Custom Root\n\nStored under docs.",
+                        "work_items": ["Verify artifact paths."],
+                        "thread_markdown": "# Custom Root\n\nWrite into docs/clauderfall instead of repo root.",
                     },
                 },
             },
@@ -1638,6 +1657,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
             proc.stdin.close()
         proc.terminate()
         proc.wait(timeout=5)
+    assert (docs_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
 
     # Session threads are in SQLite — verify DB exists at repo root
     assert (tmp_path / "clauderfall.db").exists()

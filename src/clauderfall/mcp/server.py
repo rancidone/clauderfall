@@ -15,6 +15,7 @@ from clauderfall.mcp.shared import (
     optional_bool,
     optional_string,
     require_object,
+    require_string_list,
     require_string,
     validation_failure,
 )
@@ -349,7 +350,7 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
     )
     server.register_tool(
         name="session_read_thread",
-        description="Read one active thread in full detail.",
+        description="Read one active thread handoff artifact in full detail.",
         input_schema={
             "type": "object",
             "properties": {"thread_id": {"type": "string"}},
@@ -360,14 +361,17 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
     )
     server.register_tool(
         name="session_write_handoff",
-        description="Persist one active-thread handoff update.",
+        description="Persist one active-thread handoff artifact update.",
         input_schema={
             "type": "object",
             "properties": {
                 "thread_id": {"type": "string"},
                 "title": {"type": "string"},
-                "current_intent_summary": {"type": "string"},
-                "next_suggested_action": {"type": "string"},
+                "work_items": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                },
                 "thread_markdown": {"type": "string"},
                 "flush_reason": {
                     "type": "string",
@@ -377,8 +381,7 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
             "required": [
                 "thread_id",
                 "title",
-                "current_intent_summary",
-                "next_suggested_action",
+                "work_items",
                 "thread_markdown",
             ],
             "additionalProperties": False,
@@ -531,8 +534,7 @@ def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -
         services.session_lifecycle.session_write_handoff(
             thread_id=require_string(payload, "thread_id"),
             title=require_string(payload, "title"),
-            current_intent_summary=require_string(payload, "current_intent_summary"),
-            next_suggested_action=require_string(payload, "next_suggested_action"),
+            work_items=require_string_list(payload, "work_items"),
             thread_markdown=require_string(payload, "thread_markdown"),
             flush_reason=flush_reason,
         )
@@ -570,6 +572,7 @@ def _compact_startup_read_result(result: dict[str, Any]) -> dict[str, Any]:
                 {
                     "thread_id": thread["thread_id"],
                     "title": thread["title"],
+                    "work_items": thread.get("work_items", []),
                 }
                 for thread in artifacts.get("active_threads", [])
             ],

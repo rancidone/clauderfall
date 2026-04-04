@@ -2,7 +2,7 @@
 title: Session Lifecycle Runtime Interface
 doc_type: design
 status: ready
-updated: 2026-04-02
+updated: 2026-04-04
 summary: Defines the deterministic runtime operations and MCP-facing boundary for recent-session lifecycle work.
 ---
 
@@ -77,7 +77,7 @@ The preferred shape is high-level lifecycle operations rather than low-level art
 The LLM should remain responsible for the parts that are actually language-shaped:
 
 - drafting or revising the readable thread artifact content
-- producing `current_intent_summary`, `next_suggested_action`, or `closure_summary` when appropriate
+- producing ordered `work_items`, bounded thread Markdown, or `closure_summary` when appropriate
 - deciding which lifecycle operation to invoke next based on operator intent and current state
 
 The LLM should not be responsible for:

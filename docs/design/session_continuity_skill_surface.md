@@ -2,7 +2,7 @@
 title: Session Continuity Skill Surface
 doc_type: design
 status: ready
-updated: 2026-04-02
+updated: 2026-04-04
 summary: Defines the packaged skill surface for startup orientation and handoff persistence over the session lifecycle MCP interface.
 ---
 
@@ -165,8 +165,7 @@ The skill should produce and persist:
 
 - `thread_id`
 - `title`
-- `current_intent_summary`
-- `next_suggested_action`
+- `work_items`
 - `thread_markdown`
 
 The handoff should optimize for continuation safety rather than completeness.
@@ -174,9 +173,8 @@ The handoff should optimize for continuation safety rather than completeness.
 That means:
 
 - title should identify the workstream
-- current intent summary should explain what is in motion now
-- next suggested action should say what the next session should do first
-- thread markdown should carry only the readable context needed to resume safely
+- work items should be the ordered next actions the next session should pick up
+- thread markdown should carry only the readable context needed to execute those items safely
 
 ## Thread Identity Policy
 

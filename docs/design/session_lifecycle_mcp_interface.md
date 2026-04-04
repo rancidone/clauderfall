@@ -2,8 +2,8 @@
 title: Session Lifecycle MCP Interface
 doc_type: design
 status: draft
-updated: 2026-04-02
-summary: Defines the high-level MCP operations, inputs, and result shapes for recent-session lifecycle work.
+updated: 2026-04-04
+summary: Defines the high-level MCP operations, inputs, and result shapes for minimal recent-session lifecycle work.
 ---
 
 # Session Lifecycle MCP Interface
@@ -141,10 +141,10 @@ Required:
 
 ## Behavior
 
-The runtime should resolve the authoritative current active-thread artifact and return:
+The runtime should resolve the authoritative current active-thread state record and return:
 
-- structured metadata from the thread sidecar
-- the readable thread artifact content
+- structured thread metadata
+- the authoritative thread Markdown handoff note
 - references to the current artifact checkpoint
 
 If the requested thread is not active, the operation should fail explicitly rather than silently reading archived history instead.
@@ -170,8 +170,7 @@ Required:
 
 - `thread_id`
 - `title`
-- `current_intent_summary`
-- `next_suggested_action`
+- `work_items`
 - `thread_markdown`
 
 Optional:
@@ -184,7 +183,7 @@ Optional:
 
 The runtime should:
 
-1. persist the active-thread Markdown artifact
+1. persist the active-thread state record
 2. persist the authoritative thread metadata
 3. make the new active-thread state durable
 
@@ -200,9 +199,9 @@ The response metadata should include at least:
 - `startup_index_updated: boolean`
 - `projection_stale: boolean`
 
-The response should not include the full persisted thread Markdown body.
+The response should not include the full persisted thread body.
 
-If the caller needs authoritative readable content after the write, it should use `session_read_thread`.
+If the caller needs authoritative thread state after the write, it should use `session_read_thread`.
 
 ## 4. `session_archive_thread`
 

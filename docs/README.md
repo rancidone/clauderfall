@@ -2,7 +2,7 @@
 title: Clauderfall Docs Index
 doc_type: index
 status: stable
-updated: 2026-04-03
+updated: 2026-04-04
 summary: Top-level index for the active Clauderfall documentation set.
 ---
 

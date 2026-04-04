@@ -204,16 +204,14 @@ def _session_thread_result(
     *,
     thread_id: str,
     title: str,
-    current_intent_summary: str,
-    next_suggested_action: str,
+    work_items: list[str],
     thread_markdown: str,
 ) -> str:
     return _tool_result(
         artifacts={
             "thread_id": thread_id,
             "title": title,
-            "current_intent_summary": current_intent_summary,
-            "next_suggested_action": next_suggested_action,
+            "work_items": work_items,
             "thread_markdown": thread_markdown,
         },
         metadata={"thread_id": thread_id},
@@ -330,15 +328,13 @@ def test_session_continue_reads_startup_before_thread_drill_in(tmp_path: Path) -
                     {
                         "thread_id": "session-continuity-skill-surface",
                         "title": "Session Continuity Skill Surface",
-                        "current_intent_summary": "Review the packaged session skills against the design doc.",
-                        "next_suggested_action": "Inspect the uncommitted skill scaffolding and decide whether to ship it.",
+                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
                         "last_updated_at": "2026-04-02T20:00:00Z",
                     },
                     {
                         "thread_id": "design-status-skill",
                         "title": "Design Status Skill",
-                        "current_intent_summary": "Finish design list and design status support.",
-                        "next_suggested_action": "Move the ready design units through review and acceptance.",
+                        "work_items": ["Move the ready design units through review and acceptance."],
                         "last_updated_at": "2026-04-01T20:00:00Z",
                     },
                 ]
@@ -377,8 +373,7 @@ def test_session_continue_reads_selected_thread_after_operator_choice(tmp_path: 
                     {
                         "thread_id": "session-continuity-skill-surface",
                         "title": "Session Continuity Skill Surface",
-                        "current_intent_summary": "Review the packaged session skills against the design doc.",
-                        "next_suggested_action": "Inspect the uncommitted skill scaffolding and decide whether to ship it.",
+                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
                         "last_updated_at": "2026-04-02T20:00:00Z",
                     }
                 ]
@@ -434,8 +429,7 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
                     {
                         "thread_id": "session-continuity-skill-surface",
                         "title": "Session Continuity Skill Surface",
-                        "current_intent_summary": "Review the packaged session skills against the design doc.",
-                        "next_suggested_action": "Inspect the uncommitted skill scaffolding and decide whether to ship it.",
+                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
                         "last_updated_at": "2026-04-02T20:00:00Z",
                     }
                 ]
@@ -462,8 +456,7 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
                 "content": _session_thread_result(
                     thread_id="session-continuity-skill-surface",
                     title="Session Continuity Skill Surface",
-                    current_intent_summary="Review the packaged session skills against the design doc.",
-                    next_suggested_action="Inspect the uncommitted skill scaffolding and decide whether to ship it.",
+                    work_items=["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
                     thread_markdown="# Session Continuity Skill Surface\n\nUncommitted skill scaffolding is pending review.",
                 ),
             }
@@ -498,8 +491,7 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
 
     assert arguments["thread_id"] == "session-continuity-skill-surface"
     assert arguments["title"] == "Session Continuity Skill Surface"
-    assert arguments["current_intent_summary"]
-    assert arguments["next_suggested_action"]
+    assert arguments["work_items"]
     assert arguments["thread_markdown"]
 
 
@@ -514,8 +506,8 @@ def test_session_handoff_writes_new_thread_with_required_fields(tmp_path: Path) 
         tools=tools,
         initial_user_message=(
             "Save a handoff for new work titled Skill Harness Coverage. "
-            "Current intent: add session skill harness tests and a one-command runner. "
-            "Next suggested action: run the harness against Qwen and inspect failures."
+            "Work items: add session skill harness tests; add a one-command runner; run the harness against Qwen and inspect failures. "
+            "State to carry: the harness path exists but the handoff payload still needs cleanup."
         ),
         target_tool="session_write_handoff",
         follow_up="Persist that handoff now with session_write_handoff.",
@@ -526,8 +518,7 @@ def test_session_handoff_writes_new_thread_with_required_fields(tmp_path: Path) 
     for field in (
         "thread_id",
         "title",
-        "current_intent_summary",
-        "next_suggested_action",
+        "work_items",
         "thread_markdown",
     ):
         assert write_input.get(field), f"session_write_handoff missing required field: {field}"
@@ -572,9 +563,8 @@ def test_session_handoff_does_not_write_without_explicit_persistence_intent(tmp_
                 tool_content = _session_thread_result(
                     thread_id=args["thread_id"],
                     title="Carry Forward Thread",
-                    current_intent_summary="Old summary with stale item.",
-                    next_suggested_action="Clean up the handoff note later.",
-                    thread_markdown="# Carry Forward Thread\n\nOld summary with stale item.",
+                    work_items=["Clean up the handoff note later."],
+                    thread_markdown="# Carry Forward Thread\n\nOld state with a stale item.",
                 )
             else:
                 tool_content = _tool_success()
