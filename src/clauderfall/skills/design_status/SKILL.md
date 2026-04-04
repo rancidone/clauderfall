@@ -34,7 +34,7 @@ The design status MCP surface is:
 
 Use exactly one MCP call: `design_list`.
 
-Do not call `design_read`, `design_write_draft`, or `design_accept` as part of status orientation.
+Do not call `design_read`, `design_write`, or `design_accept` as part of status orientation.
 
 ## Operating Rules
 

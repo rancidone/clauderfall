@@ -19,7 +19,7 @@ The goal is to make the shared stage-runtime pattern actionable for Discovery wi
 Discovery should expose a minimal high-level operation set:
 
 - `read`
-- `write_draft`
+- `write`
 - `to_design`
 - `delete`
 
@@ -46,7 +46,7 @@ Without this boundary, Discovery would still depend on prompt discipline for per
 The initial Discovery runtime/MCP surface should expose exactly these operations:
 
 - `read`
-- `write_draft`
+- `write`
 - `to_design`
 - `delete`
 
@@ -78,7 +78,7 @@ The short form should include at least:
 
 `read` is the operation the LLM uses to recover context, verify current truth, or resume after compaction.
 
-## 2. `write_draft`
+## 2. `write`
 
 ## Purpose
 
@@ -86,7 +86,7 @@ Persist a new Discovery draft checkpoint while keeping the artifact in Discovery
 
 ## Design Position
 
-`write_draft` should be the normal persistence operation during Discovery interviewing.
+`write` should be the normal persistence operation during Discovery interviewing.
 
 It should:
 
@@ -99,7 +99,7 @@ It should:
 - persist the current readiness rationale
 - return structured confirmation of the new authoritative checkpoint
 
-`write_draft` should be able to persist either of the normal Discovery workflow states:
+`write` should be able to persist either of the normal Discovery workflow states:
 
 - `draft`
 - `accepted`
@@ -108,7 +108,7 @@ It should:
 
 It does not mean the Design transition has already been executed.
 
-`write_draft` is a drafting operation, not a transition operation.
+`write` is a drafting operation, not a transition operation.
 
 ## Important Constraint
 
@@ -118,7 +118,7 @@ The runtime should preserve the separation between:
 - evaluating readiness
 - performing a stage transition
 
-The LLM may recommend readiness in the draft content, and `write_draft` should persist that readiness judgment explicitly.
+The LLM may recommend readiness in the draft content, and `write` should persist that readiness judgment explicitly.
 
 ## 4. `delete`
 
@@ -141,7 +141,7 @@ It should be used for cleanup of superseded or mistaken Discovery briefs, not fo
 
 After deletion, `read` should fail for that `brief_id`.
 
-But `write_draft` should not treat that judgment as an automatic transition.
+But `write` should not treat that judgment as an automatic transition.
 
 ## 3. `to_design`
 
@@ -159,7 +159,7 @@ It should be explicit because this is a workflow boundary and artifact-creation 
 
 `to_design` should not perform a second Discovery-readiness judgment.
 
-The readiness decision should already have been made in the Discovery conversation and persisted by `write_draft`.
+The readiness decision should already have been made in the Discovery conversation and persisted by `write`.
 
 The runtime should enforce only the mechanical preconditions required to create valid downstream state.
 
@@ -189,7 +189,7 @@ Responses should stay operational and concise.
 
 Explicit `read` operations may return structured artifact state, including readable body content in full view.
 
-`write_draft` and `to_design` are write-like operations at the MCP boundary and should therefore return status-only success by default.
+`write` and `to_design` are write-like operations at the MCP boundary and should therefore return status-only success by default.
 
 If the caller needs post-write or post-transition state, it should perform an explicit `read`.
 
@@ -200,7 +200,7 @@ Failure and warning results may still include concise structured detail when nee
 The intended semantics are:
 
 - `read` reads authoritative current state in short or full form
-- `write_draft` persists a new checkpoint plus current status and readiness judgment without crossing the stage boundary
+- `write` persists a new checkpoint plus current status and readiness judgment without crossing the stage boundary
 - `to_design` commits the explicit Design transition without re-judging Discovery quality
 
 This gives Discovery one normal read path, one normal persistence path, and one explicit transition path.
@@ -212,7 +212,7 @@ That is enough to support the core Discovery workflow without making the MCP sur
 - A three-operation surface is easy to reason about, but it may prove too narrow if Discovery needs a distinct operation for explicit review or reopen behavior.
 - Reusing the generic name `read` keeps the shared vocabulary clean, but it pushes view-shape variation into parameters rather than separate tool names.
 - Keeping `accepted` separate from readiness preserves a clean workflow field, but it means Discovery now records both status and readiness judgment explicitly.
-- Keeping `write_draft` separate from `to_design` preserves workflow clarity, but it means the LLM must decide explicitly when to attempt the transition.
+- Keeping `write` separate from `to_design` preserves workflow clarity, but it means the LLM must decide explicitly when to attempt the transition.
 
 ## Unresolved
 

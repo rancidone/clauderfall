@@ -242,13 +242,13 @@ def test_discovery_skill_writes_conforming_sidecar(tmp_path: Path) -> None:
         system=system,
         tools=tools,
         initial_user_message=scenario,
-        target_tool="discovery_write_draft",
-        follow_up="Please persist the current discovery draft with discovery_write_draft.",
+        target_tool="discovery_write",
+        follow_up="Please persist the current discovery draft with discovery_write.",
         tmp_path=tmp_path,
     )
 
     assert write_input is not None, (
-        "Discovery skill did not call discovery_write_draft within the turn limit. "
+        "Discovery skill did not call discovery_write within the turn limit. "
         "Check CLAUDERFALL_LLM_BASE_URL and CLAUDERFALL_LLM_MODEL are set correctly."
     )
 

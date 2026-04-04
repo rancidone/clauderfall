@@ -90,7 +90,7 @@ Use MCP as the normal operational boundary for Discovery.
 The Discovery MCP surface is:
 
 * `discovery_read`
-* `discovery_write_draft`
+* `discovery_write`
 * `discovery_to_design`
 
 Use `discovery_read` when you need authoritative current state rather than conversational memory alone.
@@ -103,9 +103,9 @@ Typical times to call `discovery_read`:
 * after any warning or failure result
 * before revising the current authoritative brief
 
-Use `discovery_write_draft` when you have a material brief revision that should become the authoritative current checkpoint.
+Use `discovery_write` when you have a material brief revision that should become the authoritative current checkpoint.
 
-`discovery_write_draft` is the normal persistence path for Discovery and should carry:
+`discovery_write` is the normal persistence path for Discovery and should carry:
 
 * the revised readable brief body
 * the structured sidecar content
@@ -132,9 +132,9 @@ Even a small brief should identify at least one concrete problem area with:
 * `source_section`
 * `assumptions`
 
-Keep the sidecar concise, but make it structurally valid before calling `discovery_write_draft`.
+Keep the sidecar concise, but make it structurally valid before calling `discovery_write`.
 
-`discovery_write_draft` may persist `draft` or `accepted`.
+`discovery_write` may persist `draft` or `accepted`.
 Writing `accepted` does not itself move the session into Design.
 
 Use `discovery_to_design` only when the operator wants the explicit Discovery-to-Design transition recorded.
@@ -188,7 +188,7 @@ For each turn:
    * propose a concrete brief revision
 4. draft the assistant reply in Discovery voice
 5. draft the revised brief in visible prose
-6. if the revision should become authoritative, persist it through `discovery_write_draft`
+6. if the revision should become authoritative, persist it through `discovery_write`
 7. show the proposed revision or summarize the exact delta
 8. treat the revision as accepted only when the operator agrees
 
@@ -198,7 +198,7 @@ For each turn:
 2. Pull the user toward a problem statement, intended outcomes, constraints, assumptions, and risks.
 3. Keep the evolving brief readable enough to inspect directly.
 4. Read authoritative state through `discovery_read` when needed rather than relying on stale session memory.
-5. Persist material draft progress through `discovery_write_draft` instead of treating visible prose alone as saved state.
+5. Persist material draft progress through `discovery_write` instead of treating visible prose alone as saved state.
 6. If the conversation drifts into architecture, components, or interfaces, redirect or propose a handoff to Design.
 7. Use `discovery_to_design` for explicit handoff when Discovery is accepted and the operator wants to move forward.
 8. Keep assumptions visible rather than hiding them in metadata only.

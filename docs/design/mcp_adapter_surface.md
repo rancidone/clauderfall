@@ -30,11 +30,11 @@ Clauderfall should expose one MCP server with a flat tool namespace for the firs
 The tool names should be explicit and stage-shaped:
 
 - `discovery_read`
-- `discovery_write_draft`
+- `discovery_write`
 - `discovery_to_design`
 - `discovery_delete`
 - `design_read`
-- `design_write_draft`
+- `design_write`
 - `design_accept`
 - `design_delete`
 - `session_read_startup_view`
@@ -178,13 +178,13 @@ The first adapter layer should map tools to runtime services like this.
 ### Discovery
 
 - `discovery_read` -> `RuntimeServices.discovery.read(...)`
-- `discovery_write_draft` -> `RuntimeServices.discovery.write_draft(...)`
+- `discovery_write` -> `RuntimeServices.discovery.write(...)`
 - `discovery_to_design` -> `RuntimeServices.discovery.to_design(...)`
 
 ### Design
 
 - `design_read` -> `RuntimeServices.design.read(...)`
-- `design_write_draft` -> `RuntimeServices.design.write_draft(...)`
+- `design_write` -> `RuntimeServices.design.write(...)`
 - `design_accept` -> `RuntimeServices.design.accept(...)`
 
 ### Session Lifecycle

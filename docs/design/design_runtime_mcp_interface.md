@@ -19,7 +19,7 @@ The goal is to make the shared stage-runtime pattern actionable for Design while
 Design should expose a small high-level operation set:
 
 - `read`
-- `write_draft`
+- `write`
 - `accept`
 - `delete`
 
@@ -60,7 +60,7 @@ The MCP surface should therefore support:
 The initial Design runtime/MCP surface should expose exactly these operations:
 
 - `read`
-- `write_draft`
+- `write`
 - `accept`
 - `delete`
 
@@ -93,7 +93,7 @@ The short form should include at least:
 
 `read` is the recovery and orientation operation for Design sessions.
 
-## 2. `write_draft`
+## 2. `write`
 
 ## Purpose
 
@@ -101,7 +101,7 @@ Persist a new Design unit checkpoint while keeping the artifact in its current n
 
 ## Design Position
 
-`write_draft` should be the normal persistence operation during Design interviewing and revision.
+`write` should be the normal persistence operation during Design interviewing and revision.
 
 It should:
 
@@ -114,17 +114,17 @@ It should:
 - persist the current readiness rationale
 - return structured confirmation of the new authoritative checkpoint
 
-`write_draft` should persist the normal mutable Design workflow state:
+`write` should persist the normal mutable Design workflow state:
 
 - `draft`
 
-`write_draft` should not itself perform acceptance.
+`write` should not itself perform acceptance.
 
 Acceptance is an explicit review decision, not a normal drafting checkpoint.
 
 ## Delta-Friendly Write Contract
 
-To keep iterative drafting cheap, `write_draft` should support two equivalent write shapes:
+To keep iterative drafting cheap, `write` should support two equivalent write shapes:
 
 - full replacement writes with complete `markdown` and complete `sidecar`
 - delta writes with one or both of:
@@ -149,7 +149,7 @@ The runtime should preserve the separation between:
 - rating design readiness
 - accepting the design artifact
 
-The LLM may recommend any of those moves, but `write_draft` should only persist the artifact and its current judgment.
+The LLM may recommend any of those moves, but `write` should only persist the artifact and its current judgment.
 ## 3. `accept`
 
 ## Purpose
@@ -181,7 +181,7 @@ It should not be used as a substitute for acceptance, reopening, or decompositio
 
 After deletion, `read` and `list` should no longer surface that `unit_id`.
 
-Design acceptance is a distinct workflow decision and should not be smuggled into `write_draft` or inferred from high readiness alone.
+Design acceptance is a distinct workflow decision and should not be smuggled into `write` or inferred from high readiness alone.
 
 `accept` should record artifact acceptance, not automatic build approval.
 
@@ -218,7 +218,7 @@ Responses should stay operational and concise.
 
 Explicit `read` operations may return structured artifact state, including readable body content in full view.
 
-`write_draft` and `accept` are write-like operations at the MCP boundary and should therefore return status-only success by default.
+`write` and `accept` are write-like operations at the MCP boundary and should therefore return status-only success by default.
 
 If the caller needs post-write or post-acceptance state, it should perform an explicit `read`.
 
@@ -229,7 +229,7 @@ Failure and warning results may still include concise structured detail when nee
 The intended semantics are:
 
 - `read` reads authoritative current state in short or full form
-- `write_draft` persists a new checkpoint plus current status and readiness judgment without performing workflow acceptance
+- `write` persists a new checkpoint plus current status and readiness judgment without performing workflow acceptance
 - `accept` commits the explicit artifact-acceptance transition without automatically approving the unit for build execution
 
 This gives Design one normal read path, one normal persistence path, and one explicit workflow transition that matches the current Design model.
@@ -246,7 +246,7 @@ Reopening should not be a separate runtime verb.
 
 If an accepted unit needs revision, the normal path should be:
 
-- `write_draft`
+- `write`
 - with `status: draft`
 
 This preserves the artifact's identity while recording the reopen as an ordinary later checkpoint, which matches the checkpoint semantics already defined in [artifact_checkpoint_semantics.md](/home/maddie/repos/clauderfall/docs/design/artifact_checkpoint_semantics.md).

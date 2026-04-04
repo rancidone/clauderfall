@@ -61,7 +61,7 @@ class DiscoveryRuntimeService:
             metadata=result.metadata,
         )
 
-    def write_draft(
+    def write(
         self,
         *,
         brief_id: str,

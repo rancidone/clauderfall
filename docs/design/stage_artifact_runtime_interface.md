@@ -106,10 +106,10 @@ These are backend interface concepts, not necessarily final MCP tool names.
 Stage-specific services should wrap them in stage-shaped operations such as:
 
 - Discovery `read`
-- Discovery `write_draft`
+- Discovery `write`
 - Discovery `to_design`
 - Design `read`
-- Design `write_draft`
+- Design `write`
 - Design `accept`
 - Discovery `delete`
 - Design `delete`

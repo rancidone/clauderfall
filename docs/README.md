@@ -45,8 +45,8 @@ Use these values consistently:
 - `design/skill_mcp_interaction_contract.md` - Design doc for how Clauderfall stage skills should interact with MCP for authoritative reads, writes, and workflow transitions.
 - `design/stage_artifact_runtime_interface.md` - Design doc for the shared artifact-level runtime interface beneath stage-specific Discovery and Design services.
 - `design/artifact_deletion_control_surface.md` - Design doc for the explicit deletion surface used to remove superseded or mistaken Discovery and Design artifacts from runtime state.
-- `design/discovery_runtime_mcp_interface.md` - Design doc for the Discovery runtime and MCP-facing operation set of `read`, `write_draft`, `to_design`, and `delete`.
-- `design/design_runtime_mcp_interface.md` - Design doc for the Design runtime and MCP-facing operation set of `read`, `write_draft`, `accept`, and `delete`.
+- `design/discovery_runtime_mcp_interface.md` - Design doc for the Discovery runtime and MCP-facing operation set of `read`, `write`, `to_design`, and `delete`.
+- `design/design_runtime_mcp_interface.md` - Design doc for the Design runtime and MCP-facing operation set of `read`, `write`, `accept`, and `delete`.
 - `design/stage_runtime_mcp_pattern.md` - Design doc for the shared LLM-front-end plus deterministic-backend architecture pattern across stages.
 - `design/shared_stage_runtime_substrate.md` - Design doc for the common runtime substrate beneath stage-specific services and MCP handlers.
 - `design/stage_runtime_operation_vocabulary.md` - Design doc for the standardized cross-stage operation vocabulary used by runtime services and MCP interfaces.

@@ -110,8 +110,8 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
         handler=_discovery_read,
     )
     server.register_tool(
-        name="discovery_write_draft",
-        description="Persist a Discovery draft checkpoint without performing a stage transition.",
+        name="discovery_write",
+        description="Persist a Discovery checkpoint without performing a stage transition.",
         input_schema={
             "type": "object",
             "properties": {
@@ -178,7 +178,7 @@ def _register_discovery_tools(server: ClauderfallMCPServer) -> None:
             "required": ["brief_id", "markdown", "sidecar"],
             "additionalProperties": False,
         },
-        handler=_discovery_write_draft,
+        handler=_discovery_write,
     )
     server.register_tool(
         name="discovery_to_design",
@@ -236,8 +236,8 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
         handler=_design_list,
     )
     server.register_tool(
-        name="design_write_draft",
-        description="Persist a Design draft checkpoint from either a full replacement or a checkpoint-relative delta update.",
+        name="design_write",
+        description="Persist a Design checkpoint from either a full replacement or a checkpoint-relative delta update.",
         input_schema={
             "type": "object",
             "properties": {
@@ -306,7 +306,7 @@ def _register_design_tools(server: ClauderfallMCPServer) -> None:
             "required": ["unit_id"],
             "additionalProperties": False,
         },
-        handler=_design_write_draft,
+        handler=_design_write,
     )
     server.register_tool(
         name="design_accept",
@@ -418,9 +418,9 @@ def _discovery_read(services: RuntimeServices, payload: dict[str, Any]) -> dict[
     return result
 
 
-def _discovery_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+def _discovery_write(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     return _status_only_result(map_runtime_result(
-        services.discovery.write_draft(
+        services.discovery.write(
             brief_id=require_string(payload, "brief_id"),
             markdown=require_string(payload, "markdown"),
             sidecar=require_object(payload, "sidecar"),
@@ -466,7 +466,7 @@ def _design_list(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
     return map_runtime_result(services.design.list())
 
 
-def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+def _design_write(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     sidecar = payload.get("sidecar")
     if sidecar is not None and not isinstance(sidecar, dict):
         raise MCPValidationError("sidecar must be an object when present")
@@ -487,7 +487,7 @@ def _design_write_draft(services: RuntimeServices, payload: dict[str, Any]) -> d
             raise MCPValidationError("markdown_operations entries must be objects")
 
     return _status_only_result(map_runtime_result(
-        services.design.write_draft(
+        services.design.write(
             unit_id=require_string(payload, "unit_id"),
             markdown=markdown,
             sidecar=sidecar,

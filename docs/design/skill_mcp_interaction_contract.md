@@ -94,7 +94,7 @@ This is especially important:
 
 ### 2. Persist Through Explicit Write Operations
 
-When the skill has produced a material artifact revision that should become authoritative, it should call the stage's `*_write_draft` tool.
+When the skill has produced a material artifact revision that should become authoritative, it should call the stage's `*_write` tool.
 
 The write operation is the normal persistence path for evolving stage content.
 
@@ -195,7 +195,7 @@ This keeps the skill prompt disciplined about token use and avoids turning every
 The Discovery skill should treat the Discovery MCP surface as:
 
 - `discovery_read`
-- `discovery_write_draft`
+- `discovery_write`
 - `discovery_to_design`
 
 ### `discovery_read`
@@ -210,7 +210,7 @@ Typical cases:
 - verifying whether the brief is still `draft` or already `accepted`
 - loading the full brief before revising it
 
-### `discovery_write_draft`
+### `discovery_write`
 
 Use when the skill has a revised Discovery brief and wants to persist it as the current authoritative checkpoint.
 
@@ -221,7 +221,7 @@ The skill should supply:
 - the current intended workflow status
 - readiness signal and rationale
 
-The skill may use `discovery_write_draft` to persist either:
+The skill may use `discovery_write` to persist either:
 
 - `draft`
 - `accepted`
@@ -247,7 +247,7 @@ The normal Discovery pattern should be:
 
 1. `discovery_read` when authoritative state is needed
 2. interview and revise the visible brief
-3. `discovery_write_draft` to persist the updated brief checkpoint
+3. `discovery_write` to persist the updated brief checkpoint
 4. repeat until the brief is accepted
 5. `discovery_to_design` when the operator chooses to hand off
 
@@ -256,7 +256,7 @@ The normal Discovery pattern should be:
 The Design skill should treat the Design MCP surface as:
 
 - `design_read`
-- `design_write_draft`
+- `design_write`
 - `design_accept`
 
 ### `design_read`
@@ -271,7 +271,7 @@ Typical cases:
 - loading the full design unit before revising it
 - confirming whether the unit is `draft` or `accepted`
 
-### `design_write_draft`
+### `design_write`
 
 Use when the skill has a revised design unit draft to persist.
 
@@ -315,8 +315,8 @@ The normal Design pattern should be:
 
 1. `design_read` when authoritative state is needed
 2. interview and revise the visible design unit
-3. `design_write_draft` to persist revised checkpoints during drafting
-4. additional `design_write_draft` with `status: draft` if acceptance reveals needed revision
+3. `design_write` to persist revised checkpoints during drafting
+4. additional `design_write` with `status: draft` if acceptance reveals needed revision
 5. `design_accept` when the operator wants the accepted design record
 
 ## Skill Prompt Implications

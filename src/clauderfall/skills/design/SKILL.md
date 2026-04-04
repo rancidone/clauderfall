@@ -93,7 +93,7 @@ Use MCP as the normal operational boundary for Design.
 The Design MCP surface is:
 
 * `design_read`
-* `design_write_draft`
+* `design_write`
 * `design_accept`
 
 Use `design_read` when you need authoritative current state rather than conversational memory alone.
@@ -108,9 +108,9 @@ Typical times to call `design_read`:
 
 Do not reread reflexively when the current authoritative content was just written or read successfully in the same session and nothing suggests it changed.
 
-Use `design_write_draft` when you have a material design revision that should become the authoritative current checkpoint.
+Use `design_write` when you have a material design revision that should become the authoritative current checkpoint.
 
-`design_write_draft` is the normal persistence path for Design.
+`design_write` is the normal persistence path for Design.
 It may write either a full revision or a narrow delta against the current checkpoint.
 It may carry either a full sidecar or a metadata-only sidecar patch.
 It may persist `draft`, but it does not itself accept the artifact.
@@ -124,7 +124,7 @@ Use `design_accept` only when the operator wants the current unit accepted as th
 
 Do not imply that acceptance happened unless the corresponding MCP operation returns a persisted success or warning result that confirms the state change.
 
-For Clauderfall-managed design artifacts, use `design_write_draft` as the only write path.
+For Clauderfall-managed design artifacts, use `design_write` as the only write path.
 Do not use raw file edits for those artifacts.
 
 ## Interviewing Rules
@@ -163,7 +163,7 @@ For each turn:
    * propose a concrete design revision
 4. draft the assistant reply in Design voice
 5. draft the revised visible design artifact or summarize the exact delta
-6. if the revision should become authoritative, persist it through `design_write_draft`, using `markdown_operations` and `sidecar_patch` by default for small localized changes
+6. if the revision should become authoritative, persist it through `design_write`, using `markdown_operations` and `sidecar_patch` by default for small localized changes
 7. surface any tradeoffs, unresolved decisions, readiness impacts, or relevant MCP outcomes
 8. state whether the current unit looks design-ready, partially ready, or not ready
 
@@ -173,7 +173,7 @@ For each turn:
 2. Clarify what specific problem this design unit is solving.
 3. Make the solution concrete through structure, responsibilities, interfaces, and constraints where needed.
 4. Read authoritative state through `design_read` when needed rather than relying on stale session memory.
-5. Persist material draft progress through `design_write_draft` instead of treating visible prose alone as saved state.
+5. Persist material draft progress through `design_write` instead of treating visible prose alone as saved state.
 6. Keep sequencing heuristic and conversational rather than pretending there is a formal dependency graph.
 7. Use `design_accept` for explicit artifact acceptance.
 8. Decompose into child design units when the current boundary is still too large or unclear.

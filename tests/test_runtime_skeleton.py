@@ -213,7 +213,7 @@ def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -
         },
     }
 
-    services.discovery.write_draft(
+    services.discovery.write(
         brief_id="disc-1",
         markdown="# Auth Discovery\n\nDraft brief body.",
         sidecar=sidecar,
@@ -232,7 +232,7 @@ def test_discovery_write_and_read_support_short_and_full_views(tmp_path: Path) -
 
 def test_discovery_delete_removes_artifact_and_is_retry_safe(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.discovery.write_draft(
+    services.discovery.write(
         brief_id="disc-1",
         markdown="# Discovery\n\nBody.",
         sidecar={
@@ -273,7 +273,7 @@ def test_discovery_delete_removes_artifact_and_is_retry_safe(tmp_path: Path) -> 
 
 def test_discovery_to_design_blocks_without_acceptance_or_override(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.discovery.write_draft(
+    services.discovery.write(
         brief_id="disc-1",
         markdown="# Auth Discovery\n\nDraft brief body.",
         sidecar={
@@ -332,7 +332,7 @@ def test_discovery_to_design_supports_normal_and_override_handoff(tmp_path: Path
             "source_sections": ["## Cross-Cutting Constraints"],
         },
     }
-    services.discovery.write_draft(
+    services.discovery.write(
         brief_id="disc-normal",
         markdown="# Accepted Discovery\n\nReady body.",
         sidecar=accepted_sidecar,
@@ -350,7 +350,7 @@ def test_discovery_to_design_supports_normal_and_override_handoff(tmp_path: Path
     override_sidecar["status"] = "draft"
     override_sidecar["readiness"] = "medium"
     override_sidecar["blocking_gaps"] = ["Revocation guarantees remain weak."]
-    services.discovery.write_draft(
+    services.discovery.write(
         brief_id="disc-override",
         markdown="# Override Discovery\n\nProceed anyway.",
         sidecar=override_sidecar,
@@ -382,7 +382,7 @@ def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> N
         "assumptions": ["Audit events can be written asynchronously."],
     }
 
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nDraft design body.",
         sidecar=sidecar,
@@ -401,7 +401,7 @@ def test_design_write_and_read_support_short_and_full_views(tmp_path: Path) -> N
 
 def test_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    first = services.design.write_draft(
+    first = services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nDraft body.",
         sidecar={
@@ -418,7 +418,7 @@ def test_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
             "assumptions": [],
         },
     )
-    second = services.design.write_draft(
+    second = services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nRevised body.",
         sidecar={
@@ -453,7 +453,7 @@ def test_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
 
 def test_design_accept_transitions_draft_to_accepted(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nAccepted from draft.",
         sidecar={
@@ -495,7 +495,7 @@ def test_design_accept_is_idempotent_for_accepted_units(tmp_path: Path) -> None:
         "assumptions": [],
     }
 
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-accepted-path",
         markdown="# Auth Session Design\n\nAccepted path.",
         sidecar={**base_sidecar, "design_unit_id": "unit-accepted-path"},
@@ -511,7 +511,7 @@ def test_design_accept_is_idempotent_for_accepted_units(tmp_path: Path) -> None:
 
 def test_design_delete_removes_unit_from_read_and_list(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-1",
         markdown="# Unit\n\nBody.",
         sidecar={
@@ -538,7 +538,7 @@ def test_design_delete_removes_unit_from_read_and_list(tmp_path: Path) -> None:
 
 def test_design_list_returns_compact_unit_summaries_and_surfaces_malformed_units(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.design.write_draft(
+    services.design.write(
         unit_id="healthy-unit",
         markdown="# Healthy Unit\n\nBody.",
         sidecar={
@@ -593,14 +593,14 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
         "assumptions": [],
     }
 
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nAccepted body.",
         sidecar=accepted_sidecar,
     )
     accepted = services.design.accept(unit_id="unit-auth-session")
 
-    reopened = services.design.write_draft(
+    reopened = services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nReopened body.",
         sidecar={
@@ -619,9 +619,9 @@ def test_design_reopen_after_acceptance_is_later_draft_checkpoint(tmp_path: Path
     assert current.artifacts["readiness"] == "medium"
 
 
-def test_design_write_draft_supports_metadata_only_delta_updates(tmp_path: Path) -> None:
+def test_design_write_supports_metadata_only_delta_updates(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text.",
         sidecar={
@@ -639,7 +639,7 @@ def test_design_write_draft_supports_metadata_only_delta_updates(tmp_path: Path)
         },
     )
 
-    updated = services.design.write_draft(
+    updated = services.design.write(
         unit_id="unit-auth-session",
         sidecar_patch={
             "readiness": "high",
@@ -656,9 +656,9 @@ def test_design_write_draft_supports_metadata_only_delta_updates(tmp_path: Path)
     assert current.artifacts["markdown"] == "# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text."
 
 
-def test_design_write_draft_supports_section_level_markdown_deltas(tmp_path: Path) -> None:
+def test_design_write_supports_section_level_markdown_deltas(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    initial = services.design.write_draft(
+    initial = services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\n## Main App\n\nOld text.\n\n## Tradeoffs\n\nInitial tradeoff text.",
         sidecar={
@@ -676,7 +676,7 @@ def test_design_write_draft_supports_section_level_markdown_deltas(tmp_path: Pat
         },
     )
 
-    updated = services.design.write_draft(
+    updated = services.design.write(
         unit_id="unit-auth-session",
         base_checkpoint_id=initial.metadata["checkpoint_id"],
         markdown_operations=[
@@ -704,9 +704,9 @@ def test_design_write_draft_supports_section_level_markdown_deltas(tmp_path: Pat
     assert "## Open Questions\n\n- None right now." in current.artifacts["markdown"]
 
 
-def test_design_write_draft_rejects_stale_base_checkpoint_on_delta_update(tmp_path: Path) -> None:
+def test_design_write_rejects_stale_base_checkpoint_on_delta_update(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
-    initial = services.design.write_draft(
+    initial = services.design.write(
         unit_id="unit-auth-session",
         markdown="# Auth Session Design\n\nBody.",
         sidecar={
@@ -723,12 +723,12 @@ def test_design_write_draft_rejects_stale_base_checkpoint_on_delta_update(tmp_pa
             "assumptions": [],
         },
     )
-    services.design.write_draft(
+    services.design.write(
         unit_id="unit-auth-session",
         sidecar_patch={"readiness_rationale": "New authoritative checkpoint."},
     )
 
-    stale = services.design.write_draft(
+    stale = services.design.write(
         unit_id="unit-auth-session",
         base_checkpoint_id=initial.metadata["checkpoint_id"],
         sidecar_patch={"readiness": "high"},
@@ -812,12 +812,12 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
 
     assert tool_names == [
         "discovery_read",
-        "discovery_write_draft",
+        "discovery_write",
         "discovery_to_design",
         "discovery_delete",
         "design_read",
         "design_list",
-        "design_write_draft",
+        "design_write",
         "design_accept",
         "design_delete",
         "session_read_startup_view",
@@ -886,7 +886,7 @@ def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) 
     }
 
     write = server.call_tool(
-        "discovery_write_draft",
+        "discovery_write",
         {
             "brief_id": "disc-1",
             "markdown": "# Auth Discovery\n\nDraft body.",
@@ -935,7 +935,7 @@ def test_mcp_discovery_to_design_returns_compact_handoff_shape(tmp_path: Path) -
     }
 
     server.call_tool(
-        "discovery_write_draft",
+        "discovery_write",
         {
             "brief_id": "disc-1",
             "markdown": "# Accepted Discovery\n\nReady body.",
@@ -950,7 +950,7 @@ def test_mcp_discovery_to_design_returns_compact_handoff_shape(tmp_path: Path) -
 def test_mcp_discovery_delete_removes_runtime_state(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "discovery_write_draft",
+        "discovery_write",
         {
             "brief_id": "disc-1",
             "markdown": "# Discovery\n\nBody.",
@@ -990,7 +990,7 @@ def test_mcp_discovery_delete_removes_runtime_state(tmp_path: Path) -> None:
 def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-1",
             "markdown": "# Design\n\nDraft body.",
@@ -1008,7 +1008,7 @@ def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
     )
     first = server.call_tool("design_read", {"unit_id": "unit-1"})
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-1",
             "markdown": "# Design\n\nRevised body.",
@@ -1042,7 +1042,7 @@ def test_mcp_design_read_can_load_specific_checkpoint(tmp_path: Path) -> None:
 def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "healthy-unit",
             "markdown": "# Healthy Unit\n\nBody.",
@@ -1084,7 +1084,7 @@ def test_mcp_design_list_returns_units_and_warnings(tmp_path: Path) -> None:
 def test_mcp_design_delete_removes_unit_and_returns_warning_when_missing(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-1",
             "markdown": "# Unit\n\nBody.",
@@ -1111,10 +1111,10 @@ def test_mcp_design_delete_removes_unit_and_returns_warning_when_missing(tmp_pat
     assert repeat["warnings"] == ["artifact_not_found"]
 
 
-def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
+def test_mcp_design_write_supports_delta_updates(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-auth-session",
             "markdown": "# Auth Session Design\n\n## Tradeoffs\n\nInitial tradeoff text.",
@@ -1133,7 +1133,7 @@ def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
     initial = server.call_tool("design_read", {"unit_id": "unit-auth-session"})
 
     updated = server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-auth-session",
             "base_checkpoint_id": initial["metadata"]["checkpoint_id"],
@@ -1157,9 +1157,9 @@ def test_mcp_design_write_draft_supports_delta_updates(tmp_path: Path) -> None:
     assert "Added detail." in read["artifacts"]["markdown"]
 
 
-def test_design_write_draft_tool_schema_guides_delta_updates(tmp_path: Path) -> None:
+def test_design_write_tool_schema_guides_delta_updates(tmp_path: Path) -> None:
     server = create_server(tmp_path)
-    tool = next(tool for tool in server.list_tools() if tool.name == "design_write_draft")
+    tool = next(tool for tool in server.list_tools() if tool.name == "design_write")
     schema = tool.input_schema
     sidecar_patch = schema["properties"]["sidecar_patch"]
     markdown_operations = schema["properties"]["markdown_operations"]
@@ -1242,12 +1242,12 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
     }
 
     discovery_write = server.call_tool(
-        "discovery_write_draft",
+        "discovery_write",
         {"brief_id": "disc-1", "markdown": LARGE_BODY, "sidecar": discovery_sidecar},
     )
     discovery_handoff = server.call_tool("discovery_to_design", {"brief_id": "disc-1"})
     design_write = server.call_tool(
-        "design_write_draft",
+        "design_write",
         {"unit_id": "unit-1", "markdown": LARGE_BODY, "sidecar": design_sidecar},
     )
     design_list = server.call_tool("design_list")
@@ -1269,10 +1269,10 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
     )
 
     compact_results = {
-        "discovery_write_draft": discovery_write,
+        "discovery_write": discovery_write,
         "discovery_to_design": discovery_handoff,
         "discovery_delete": server.call_tool("discovery_delete", {"brief_id": "disc-1"}),
-        "design_write_draft": design_write,
+        "design_write": design_write,
         "design_list": design_list,
         "design_accept": design_accept,
         "design_delete": server.call_tool("design_delete", {"unit_id": "unit-1"}),
@@ -1292,7 +1292,7 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
 def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path) -> None:
     server = create_server(tmp_path)
     server.call_tool(
-        "discovery_write_draft",
+        "discovery_write",
         {
             "brief_id": "disc-1",
             "markdown": LARGE_BODY,
@@ -1322,7 +1322,7 @@ def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path)
         },
     )
     server.call_tool(
-        "design_write_draft",
+        "design_write",
         {
             "unit_id": "unit-1",
             "markdown": LARGE_BODY,
@@ -1423,7 +1423,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
             },
         )
         tool_names = [tool["name"] for tool in tools["result"]["tools"]]
-        assert "discovery_write_draft" in tool_names
+        assert "discovery_write" in tool_names
         assert "session_write_handoff" in tool_names
 
         discovery_write = _stdio_request(
@@ -1433,7 +1433,7 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 "id": 3,
                 "method": "tools/call",
                 "params": {
-                    "name": "discovery_write_draft",
+                    "name": "discovery_write",
                     "arguments": {
                         "brief_id": "disc-1",
                         "markdown": "# Auth Discovery\n\nDraft body.",

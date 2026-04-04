@@ -86,7 +86,7 @@ class DesignRuntimeService:
             metadata=result.metadata,
         )
 
-    def write_draft(
+    def write(
         self,
         *,
         unit_id: str,
@@ -140,7 +140,7 @@ class DesignRuntimeService:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message="write_draft may persist only draft status",
+                    message="write may persist only draft status",
                 ),
                 metadata={"unit_id": unit_id, "status": status},
             )
@@ -209,7 +209,7 @@ class DesignRuntimeService:
             return ArtifactRuntimeResult(
                 result=OperationResult(
                     status=OperationStatus.ERROR,
-                    message="write_draft may persist only draft status",
+                    message="write may persist only draft status",
                 ),
                 metadata={"unit_id": unit_id, "status": status},
             )
