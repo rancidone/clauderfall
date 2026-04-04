@@ -14,6 +14,9 @@ For the current feat:
 
 Current feat: none
 
+Bug notes:
+- Discovery write path: `discovery_write_draft` sidecar validation is too easy to violate during normal use. Investigate whether the fix belongs in MCP contract shape, validation error ergonomics, schema design, or discovery skill guidance.
+
 Completed:
 - runtime skeleton
 - shared artifact runtime
