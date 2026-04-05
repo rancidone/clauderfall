@@ -64,6 +64,8 @@ def map_runtime_result(result: ArtifactRuntimeResult) -> dict[str, Any]:
         name: _serialize_value(value)
         for name, value in result.metadata.items()
     }
+    if result.result.status != OperationStatus.OK and result.result.message:
+        metadata.setdefault("message", result.result.message)
     warnings = list(result.warnings)
     if result.result.warnings:
         warnings.extend(result.result.warnings)

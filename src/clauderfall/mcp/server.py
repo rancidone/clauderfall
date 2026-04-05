@@ -472,10 +472,18 @@ def _design_list(services: RuntimeServices, payload: dict[str, Any]) -> dict[str
 def _design_write(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     sidecar = payload.get("sidecar")
     if sidecar is not None and not isinstance(sidecar, dict):
+        if isinstance(sidecar, str):
+            raise MCPValidationError(
+                "sidecar must be an object when present; got string. Do not JSON-encode sidecar."
+            )
         raise MCPValidationError("sidecar must be an object when present")
 
     sidecar_patch = payload.get("sidecar_patch")
     if sidecar_patch is not None and not isinstance(sidecar_patch, dict):
+        if isinstance(sidecar_patch, str):
+            raise MCPValidationError(
+                "sidecar_patch must be an object when present; got string. Do not JSON-encode sidecar_patch."
+            )
         raise MCPValidationError("sidecar_patch must be an object when present")
 
     markdown = payload.get("markdown")

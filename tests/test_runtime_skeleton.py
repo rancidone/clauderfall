@@ -1101,9 +1101,9 @@ def test_mcp_result_mapping_uses_shared_success_warning_failure_statuses() -> No
     assert warning["result"] == "warning"
     assert warning["warnings"] == ["projection_stale"]
     assert failure["result"] == "failure"
+    assert failure["metadata"]["message"] == "error"
     assert "warnings" not in success
     assert "artifacts" not in warning
-    assert "metadata" not in failure
 
 
 def test_mcp_discovery_write_and_read_flow_returns_shared_shape(tmp_path: Path) -> None:
@@ -1641,6 +1641,42 @@ def test_mcp_discovery_write_rejects_stringified_sidecar_with_specific_error(tmp
         result["metadata"]["message"]
         == "sidecar is required and must be an object; got string. Do not JSON-encode sidecar."
     )
+
+
+def test_mcp_design_write_rejects_stringified_sidecar_with_specific_error(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool(
+        "design_write",
+        {
+            "unit_id": "unit-1",
+            "markdown": "# Design\n\nBody.",
+            "sidecar": '{"design_unit_id":"unit-1","title":"Design","status":"draft"}',
+        },
+    )
+
+    assert result["result"] == "failure"
+    assert result["warnings"] == ["invalid_input"]
+    assert (
+        result["metadata"]["message"]
+        == "sidecar must be an object when present; got string. Do not JSON-encode sidecar."
+    )
+
+
+def test_mcp_design_write_surfaces_runtime_failure_message(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool(
+        "design_write",
+        {
+            "unit_id": "unit-1",
+            "markdown": "# Design\n\nBody.",
+        },
+    )
+
+    assert result["result"] == "failure"
+    assert result["metadata"]["unit_id"] == "unit-1"
+    assert result["metadata"]["message"] == "full design writes require both markdown and sidecar"
 
 
 def test_mcp_discovery_write_returns_field_errors_for_invalid_nested_sidecar_shape(tmp_path: Path) -> None:
