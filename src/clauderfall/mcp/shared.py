@@ -137,7 +137,14 @@ def require_string_list(payload: dict[str, Any], field: str) -> list[str]:
     """Require a non-empty list of non-empty strings from the tool payload."""
 
     value = payload.get(field)
-    if not isinstance(value, list) or not value:
+    if not isinstance(value, list):
+        if isinstance(value, str):
+            raise MCPValidationError(
+                f"{field} is required and must be a non-empty array of strings; got string. "
+                f"Do not JSON-encode {field}."
+            )
+        raise MCPValidationError(f"{field} is required and must be a non-empty array of strings")
+    if not value:
         raise MCPValidationError(f"{field} is required and must be a non-empty array of strings")
     if not all(isinstance(item, str) and item for item in value):
         raise MCPValidationError(f"{field} must contain only non-empty strings")

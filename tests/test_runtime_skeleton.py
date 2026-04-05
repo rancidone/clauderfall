@@ -1679,6 +1679,27 @@ def test_mcp_design_write_surfaces_runtime_failure_message(tmp_path: Path) -> No
     assert result["metadata"]["message"] == "full design writes require both markdown and sidecar"
 
 
+def test_mcp_session_write_handoff_rejects_stringified_work_items_with_specific_error(tmp_path: Path) -> None:
+    server = create_server(tmp_path)
+
+    result = server.call_tool(
+        "session_write_handoff",
+        {
+            "thread_id": "thread-1",
+            "title": "Thread",
+            "work_items": '["First task"]',
+            "thread_markdown": "# Thread\n\nBody.",
+        },
+    )
+
+    assert result["result"] == "failure"
+    assert result["warnings"] == ["invalid_input"]
+    assert (
+        result["metadata"]["message"]
+        == "work_items is required and must be a non-empty array of strings; got string. Do not JSON-encode work_items."
+    )
+
+
 def test_mcp_discovery_write_returns_field_errors_for_invalid_nested_sidecar_shape(tmp_path: Path) -> None:
     server = create_server(tmp_path)
 
