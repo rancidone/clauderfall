@@ -349,23 +349,21 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
         handler=_session_read_startup_view,
     )
     server.register_tool(
-        name="session_read_thread",
-        description="Read one active thread handoff artifact in full detail.",
+        name="session_read_current",
+        description="Read the current carry-forward artifact in full detail.",
         input_schema={
             "type": "object",
-            "properties": {"thread_id": {"type": "string"}},
-            "required": ["thread_id"],
+            "properties": {},
             "additionalProperties": False,
         },
-        handler=_session_read_thread,
+        handler=_session_read_current,
     )
     server.register_tool(
         name="session_write_handoff",
-        description="Persist one active-thread handoff artifact update.",
+        description="Persist the current carry-forward handoff artifact update.",
         input_schema={
             "type": "object",
             "properties": {
-                "thread_id": {"type": "string"},
                 "title": {"type": "string"},
                 "work_items": {
                     "type": "array",
@@ -379,7 +377,6 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
                 },
             },
             "required": [
-                "thread_id",
                 "title",
                 "work_items",
                 "thread_markdown",
@@ -389,19 +386,18 @@ def _register_session_lifecycle_tools(server: ClauderfallMCPServer) -> None:
         handler=_session_write_handoff,
     )
     server.register_tool(
-        name="session_archive_thread",
-        description="Archive one completed active thread and update startup state.",
+        name="session_archive_current",
+        description="Archive the completed current carry-forward record and update startup state.",
         input_schema={
             "type": "object",
             "properties": {
-                "thread_id": {"type": "string"},
                 "closure_summary": {"type": "string"},
                 "archived_thread_markdown": {"type": "string"},
             },
-            "required": ["thread_id", "closure_summary"],
+            "required": ["closure_summary"],
             "additionalProperties": False,
         },
-        handler=_session_archive_thread,
+        handler=_session_archive_current,
     )
 
 
@@ -525,8 +521,9 @@ def _session_read_startup_view(services: RuntimeServices, payload: dict[str, Any
     return _compact_startup_read_result(map_runtime_result(services.session_lifecycle.session_read_startup_view()))
 
 
-def _session_read_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
-    return map_runtime_result(services.session_lifecycle.session_read_thread(thread_id=require_string(payload, "thread_id")))
+def _session_read_current(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+    del payload
+    return map_runtime_result(services.session_lifecycle.session_read_current())
 
 
 def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
@@ -540,7 +537,6 @@ def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -
 
     return _status_only_result(map_runtime_result(
         services.session_lifecycle.session_write_handoff(
-            thread_id=require_string(payload, "thread_id"),
             title=require_string(payload, "title"),
             work_items=require_string_list(payload, "work_items"),
             thread_markdown=require_string(payload, "thread_markdown"),
@@ -549,13 +545,12 @@ def _session_write_handoff(services: RuntimeServices, payload: dict[str, Any]) -
     ))
 
 
-def _session_archive_thread(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
+def _session_archive_current(services: RuntimeServices, payload: dict[str, Any]) -> dict[str, Any]:
     archived_thread_markdown = payload.get("archived_thread_markdown")
     if archived_thread_markdown is not None:
         raise MCPValidationError("archived_thread_markdown is not supported by the current runtime service")
     return _status_only_result(map_runtime_result(
-        services.session_lifecycle.session_archive_thread(
-            thread_id=require_string(payload, "thread_id"),
+        services.session_lifecycle.session_archive_current(
             closure_summary=require_string(payload, "closure_summary"),
         )
     ))
@@ -576,20 +571,20 @@ def _compact_startup_read_result(result: dict[str, Any]) -> dict[str, Any]:
     return {
         "result": "success",
         "artifacts": {
-            "active_threads": [
+            "current": (
                 {
-                    "thread_id": thread["thread_id"],
-                    "title": thread["title"],
-                    "work_items": thread.get("work_items", []),
+                    "title": artifacts["current"]["title"],
+                    "work_items": artifacts["current"].get("work_items", []),
                 }
-                for thread in artifacts.get("active_threads", [])
-            ],
-            "recent_completed_threads": [
+                if artifacts.get("current") is not None
+                else None
+            ),
+            "recent_completed": [
                 {
-                    "thread_id": thread["thread_id"],
+                    "history_id": thread["history_id"],
                     "title": thread["title"],
                 }
-                for thread in artifacts.get("recent_completed_threads", [])
+                for thread in artifacts.get("recent_completed", [])
             ],
         },
     }

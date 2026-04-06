@@ -2,7 +2,7 @@
 title: MCP Adapter Surface
 doc_type: design
 status: ready
-updated: 2026-04-03
+updated: 2026-04-05
 summary: Defines the first MCP-facing adapter layer over the v2 runtime services, including tool naming, response mapping, and thin-handler boundaries.
 ---
 
@@ -38,9 +38,9 @@ The tool names should be explicit and stage-shaped:
 - `design_accept`
 - `design_delete`
 - `session_read_startup_view`
-- `session_read_thread`
+- `session_read_current`
 - `session_write_handoff`
-- `session_archive_thread`
+- `session_archive_current`
 
 The adapter layer should remain thin.
 
@@ -165,7 +165,7 @@ For Discovery and Design:
 
 For session lifecycle:
 
-- `session_read_thread` may return the readable thread artifact because drill-in explicitly asks for thread detail
+- `session_read_current` may return the readable current artifact because drill-in explicitly asks for current detail
 - `session_read_startup_view` should remain compact
 - lifecycle write and archive tools should return status only by default
 
@@ -190,9 +190,9 @@ The first adapter layer should map tools to runtime services like this.
 ### Session Lifecycle
 
 - `session_read_startup_view` -> `RuntimeServices.session_lifecycle.session_read_startup_view(...)`
-- `session_read_thread` -> `RuntimeServices.session_lifecycle.session_read_thread(...)`
+- `session_read_current` -> `RuntimeServices.session_lifecycle.session_read_current(...)`
 - `session_write_handoff` -> `RuntimeServices.session_lifecycle.session_write_handoff(...)`
-- `session_archive_thread` -> `RuntimeServices.session_lifecycle.session_archive_thread(...)`
+- `session_archive_current` -> `RuntimeServices.session_lifecycle.session_archive_current(...)`
 
 ## Shared Adapter Helpers
 
@@ -219,7 +219,7 @@ But validation should not duplicate runtime invariants that the runtime already 
 
 Examples:
 
-- the adapter may reject a missing `thread_id`
+- the adapter may reject a missing `closure_summary`
 - the adapter should not independently decide whether acceptance from `draft` is allowed
 
 ## Input Schema Completeness Rule

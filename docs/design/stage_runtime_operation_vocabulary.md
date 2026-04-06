@@ -63,7 +63,7 @@ Examples:
 
 - `read_discovery_brief`
 - `read_design_unit`
-- `session_read_thread`
+- `session_read_current`
 
 Do not introduce synonyms like `load`, `fetch`, or `get` unless there is a real distinction.
 
@@ -116,7 +116,7 @@ Use `archive` when moving authoritative state from active usage into a historica
 
 Example:
 
-- `session_archive_thread`
+- `session_archive_current`
 
 This is domain-specific enough to remain a named verb, but broad enough to standardize where archival exists.
 
@@ -181,7 +181,7 @@ Examples:
 - `write_design_unit`
 - `checkpoint_discovery_brief`
 - `derive_design_start_context`
-- `session_archive_thread`
+- `session_archive_current`
 
 Qualifiers should only be added when they disambiguate a real distinction:
 
@@ -255,9 +255,9 @@ and avoid mixing `state` and `status` when the concept is the ordinary workflow 
 The current lifecycle operation set is already close to the preferred vocabulary:
 
 - `session_read_startup_view`
-- `session_read_thread`
+- `session_read_current`
 - `session_write_handoff`
-- `session_archive_thread`
+- `session_archive_current`
 
 That makes the lifecycle cluster a good concrete starting example.
 

@@ -81,44 +81,46 @@ class ArtifactRuntimeResult:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
-class ActiveThreadMetadata(BaseModel):
-    """Authoritative structured metadata for one active thread handoff artifact."""
+class CurrentSessionMetadata(BaseModel):
+    """Authoritative structured metadata for the current carry-forward artifact."""
 
     model_config = ConfigDict(use_enum_values=True)
 
-    thread_id: str
     title: str
     work_items: list[str] = Field(default_factory=list)
     updated_at: datetime
+    checkpoint_id: str
 
 
-class StartupActiveThreadEntry(BaseModel):
-    """Compact startup projection for one active thread."""
+class StartupCurrentEntry(BaseModel):
+    """Compact startup projection for the one current carry-forward record."""
 
     model_config = ConfigDict(use_enum_values=True)
 
-    thread_id: str
     title: str
     work_items: list[str] = Field(default_factory=list)
     last_updated_at: datetime
+    current_artifact_ref: str
 
 
-class ArchivedThreadRecord(BaseModel):
-    """Compact archived-thread metadata retained for recent startup history."""
+class ArchivedSessionRecord(BaseModel):
+    """Compact archived-session metadata retained for recent startup history."""
 
     model_config = ConfigDict(use_enum_values=True)
 
-    thread_id: str
+    history_id: str
     title: str
     closure_summary: str
     closed_at: datetime
+    history_ref: str
 
 
 class RecentSessionIndexMetadata(BaseModel):
-    """Repo-level derived startup projection over active and recent archived threads."""
+    """Repo-level derived startup projection over current and recent archived session state."""
 
     model_config = ConfigDict(use_enum_values=True)
 
-    active_threads: list[StartupActiveThreadEntry] = Field(default_factory=list)
-    recent_completed_threads: list[ArchivedThreadRecord] = Field(default_factory=list)
+    has_current: bool = False
+    current: StartupCurrentEntry | None = None
+    recent_completed: list[ArchivedSessionRecord] = Field(default_factory=list)
     projection_stale: bool = False

@@ -66,13 +66,13 @@ Use these values consistently:
 - `design/design_session_flow.md` - Design doc for the end-to-end Design-stage interaction flow.
 - `design/discovery_design_start_context.md` - Design doc for the condensed Design Start Context artifact between Discovery and Design.
 - `design/design_discovery_reentry.md` - Design doc for the Design-to-Discovery repair boundary.
-- `design/session_lifecycle.md` - Discovery brief for strict recent-session-state, handoff, and start-session lifecycle work.
-- `design/session_recent_state_artifact.md` - Design doc for the recent-session-state artifact contract across startup index, active threads, and archived history.
-- `design/session_handoff_write_update_flow.md` - Design doc for the thread-first handoff write path and recoverable repo-index projection.
-- `design/session_start_drill_in_flow.md` - Design doc for startup orientation from the repo-level index into explicit thread drill-in or a new direction.
-- `design/session_continuity_skill_surface.md` - Design doc for the packaged session skill surface over lifecycle startup and handoff operations.
-- `design/session_archive_transition_mechanics.md` - Design doc for the immediate completion-to-archive transition and consistent archived-state requirement.
-- `design/session_lifecycle_runtime_interface.md` - Design doc for deterministic backend lifecycle operations and an MCP-facing interface for recent-session state.
-- `design/session_lifecycle_mcp_interface.md` - Design doc for concrete high-level MCP lifecycle operations, payloads, and error semantics.
-- `design/session_lifecycle_backend_service.md` - Design doc for the backend service shape behind recent-session lifecycle operations and recovery rules.
-- `design/session_lifecycle_operation_runner.md` - Design doc for the shared bounded operation/recovery mechanism behind lifecycle service methods.
+- `design/session_lifecycle.md` - Discovery brief for strict recent-session-state, handoff, and start-session lifecycle work under a single-current carry-forward model.
+- `design/session_recent_state_artifact.md` - Design doc for the recent-session-state artifact contract across a startup index, one current carry-forward record, and archived history.
+- `design/session_handoff_write_update_flow.md` - Design doc for the current-state-first handoff write path and recoverable repo-index projection.
+- `design/session_start_drill_in_flow.md` - Design doc for startup orientation from the repo-level index into explicit current-state drill-in or a new direction.
+- `design/session_continuity_skill_surface.md` - Design doc for the packaged session skill surface over lifecycle startup and handoff operations in the single-current model.
+- `design/session_archive_transition_mechanics.md` - Design doc for the immediate current-to-history archive transition and consistent archived-state requirement.
+- `design/session_lifecycle_runtime_interface.md` - Design doc for deterministic backend lifecycle operations and a single-current MCP-facing interface for recent-session state.
+- `design/session_lifecycle_mcp_interface.md` - Design doc for concrete high-level MCP lifecycle operations, payloads, and error semantics under the single-current model.
+- `design/session_lifecycle_backend_service.md` - Design doc for the backend service shape behind recent-session lifecycle operations and recovery rules under the single-current model.
+- `design/session_lifecycle_operation_runner.md` - Design doc for the shared bounded operation and recovery mechanism behind lifecycle service methods in the single-current model.

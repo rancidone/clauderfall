@@ -138,7 +138,7 @@ Design should use this pattern for:
 
 Session lifecycle should use this pattern for:
 
-- active-thread handoff
+- current-state handoff
 - startup orientation and projection rebuild
 - archive transition behavior
 

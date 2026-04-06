@@ -985,34 +985,30 @@ def test_design_write_rejects_stale_base_checkpoint_on_delta_update(tmp_path: Pa
     assert "base checkpoint" in stale.result.message
 
 
-def test_session_startup_view_returns_active_threads(tmp_path: Path) -> None:
+def test_session_startup_view_returns_current_record(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     services.session_lifecycle.session_write_handoff(
-        thread_id="thread-b",
         title="Second Thread",
         work_items=["Decide whether to split review logic."],
         thread_markdown="# Second Thread\n\nStill shaping the design runtime.",
-    )
-    services.session_lifecycle.session_write_handoff(
-        thread_id="thread-a",
-        title="First Thread",
-        work_items=["Verify archive semantics."],
-        thread_markdown="# First Thread\n\nFinishing session lifecycle implementation.",
     )
 
     startup = services.session_lifecycle.session_read_startup_view()
 
     assert startup.result.ok is True
-    assert startup.metadata["active_thread_count"] == 2
-    thread_ids = {entry["thread_id"] for entry in startup.artifacts["active_threads"]}
-    assert thread_ids == {"thread-a", "thread-b"}
+    assert startup.metadata["has_current"] is True
+    assert startup.artifacts["current"] == {
+        "title": "Second Thread",
+        "work_items": ["Decide whether to split review logic."],
+        "last_updated_at": startup.artifacts["current"]["last_updated_at"],
+        "current_artifact_ref": startup.artifacts["current"]["current_artifact_ref"],
+    }
 
 
 def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
 
     write = services.session_lifecycle.session_write_handoff(
-        thread_id="thread-1",
         title="Implement Session Lifecycle",
         work_items=["Test startup rebuild and archive recovery paths."],
         thread_markdown="# Thread 1\n\nAdd bounded recovery and archive enforcement.",
@@ -1020,36 +1016,34 @@ def test_session_handoff_refreshes_startup_projection(tmp_path: Path) -> None:
     startup = services.session_lifecycle.session_read_startup_view()
 
     assert write.result.ok is True
-    assert write.metadata["thread_id"] == "thread-1"
+    assert write.metadata["artifact_id"] == "current"
     assert startup.metadata["rebuilt"] is False
-    assert startup.artifacts["active_threads"][0]["thread_id"] == "thread-1"
-    assert (tmp_path / "session" / "active" / "thread-1" / "current" / "artifact.md").exists()
+    assert startup.artifacts["current"]["title"] == "Implement Session Lifecycle"
+    assert (tmp_path / "session" / "current" / "current" / "artifact.md").exists()
     assert (tmp_path / "session" / "recent-session" / "current" / "artifact.meta.yaml").exists()
 
 
-def test_session_archive_moves_thread_to_history_and_removes_active_state(tmp_path: Path) -> None:
+def test_session_archive_moves_current_to_history_and_removes_current_state(tmp_path: Path) -> None:
     services = build_runtime_services(tmp_path)
     services.session_lifecycle.session_write_handoff(
-        thread_id="thread-1",
         title="Implement Session Lifecycle",
         work_items=["Summarize completion and archive it."],
         thread_markdown="# Thread 1\n\nAdd bounded recovery and archive enforcement.",
     )
 
-    archived = services.session_lifecycle.session_archive_thread(
-        thread_id="thread-1",
+    archived = services.session_lifecycle.session_archive_current(
         closure_summary="Session lifecycle runtime shipped with tests.",
     )
     startup = services.session_lifecycle.session_read_startup_view()
-    active = services.session_lifecycle.session_read_thread(thread_id="thread-1")
+    current = services.session_lifecycle.session_read_current()
 
     assert archived.result.ok is True
-    assert archived.metadata == {}
-    assert startup.artifacts["active_threads"] == []
-    assert startup.artifacts["recent_completed_threads"][0]["thread_id"] == "thread-1"
-    assert active.result.ok is False
-    assert not (tmp_path / "session" / "active" / "thread-1").exists()
-    assert (tmp_path / "session" / "archive" / "thread-1" / "current" / "artifact.md").exists()
+    assert "history_id" in archived.metadata
+    assert startup.artifacts["current"] is None
+    assert startup.artifacts["recent_completed"][0]["history_id"] == archived.metadata["history_id"]
+    assert current.result.ok is False
+    assert not (tmp_path / "session" / "current").exists()
+    assert (tmp_path / "session" / "history" / archived.metadata["history_id"] / "current" / "artifact.md").exists()
 
 
 def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
@@ -1068,9 +1062,9 @@ def test_mcp_server_registers_flat_tool_surface(tmp_path: Path) -> None:
         "design_accept",
         "design_delete",
         "session_read_startup_view",
-        "session_read_thread",
+        "session_read_current",
         "session_write_handoff",
-        "session_archive_thread",
+        "session_archive_current",
     ]
     assert server.list_tools()[0].input_schema["required"] == ["brief_id"]
 
@@ -1429,27 +1423,25 @@ def test_mcp_session_lifecycle_path_reads_compact_startup_and_full_thread(tmp_pa
     handoff = server.call_tool(
         "session_write_handoff",
         {
-            "thread_id": "thread-1",
             "title": "Implement MCP Adapter",
             "work_items": ["Add lifecycle coverage after the read path works."],
             "thread_markdown": "# Thread 1\n\nWire thin handlers over runtime services.",
         },
     )
     startup = server.call_tool("session_read_startup_view")
-    active = server.call_tool("session_read_thread", {"thread_id": "thread-1"})
+    current = server.call_tool("session_read_current", {})
 
     assert handoff["result"] == "success"
     assert handoff == {"result": "success"}
     assert startup["result"] == "success"
-    assert startup["artifacts"]["active_threads"][0] == {
-        "thread_id": "thread-1",
+    assert startup["artifacts"]["current"] == {
         "title": "Implement MCP Adapter",
         "work_items": ["Add lifecycle coverage after the read path works."],
     }
-    assert active["result"] == "success"
-    assert active["artifacts"]["work_items"] == ["Add lifecycle coverage after the read path works."]
-    assert active["artifacts"]["thread_markdown"] == "# Thread 1\n\nWire thin handlers over runtime services."
-    assert active["metadata"]["thread_id"] == "thread-1"
+    assert current["result"] == "success"
+    assert current["artifacts"]["work_items"] == ["Add lifecycle coverage after the read path works."]
+    assert current["artifacts"]["thread_markdown"] == "# Thread 1\n\nWire thin handlers over runtime services."
+    assert current["metadata"]["artifact_id"] == "current"
 
 
 def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_path: Path) -> None:
@@ -1502,7 +1494,6 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
     session_write = server.call_tool(
         "session_write_handoff",
         {
-            "thread_id": "thread-1",
             "title": "Large Thread",
             "work_items": ["Read the thread only when explicitly requested."],
             "thread_markdown": LARGE_BODY,
@@ -1510,8 +1501,8 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
     )
     startup_view = server.call_tool("session_read_startup_view")
     session_archive = server.call_tool(
-        "session_archive_thread",
-        {"thread_id": "thread-1", "closure_summary": "Archived."},
+        "session_archive_current",
+        {"closure_summary": "Archived."},
     )
 
     compact_results = {
@@ -1524,7 +1515,7 @@ def test_mcp_non_read_tools_stay_compact_even_with_large_artifact_bodies(tmp_pat
         "design_delete": server.call_tool("design_delete", {"unit_id": "unit-1"}),
         "session_read_startup_view": startup_view,
         "session_write_handoff": session_write,
-        "session_archive_thread": session_archive,
+        "session_archive_current": session_archive,
     }
 
     for tool_name, result in compact_results.items():
@@ -1587,7 +1578,6 @@ def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path)
     server.call_tool(
         "session_write_handoff",
         {
-            "thread_id": "thread-1",
             "title": "Large Thread",
             "work_items": ["Read the thread only when explicitly requested."],
             "thread_markdown": LARGE_BODY,
@@ -1598,7 +1588,7 @@ def test_mcp_explicit_read_tools_are_the_only_large_payload_path(tmp_path: Path)
     discovery_full = server.call_tool("discovery_read", {"brief_id": "disc-1", "view": "full"})
     design_short = server.call_tool("design_read", {"unit_id": "unit-1"})
     design_full = server.call_tool("design_read", {"unit_id": "unit-1", "view": "full"})
-    thread_full = server.call_tool("session_read_thread", {"thread_id": "thread-1"})
+    thread_full = server.call_tool("session_read_current", {})
 
     assert _payload_size_bytes(discovery_short) < COMPACT_MCP_BUDGET_BYTES
     assert "markdown" not in discovery_short["artifacts"]
@@ -1685,7 +1675,6 @@ def test_mcp_session_write_handoff_rejects_stringified_work_items_with_specific_
     result = server.call_tool(
         "session_write_handoff",
         {
-            "thread_id": "thread-1",
             "title": "Thread",
             "work_items": '["First task"]',
             "thread_markdown": "# Thread\n\nBody.",
@@ -1828,7 +1817,6 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 "params": {
                     "name": "session_write_handoff",
                     "arguments": {
-                        "thread_id": "thread-1",
                         "title": "Implement MCP Adapter",
                         "work_items": ["Verify stdio round trips."],
                         "thread_markdown": "# Thread 1\n\nWire thin handlers over runtime services.",
@@ -1850,9 +1838,8 @@ def test_stdio_mcp_server_supports_initialize_list_and_tool_calls(tmp_path: Path
                 },
             },
         )
-        active_threads = startup_read["result"]["structuredContent"]["artifacts"]["active_threads"]
-        assert active_threads[0] == {
-            "thread_id": "thread-1",
+        current = startup_read["result"]["structuredContent"]["artifacts"]["current"]
+        assert current == {
             "title": "Implement MCP Adapter",
             "work_items": ["Verify stdio round trips."],
         }
@@ -1918,7 +1905,6 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                 "params": {
                     "name": "session_write_handoff",
                     "arguments": {
-                        "thread_id": "thread-default-docs",
                         "title": "Default Docs Root",
                         "work_items": ["Verify default path."],
                         "thread_markdown": "# Default Docs Root\n\nWrite into docs by default.",
@@ -1932,8 +1918,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
         default_proc.terminate()
         default_proc.wait(timeout=5)
 
-    # Session threads are now filesystem-backed under docs/session
-    assert (tmp_path / "docs" / "session" / "active" / "thread-default-docs" / "current" / "artifact.md").exists()
+    assert (tmp_path / "docs" / "session" / "current" / "current" / "artifact.md").exists()
 
     docs_root = tmp_path / "docs" / "clauderfall"
     proc = subprocess.Popen(
@@ -1977,7 +1962,6 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
                 "params": {
                     "name": "session_write_handoff",
                     "arguments": {
-                        "thread_id": "thread-custom-root",
                         "title": "Custom Root",
                         "work_items": ["Verify artifact paths."],
                         "thread_markdown": "# Custom Root\n\nWrite into docs/clauderfall instead of repo root.",
@@ -1990,7 +1974,7 @@ def test_stdio_mcp_server_defaults_to_docs_root_and_supports_custom_docs_root(tm
             proc.stdin.close()
         proc.terminate()
         proc.wait(timeout=5)
-    assert (docs_root / "session" / "active" / "thread-custom-root" / "current" / "artifact.md").exists()
+    assert (docs_root / "session" / "current" / "current" / "artifact.md").exists()
 
     assert (docs_root / "session" / "recent-session" / "current" / "artifact.meta.yaml").exists()
 

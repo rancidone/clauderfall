@@ -8,27 +8,27 @@ from clauderfall.runtime.session_store import SessionStore
 from clauderfall.runtime.services import RuntimeServices, build_runtime_services
 from clauderfall.runtime.store import ArtifactStore
 from clauderfall.runtime.types import (
-    ActiveThreadMetadata,
     ArtifactKey,
     ArtifactRecord,
     ArtifactRuntimeResult,
     ArtifactStage,
-    ArchivedThreadRecord,
+    ArchivedSessionRecord,
+    CurrentSessionMetadata,
     FlushReason,
     OperationResult,
     OperationStatus,
     RecentSessionIndexMetadata,
-    StartupActiveThreadEntry,
+    StartupCurrentEntry,
 )
 
 __all__ = [
     "ArtifactKey",
     "ArtifactRecord",
     "ArtifactRuntimeResult",
-    "ActiveThreadMetadata",
-    "ArchivedThreadRecord",
+    "ArchivedSessionRecord",
     "ArtifactStage",
     "ArtifactStore",
+    "CurrentSessionMetadata",
     "DesignRuntimeService",
     "DiscoveryRuntimeService",
     "FlushReason",
@@ -38,7 +38,7 @@ __all__ = [
     "RuntimeServices",
     "SessionLifecycleService",
     "SessionStore",
-    "StartupActiveThreadEntry",
+    "StartupCurrentEntry",
     "StageArtifactRuntime",
     "build_runtime_services",
 ]

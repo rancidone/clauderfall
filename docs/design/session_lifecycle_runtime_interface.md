@@ -2,8 +2,8 @@
 title: Session Lifecycle Runtime Interface
 doc_type: design
 status: ready
-updated: 2026-04-04
-summary: Defines the deterministic runtime operations and MCP-facing boundary for recent-session lifecycle work.
+updated: 2026-04-05
+summary: Defines the deterministic runtime operations and MCP-facing boundary for recent-session lifecycle work under a single current carry-forward model.
 ---
 
 # Session Lifecycle Runtime Interface
@@ -12,166 +12,141 @@ summary: Defines the deterministic runtime operations and MCP-facing boundary fo
 
 This document defines the runtime boundary that should enforce recent-session lifecycle behavior in Clauderfall.
 
-The goal is to keep lifecycle correctness in deterministic backend code while still giving the LLM a clean interface for inspecting and advancing recent-session state.
+The goal is to keep recent continuity deterministic, inspectable, and separate from prompt-driven file mutation.
 
 ## Design Position
 
-Recent-session lifecycle behavior should not be implemented as a loose collection of prompt-driven file edits.
+Recent-session lifecycle behavior should be implemented through one dedicated runtime surface over the filesystem-backed session artifacts.
 
-It should be implemented as deterministic runtime operations owned by backend code and exposed to the LLM through a narrow interface.
+That runtime should own:
 
-MCP is a good fit for the LLM-facing side of that boundary.
+- startup-view read and validation
+- current carry-forward read
+- current handoff write
+- current-to-history archive transition
+- deterministic startup-index rebuild when projection state drifts
 
-The intended split is:
+The runtime should not expose low-level file mutation as the primary lifecycle contract.
 
-- backend runtime code owns artifact reads, writes, projection rebuilds, and lifecycle transitions
-- MCP tools expose those operations to the LLM as explicit capabilities
-- the LLM decides when to invoke the operations and supplies bounded human-authored content where needed
+## Required Operations
 
-## Why This Boundary
+The runtime boundary should expose these lifecycle-shaped operations:
 
-The session-lifecycle cluster already established several behaviors that are not safely enforceable by prompt discipline alone:
+- `session_read_startup_view()`
+- `session_read_current()`
+- `session_write_handoff(...)`
+- `session_archive_current(...)`
 
-- thread-first handoff writes with derived repo-index projection
-- deterministic projection rebuild on mismatch or malformed startup state
-- immediate archive transition on completion
-- no valid steady state between active and archived
+These operations are sufficient for the single-current continuity model.
 
-Those are runtime guarantees, not conversational preferences.
+## Operation Semantics
 
-If Clauderfall leaves them to ordinary document editing skills, it will not actually have deterministic lifecycle behavior.
+### `session_read_startup_view()`
 
-## Runtime Responsibilities
+Returns the startup-oriented recent-session view.
 
-Backend code should own at least these responsibilities:
+The runtime should:
 
-- read authoritative active-thread artifacts and sidecars
-- persist handoff updates for active threads
-- derive and rebuild the repo-level recent-session index from structured metadata
-- perform archive transitions
-- enforce postconditions for lifecycle operations
-- surface warnings or errors when persisted state is stale, malformed, or inconsistent
+- read the persisted startup projection
+- compare it against authoritative current and archived metadata
+- rebuild deterministically when projection state is stale or malformed
+- return compact startup artifacts plus operational metadata
 
-These operations should not require the LLM to manually keep multiple persisted artifacts synchronized.
+### `session_read_current()`
 
-## MCP-Facing Responsibilities
+Returns the authoritative current carry-forward record when one exists.
 
-The LLM-facing interface should expose a small set of explicit capabilities rather than raw filesystem mutation.
+The runtime should fail explicitly when no current record exists rather than synthesizing one from history or startup summaries.
 
-At a minimum, the MCP boundary likely needs operations for:
+### `session_write_handoff(...)`
 
-- reading startup-oriented recent-session state
-- reading one active thread artifact
-- updating one active thread handoff artifact
-- rebuilding the repo-level recent-session index deterministically
-- completing and archiving a thread
+Persists the authoritative current carry-forward record.
 
-Those operations should return structured results that make lifecycle state explicit.
+Inputs should include:
 
-The LLM should not need to infer whether a transition succeeded from prose alone.
+- `title`
+- `work_items`
+- `thread_markdown`
+- optional `flush_reason`
 
-The preferred shape is high-level lifecycle operations rather than low-level artifact-service primitives exposed directly to the model.
+The runtime should:
 
-## LLM Responsibilities
+- persist the current Markdown artifact and metadata
+- mark the resulting checkpoint as authoritative current state
+- refresh the startup projection
+- return status-only success by default plus operational metadata
 
-The LLM should remain responsible for the parts that are actually language-shaped:
+This operation replaces the previous current state if one exists.
 
-- drafting or revising the readable thread artifact content
-- producing ordered `work_items`, bounded thread Markdown, or `closure_summary` when appropriate
-- deciding which lifecycle operation to invoke next based on operator intent and current state
+### `session_archive_current(...)`
 
-The LLM should not be responsible for:
+Archives the current carry-forward record into history and removes it from the current layer.
 
-- enforcing atomicity
-- synchronizing multi-artifact writes manually
-- deciding whether projection rebuild was mechanically correct from raw file edits
+Inputs should include:
 
-## Operation Shape
+- `closure_summary`
 
-The runtime interface should prefer named lifecycle operations over generic file-write tools.
+The runtime should:
 
-That means operations should look more like:
+- read the authoritative current record
+- write the archived history record
+- remove the current record
+- refresh the startup projection
+- verify that the resulting state is consistent
 
-- `session_read_startup_view`
-- `session_read_thread`
-- `session_write_handoff`
-- `session_archive_thread`
+## Result Shape
 
-and less like:
+The runtime should return structured result objects carrying:
 
-- write arbitrary file
-- rewrite Markdown document
-- patch YAML sidecar directly
+- operation status
+- warning codes
+- affected artifact or checkpoint references
+- operation-specific metadata
 
-Generic file access may still exist for inspection or debugging, but it should not be the normal correctness path for lifecycle transitions.
+This keeps policy visible and allows the MCP layer to stay thin.
 
-The MCP surface should stay intentionally small and lifecycle-shaped.
+## Invariants
 
-Artifact-service primitives may still exist inside the runtime, but they should sit behind the lifecycle layer rather than becoming the normal model-facing contract.
+The runtime must preserve these invariants:
 
-## Determinism Rule
+- at most one current carry-forward record exists
+- current state is authoritative for continuation
+- startup projection is derived and replaceable
+- history is authoritative for completed continuity state
+- archive transitions do not leave durable middle states
 
-Any operation that changes lifecycle state should be deterministic in backend behavior.
+## Recovery Rules
 
-That means:
+Deterministic recovery belongs at the runtime boundary.
 
-- explicit inputs
-- explicit postconditions
-- explicit success or failure result
-- deterministic rebuild from structured metadata where rebuild is allowed
+Examples:
 
-For example, repo-index rebuild should be a mechanical projection from authoritative thread sidecars, not an LLM-authored summary regeneration pass.
-
-## Error Model
-
-MCP responses for lifecycle operations should make failure visible and machine-usable.
-
-They should distinguish at least:
-
-- success
-- warning with recovery performed
-- failure with no state transition committed
-
-This matters because the LLM needs to know whether it should continue normal session flow, inform the operator about degraded state, or stop and request intervention.
-
-## Relationship To Artifact Docs
-
-The existing artifact and flow docs remain the source of lifecycle behavior:
-
-- `session_recent_state_artifact.md` defines the artifact contract
-- `session_handoff_write_update_flow.md` defines handoff write semantics
-- `session_start_drill_in_flow.md` defines startup drill-in behavior
-- `session_archive_transition_mechanics.md` defines completion and archive-transition behavior
-
-This document adds the missing enforcement boundary:
-
-- which parts belong in deterministic runtime code
-- which parts may be exposed through MCP
-- which parts remain LLM-authored content work
+- startup index mismatch triggers rebuild
+- malformed startup projection triggers warning plus rebuild
+- archive transition failure prefers restoration to a valid current-state end state unless full archival can still complete as one bounded recovery action
 
 ## Constraints
 
-This design should preserve the main recent-session-state constraints:
+This runtime shape should preserve the cluster's established constraints:
 
-- token-efficient startup
-- bounded carry-forward state
 - deterministic lifecycle transitions
-- strict separation between active state and history
-- minimal need for multi-pass document synchronization
+- minimal model-facing operation set
+- strict current-versus-history boundary
+- token-efficient startup
+- no reliance on prompt-enforced synchronization
 
 ## Tradeoffs
 
 ## Benefits
 
-- lifecycle correctness moves into code that can enforce invariants
-- MCP gives the LLM a clean operational interface without exposing raw persistence as the main path
-- failures become inspectable and actionable rather than conversationally ambiguous
+- lifecycle policy stays centralized
+- MCP handlers can remain thin adapters
+- current and archived state stay clearly separated
 
 ## Costs
 
-- Clauderfall needs backend lifecycle services, not just prompt skills
-- the MCP layer needs careful operation design to avoid becoming a thin wrapper around arbitrary file edits
-- some implementation speed is traded for stronger invariants and clearer runtime semantics
+- the runtime must implement explicit projection rebuild and archive recovery behavior
+- startup summaries remain dependent on structured metadata correctness
 
 ## Readiness
 
@@ -179,11 +154,9 @@ Readiness: high
 
 Rationale:
 
-The core direction is now explicit:
+The runtime boundary is now concrete:
 
-- lifecycle correctness belongs in backend runtime code
-- MCP is the preferred LLM-facing interface
-- the LLM remains responsible for language work, not enforcement
-- the model-facing boundary should use a small set of high-level lifecycle operations rather than low-level persistence primitives
-
-The remaining work is downstream interface definition and implementation, not unresolved design direction.
+- the lifecycle surface is small
+- the current-state model is explicit
+- projection rebuild and archive verification are first-class runtime concerns
+- the remaining work is implementation, not unresolved surface design

@@ -1,9 +1,9 @@
 ---
 title: Session Lifecycle MCP Interface
 doc_type: design
-status: draft
-updated: 2026-04-04
-summary: Defines the high-level MCP operations, inputs, and result shapes for minimal recent-session lifecycle work.
+status: ready
+updated: 2026-04-05
+summary: Defines the high-level MCP operations, inputs, and result shapes for recent-session lifecycle work under a single current carry-forward model.
 ---
 
 # Session Lifecycle MCP Interface
@@ -31,13 +31,13 @@ The MCP layer should not expose low-level file mutation as the default lifecycle
 The initial MCP surface should expose these operations:
 
 - `session_read_startup_view`
-- `session_read_thread`
+- `session_read_current`
 - `session_write_handoff`
-- `session_archive_thread`
+- `session_archive_current`
 
 This is intentionally small.
 
-It covers the session-lifecycle behaviors already designed without turning MCP into a generic artifact-editing API.
+It covers the recent-session behaviors already designed without turning MCP into a generic artifact-editing API.
 
 ## Shared Response Shape
 
@@ -48,48 +48,6 @@ Every lifecycle MCP operation should return a structured response with the same 
 - `artifacts`
 - `metadata`
 
-### `result`
-
-`result` should use a small controlled set:
-
-- `success`
-- `warning`
-- `failure`
-
-`success` means the requested lifecycle operation completed and its postconditions were met.
-
-`warning` means the requested operation completed, but the runtime also had to perform deterministic recovery or observed degraded-but-usable state that the operator should know about.
-
-`failure` means the requested operation did not commit the intended lifecycle transition.
-
-### `warnings`
-
-`warnings` should be a short list of machine-usable warning codes with optional short human-readable messages.
-
-The LLM should not need to parse long prose to determine whether startup state was stale, whether a rebuild was performed, or whether completion reverted to active.
-
-### `artifacts`
-
-`artifacts` should contain references to the artifact identities or current checkpoints materially affected by the operation.
-
-This lets the LLM and operator understand which persisted state is now authoritative.
-
-Responses should stay minimal.
-
-Lifecycle MCP operations should return references and concise structured metadata, not full readable artifact bodies.
-
-### `metadata`
-
-`metadata` should contain operation-specific structured fields such as:
-
-- `thread_id`
-- `checkpoint_id`
-- `rebuilt`
-- `recovered`
-- `active_thread_count`
-
-This field should stay operational and concise.
-
 ## 1. `session_read_startup_view`
 
 ## Purpose
@@ -98,7 +56,7 @@ Return the startup-oriented recent-session view used to begin session orientatio
 
 ## Inputs
 
-This operation should require no thread-specific input.
+This operation should require no session-specific input.
 
 ## Behavior
 
@@ -111,49 +69,41 @@ Any validation or repair needed to make that view safe should happen inside the 
 The response metadata should include at least:
 
 - `rebuilt: boolean`
-- `active_thread_count: number`
+- `has_current: boolean`
 - `recent_completed_count: number`
 
 ## Returned View
 
 The startup payload should include:
 
-- active thread summaries
-- recent completed thread summaries
+- current carry-forward summary when one exists
+- recent completed record summaries
 - any warnings about internal validation or repair
 
-The returned active thread list should already be deterministically ordered:
-
-- `updated_at` descending
-- stable secondary key such as `thread_id`
-
-## 2. `session_read_thread`
+## 2. `session_read_current`
 
 ## Purpose
 
-Return the authoritative state for one active thread after the operator or workflow chooses to drill into it.
+Return the authoritative state for the current carry-forward record after the operator or workflow chooses to drill into it.
 
 ## Inputs
 
-Required:
-
-- `thread_id`
+This operation should require no identifier.
 
 ## Behavior
 
-The runtime should resolve the authoritative current active-thread state record and return:
+The runtime should resolve the authoritative current-state record and return:
 
-- structured thread metadata
-- the authoritative thread Markdown handoff note
+- structured current metadata
+- the authoritative Markdown handoff note
 - references to the current artifact checkpoint
 
-If the requested thread is not active, the operation should fail explicitly rather than silently reading archived history instead.
+If no current record exists, the operation should fail explicitly rather than silently reading history instead.
 
 ## Result Metadata
 
 The response metadata should include at least:
 
-- `thread_id`
 - `artifact_id`
 - `checkpoint_id`
 - `updated_at`
@@ -162,13 +112,12 @@ The response metadata should include at least:
 
 ## Purpose
 
-Persist a handoff update for one active thread using the thread-first write path.
+Persist a handoff update for the one current carry-forward record.
 
 ## Inputs
 
 Required:
 
-- `thread_id`
 - `title`
 - `work_items`
 - `thread_markdown`
@@ -177,74 +126,63 @@ Optional:
 
 - `flush_reason`
 
-`flush_reason` should default to a controlled operational value appropriate for handoff persistence.
-
 ## Behavior
 
 The runtime should:
 
-1. persist the active-thread state record
-2. persist the authoritative thread metadata
-3. make the new active-thread state durable
+1. persist the current state record
+2. persist the authoritative current metadata
+3. make the new current state durable
+4. refresh the startup-oriented recent-session index
 
-The operation should succeed once the authoritative thread state is durable.
+The operation should succeed once the authoritative current state is durable.
+
+The response should not include the full persisted body.
+
+If the caller needs authoritative state after the write, it should use `session_read_current`.
 
 ## Result Metadata
 
 The response metadata should include at least:
 
-- `thread_id`
 - `artifact_id`
 - `checkpoint_id`
 - `startup_index_updated: boolean`
 - `projection_stale: boolean`
 
-The response should not include the full persisted thread body.
-
-If the caller needs authoritative thread state after the write, it should use `session_read_thread`.
-
-## 4. `session_archive_thread`
+## 4. `session_archive_current`
 
 ## Purpose
 
-Perform the immediate completion-to-archive transition for one thread.
+Perform the immediate completion-to-archive transition for the current carry-forward record.
 
 ## Inputs
 
 Required:
 
-- `thread_id`
 - `closure_summary`
-
-Optional:
-
-- `archived_thread_markdown`
-
-If omitted, the runtime may archive the current thread artifact content as the final readable record plus the provided closure metadata.
 
 ## Behavior
 
 The runtime should:
 
-1. resolve the authoritative active-thread state
+1. resolve the authoritative current state
 2. write the archived history record
-3. remove the thread from the active layer
+3. remove the current record from the current layer
 4. update the repo-level recent-session index
 5. verify the resulting archived-state postconditions
 
 The operation should return `failure` if the runtime cannot reach a consistent archived state.
 
-If partial work occurred and deterministic recovery restored the thread to active, the operation should still return `failure` plus an explicit warning that completion did not commit.
+If partial work occurred and deterministic recovery restored a valid current-state end state, the operation should still return `failure` plus an explicit warning that completion did not commit.
 
 ## Result Metadata
 
 The response metadata should include at least:
 
-- `thread_id`
 - `archived: boolean`
 - `history_checkpoint_id`
-- `restored_to_active: boolean`
-The response should not include the full archived readable artifact body.
+- `restored_to_current: boolean`
 
 ## Error Semantics
 
@@ -254,25 +192,11 @@ Likely failure or warning codes include:
 
 - `startup_index_stale_rebuilt`
 - `startup_index_malformed_rebuilt`
-- `active_thread_not_found`
-- `thread_handoff_persist_failed`
+- `current_state_not_found`
+- `current_handoff_persist_failed`
 - `startup_index_refresh_failed`
 - `archive_transition_failed`
-- `archive_transition_reverted_to_active`
-
-The exact code list can evolve, but the runtime should keep it controlled and operational.
-
-## Checkpoint Expectations
-
-Lifecycle operations that persist artifacts should return the current checkpoint information for any newly written authoritative state.
-
-This should align with the existing checkpoint model:
-
-- one stable `artifact_id`
-- one new `checkpoint_id` per successful flush
-- explicit current-checkpoint semantics
-
-The MCP layer should not hide whether a lifecycle operation created a new checkpoint.
+- `archive_transition_restored_current`
 
 ## Relationship To Runtime Interface
 
@@ -305,13 +229,12 @@ This MCP surface should preserve the cluster's main design constraints:
 
 - the LLM gets a clear operational contract
 - backend code keeps control of lifecycle invariants
-- implementation can evolve below MCP without changing the model-facing contract immediately
+- the single-current model removes thread-identity ambiguity from the MCP surface
 
 ## Costs
 
 - the runtime must define and maintain stable operation schemas
 - some ad hoc flexibility is traded for stronger lifecycle guarantees
-- debugging may still require lower-level tools outside the normal lifecycle path
 
 ## Readiness
 

@@ -186,35 +186,37 @@ def _run_skill_until_tool_call(
     return None
 
 
-def _session_startup_result(*, active_threads: list[dict[str, Any]]) -> str:
+def _session_startup_result(
+    *,
+    current: dict[str, Any] | None,
+    recent_completed: list[dict[str, Any]] | None = None,
+) -> str:
     return _tool_result(
         artifacts={
-            "active_threads": active_threads,
-            "recent_completed_threads": [],
+            "current": current,
+            "recent_completed": recent_completed or [],
         },
         metadata={
             "rebuilt": False,
-            "active_thread_count": len(active_threads),
-            "recent_completed_count": 0,
+            "has_current": current is not None,
+            "recent_completed_count": len(recent_completed or []),
         },
     )
 
 
-def _session_thread_result(
+def _session_current_result(
     *,
-    thread_id: str,
     title: str,
     work_items: list[str],
     thread_markdown: str,
 ) -> str:
     return _tool_result(
         artifacts={
-            "thread_id": thread_id,
             "title": title,
             "work_items": work_items,
             "thread_markdown": thread_markdown,
         },
-        metadata={"thread_id": thread_id},
+        metadata={"artifact_id": "current"},
     )
 
 
@@ -302,8 +304,8 @@ def test_discovery_skill_calls_to_design_only_after_write(tmp_path: Path) -> Non
 
 
 @pytest.mark.skipif(not HARNESS_ENABLED, reason=SKIP_REASON)
-def test_session_continue_reads_startup_before_thread_drill_in(tmp_path: Path) -> None:
-    """session_continue should orient through startup view before drilling into one thread."""
+def test_session_continue_reads_startup_before_current_drill_in(tmp_path: Path) -> None:
+    """session_continue should orient through startup view before drilling into current state."""
     tools = _mcp_tools(tmp_path)
     system = _skill_prompt("session_continue")
     client = _make_client()
@@ -324,33 +326,31 @@ def test_session_continue_reads_startup_before_thread_drill_in(tmp_path: Path) -
             "role": "tool",
             "tool_call_id": first.tool_calls[0].id,
             "content": _session_startup_result(
-                active_threads=[
+                current={
+                    "title": "Session Continuity Skill Surface",
+                    "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
+                    "last_updated_at": "2026-04-02T20:00:00Z",
+                },
+                recent_completed=[
                     {
-                        "thread_id": "session-continuity-skill-surface",
-                        "title": "Session Continuity Skill Surface",
-                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
-                        "last_updated_at": "2026-04-02T20:00:00Z",
-                    },
-                    {
-                        "thread_id": "design-status-skill",
+                        "history_id": "design-status-skill",
                         "title": "Design Status Skill",
-                        "work_items": ["Move the ready design units through review and acceptance."],
-                        "last_updated_at": "2026-04-01T20:00:00Z",
-                    },
-                ]
+                        "closed_at": "2026-04-01T20:00:00Z",
+                    }
+                ],
             ),
         }
     )
 
     second = _chat_once(client=client, model=model, messages=messages, tools=tools)
-    assert not second.tool_calls, "session_continue drilled into a thread before the operator chose one"
+    assert not second.tool_calls, "session_continue drilled into current state before the operator chose it"
     text = second.content if isinstance(second.content, str) else json.dumps(second.model_dump(exclude_unset=True))
-    assert "session-continuity-skill-surface" in text or "Session Continuity Skill Surface" in text
+    assert "Session Continuity Skill Surface" in text
 
 
 @pytest.mark.skipif(not HARNESS_ENABLED, reason=SKIP_REASON)
-def test_session_continue_reads_selected_thread_after_operator_choice(tmp_path: Path) -> None:
-    """session_continue should read the chosen thread only after selection becomes explicit."""
+def test_session_continue_reads_current_after_operator_choice(tmp_path: Path) -> None:
+    """session_continue should read current state only after selection becomes explicit."""
     tools = _mcp_tools(tmp_path)
     system = _skill_prompt("session_continue")
     client = _make_client()
@@ -358,7 +358,7 @@ def test_session_continue_reads_selected_thread_after_operator_choice(tmp_path: 
 
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system},
-        {"role": "user", "content": "Show me my open session threads."},
+        {"role": "user", "content": "Show me my current carry-forward state."},
     ]
 
     first = _chat_once(client=client, model=model, messages=messages, tools=tools)
@@ -369,14 +369,11 @@ def test_session_continue_reads_selected_thread_after_operator_choice(tmp_path: 
             "role": "tool",
             "tool_call_id": first.tool_calls[0].id,
             "content": _session_startup_result(
-                active_threads=[
-                    {
-                        "thread_id": "session-continuity-skill-surface",
-                        "title": "Session Continuity Skill Surface",
-                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
-                        "last_updated_at": "2026-04-02T20:00:00Z",
-                    }
-                ]
+                current={
+                    "title": "Session Continuity Skill Surface",
+                    "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
+                    "last_updated_at": "2026-04-02T20:00:00Z",
+                }
             ),
         }
     )
@@ -385,20 +382,20 @@ def test_session_continue_reads_selected_thread_after_operator_choice(tmp_path: 
     messages.append(
         {
             "role": "user",
-            "content": "Inspect session-continuity-skill-surface but do not save anything yet.",
+            "content": "Inspect the current carry-forward state but do not save anything yet.",
         }
     )
 
     third = _chat_once(client=client, model=model, messages=messages, tools=tools)
-    assert third.tool_calls, "session_continue did not drill into the selected thread"
-    assert third.tool_calls[0].function.name == "session_read_thread"
+    assert third.tool_calls, "session_continue did not drill into the selected current state"
+    assert third.tool_calls[0].function.name == "session_read_current"
     arguments = json.loads(third.tool_calls[0].function.arguments)
-    assert arguments["thread_id"] == "session-continuity-skill-surface"
+    assert arguments == {}
 
 
 @pytest.mark.skipif(not HARNESS_ENABLED, reason=SKIP_REASON)
-def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp_path: Path) -> None:
-    """session_handoff should resolve thread identity through startup view before writing."""
+def test_session_handoff_reads_current_state_before_overwrite_when_needed(tmp_path: Path) -> None:
+    """session_handoff should use startup state and current reads before overwriting when needed."""
     tools = _mcp_tools(tmp_path)
     system = _skill_prompt("session_handoff")
     client = _make_client()
@@ -410,13 +407,13 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
             "role": "user",
             "content": (
                 "Save a handoff for the session continuity skill work. "
-                "Reuse the existing active thread if it already matches."
+                "Reuse the existing current state if it already matches."
             ),
         },
     ]
 
     first = _chat_once(client=client, model=model, messages=messages, tools=tools)
-    assert first.tool_calls, "session_handoff did not read startup state before resolving identity"
+    assert first.tool_calls, "session_handoff did not read startup state before resolving overwrite behavior"
     assert first.tool_calls[0].function.name == "session_read_startup_view"
 
     messages.append(first.model_dump(exclude_unset=True))
@@ -425,14 +422,11 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
             "role": "tool",
             "tool_call_id": first.tool_calls[0].id,
             "content": _session_startup_result(
-                active_threads=[
-                    {
-                        "thread_id": "session-continuity-skill-surface",
-                        "title": "Session Continuity Skill Surface",
-                        "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
-                        "last_updated_at": "2026-04-02T20:00:00Z",
-                    }
-                ]
+                current={
+                    "title": "Session Continuity Skill Surface",
+                    "work_items": ["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
+                    "last_updated_at": "2026-04-02T20:00:00Z",
+                }
             ),
         }
     )
@@ -445,16 +439,14 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
         tool_name=second_call.function.name,
         raw_arguments=second_call.function.arguments,
     )
-    assert second_args["thread_id"] == "session-continuity-skill-surface"
 
-    if second_call.function.name == "session_read_thread":
+    if second_call.function.name == "session_read_current":
         messages.append(second.model_dump(exclude_unset=True))
         messages.append(
             {
                 "role": "tool",
                 "tool_call_id": second_call.id,
-                "content": _session_thread_result(
-                    thread_id="session-continuity-skill-surface",
+                "content": _session_current_result(
                     title="Session Continuity Skill Surface",
                     work_items=["Inspect the uncommitted skill scaffolding and decide whether to ship it."],
                     thread_markdown="# Session Continuity Skill Surface\n\nUncommitted skill scaffolding is pending review.",
@@ -489,15 +481,14 @@ def test_session_handoff_reuses_matching_active_thread_identity_before_write(tmp
         assert second_call.function.name == "session_write_handoff"
         arguments = second_args
 
-    assert arguments["thread_id"] == "session-continuity-skill-surface"
     assert arguments["title"] == "Session Continuity Skill Surface"
     assert arguments["work_items"]
     assert arguments["thread_markdown"]
 
 
 @pytest.mark.skipif(not HARNESS_ENABLED, reason=SKIP_REASON)
-def test_session_handoff_writes_new_thread_with_required_fields(tmp_path: Path) -> None:
-    """session_handoff should produce a complete write payload for a clearly new thread."""
+def test_session_handoff_writes_new_current_state_with_required_fields(tmp_path: Path) -> None:
+    """session_handoff should produce a complete write payload for clearly new current state."""
     tools = _mcp_tools(tmp_path)
     system = _skill_prompt("session_handoff")
 
@@ -516,7 +507,6 @@ def test_session_handoff_writes_new_thread_with_required_fields(tmp_path: Path) 
 
     assert write_input is not None, "session_handoff did not call session_write_handoff within the turn limit"
     for field in (
-        "thread_id",
         "title",
         "work_items",
         "thread_markdown",
@@ -542,7 +532,7 @@ def test_session_handoff_does_not_write_without_explicit_persistence_intent(tmp_
         },
     ]
 
-    forbidden_calls = {"session_write_handoff", "session_archive_thread"}
+    forbidden_calls = {"session_write_handoff", "session_archive_current"}
     text = ""
 
     for _ in range(3):
@@ -557,11 +547,9 @@ def test_session_handoff_does_not_write_without_explicit_persistence_intent(tmp_
         messages.append(msg.model_dump(exclude_unset=True))
         for tc in msg.tool_calls:
             if tc.function.name == "session_read_startup_view":
-                tool_content = _session_startup_result(active_threads=[])
-            elif tc.function.name == "session_read_thread":
-                args = _parse_tool_arguments(tool_name=tc.function.name, raw_arguments=tc.function.arguments)
-                tool_content = _session_thread_result(
-                    thread_id=args["thread_id"],
+                tool_content = _session_startup_result(current=None)
+            elif tc.function.name == "session_read_current":
+                tool_content = _session_current_result(
                     title="Carry Forward Thread",
                     work_items=["Clean up the handoff note later."],
                     thread_markdown="# Carry Forward Thread\n\nOld state with a stale item.",

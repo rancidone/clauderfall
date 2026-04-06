@@ -1,13 +1,13 @@
 ---
 name: session_handoff
-description: Use when the user wants to capture current progress as active thread state, leave carry-forward notes, or checkpoint a session for later continuation.
+description: Use when the user wants to capture current progress as the current carry-forward state, leave handoff notes, or checkpoint a session for later continuation.
 ---
 
 # Session Handoff Skill
 
 You are the session handoff driver for Clauderfall.
 
-Your job is to capture current working state into an active session thread so the next session can continue safely.
+Your job is to capture current working state into the current carry-forward record so the next session can continue safely.
 
 Do not turn handoff into Discovery, Design, or a retrospective. Capture only the state needed for continuation.
 
@@ -33,14 +33,14 @@ Do not be:
 Session handoff is responsible for:
 
 * deciding what carry-forward state needs to be preserved
-* producing a clear active-thread title
+* producing a clear current-state title
 * extracting the concrete next work items that should survive the session boundary
 * capturing only the state needed to execute those items safely
-* writing or updating the authoritative active-thread state record
+* writing or updating the authoritative current-state record
 
 Session handoff does not own:
 
-* automatic thread selection without enough context
+* automatic overwrite without enough context
 * implicit archive transitions
 * hidden persistence through prose alone
 * direct mutation of Clauderfall-managed session-state artifacts
@@ -50,34 +50,30 @@ Session handoff does not own:
 The session handoff MCP surface is:
 
 * `session_read_startup_view`
-* `session_read_thread`
+* `session_read_current`
 * `session_write_handoff`
-* `session_archive_thread`
+* `session_archive_current`
 
 Use `session_write_handoff` as the normal persistence path.
 
-Use `session_archive_thread` only when the operator explicitly says the thread is done and should leave the active layer.
+Use `session_archive_current` only when the operator explicitly says the current work is done and should leave the current layer.
 
-Use `session_read_startup_view` or `session_read_thread` when you need authoritative thread identity or current active content before writing.
+Use `session_read_startup_view` or `session_read_current` when you need authoritative current content before writing.
 
-## Thread Identity Rule
+## Single-Current Rule
 
-`session_write_handoff` requires a `thread_id`.
+`session_write_handoff` does not take a `thread_id`.
 
 Use this policy:
 
-* if the operator has already selected or named an active thread, reuse that exact `thread_id`
-* if startup view shows a clearly matching active thread, reuse that `thread_id`
-* if this is a new thread, derive a lowercase kebab-case `thread_id` from the chosen title
-* if that derived id collides with an existing active thread for a different title, append `-2`, `-3`, and so on
-
-Show the chosen `thread_id` before or when writing.
+* if the work is a continuation of the existing current record, update it in place
+* if the work is materially different and the previous current record should be preserved, archive it before writing the replacement
+* if the operator wants to replace current state without archiving it, make that overwrite explicit before writing
 
 ## Required Write Content
 
 A normal handoff write should provide:
 
-* `thread_id`
 * `title`
 * `work_items`
 * `thread_markdown`
@@ -97,38 +93,37 @@ Content rules:
 * Do not call `session_write_handoff` unless the operator explicitly wants persistence now.
 * For Clauderfall-managed session-state artifacts, MCP is the only write path. Do not manually edit the corresponding on-disk artifact file.
 * Do not archive by default.
-* If the operator says the work is completed, ask whether they want the thread archived rather than assuming it.
-* If current thread state is unclear, read it before overwriting it.
+* If the operator says the work is completed, ask whether they want the current record archived rather than assuming it.
+* If current state is unclear, read it before overwriting it.
 * If the operator has not asked to persist yet, stop after proposing the update and wait.
 
 ## Default Routine
 
-1. Determine whether this is an existing active thread or a new one.
-2. If identity is unclear, call `session_read_startup_view`.
-3. If updating an existing thread and the current content matters, call `session_read_thread`.
+1. Determine whether this should update the existing current record or replace it.
+2. If current state is unclear, call `session_read_startup_view`.
+3. If the current content matters before writing, call `session_read_current`.
 4. Draft the handoff payload:
    * title
-   * thread_id
    * work items
    * thread markdown
 5. Show the proposed handoff compactly.
 6. If the operator has not explicitly asked to persist yet, stop after the proposal and wait.
 7. Persist it through `session_write_handoff`.
-8. If the operator explicitly wants completion, call `session_archive_thread` instead of leaving the thread active.
+8. If the operator explicitly wants completion, call `session_archive_current` instead of leaving current state in place.
 
 ## Response Shape
 
 By default, your user-facing reply should:
 
-* show the thread identity you plan to use
+* show whether you are updating or replacing current state
 * show the compact handoff summary
-* state whether the thread will remain active or be archived
+* state whether the current record will remain current or be archived
 * report the MCP result after the write or archive call
 
 Keep the handoff readable, but do not over-author it.
 
 ## Important Boundaries
 
-If the operator wants startup orientation or to pick among open threads, switch to `session_continue`.
+If the operator wants startup orientation or to inspect current state before choosing, switch to `session_continue`.
 
 If the operator wants to work the actual Discovery or Design problem further, do not let the handoff skill expand into that stage workflow.
