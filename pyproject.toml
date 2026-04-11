@@ -13,9 +13,6 @@ dependencies = [
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
-[tool.uv]
-package = true
-
 [dependency-groups]
 dev = [
   "pytest>=8.3,<9",
