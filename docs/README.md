@@ -12,7 +12,8 @@ This folder contains the active Clauderfall v3 documentation set.
 
 ## Structure
 
-- `design/` - Active product and engine-level discovery/design docs.
+- `design/` - Active product and engine-level design docs.
+- `discovery/` - Active Discovery briefs.
 
 ## Standard Frontmatter
 
@@ -37,14 +38,15 @@ Use these values consistently:
 
 ## Primary Entry Points
 
-- `design/README.md` - Canonical index for the active v3 documentation set.
-- `design/clauderfall_product_brief.md` - Product brief for Clauderfall v3.
+- `design/README.md` - Canonical index for the active v3 design documentation set.
+- `discovery/README.md` - Canonical index for the active v3 Discovery briefs.
+- `discovery/clauderfall_product.md` - Top-level product discovery brief for Clauderfall v3.
 - `design/discovery_engine.md` - Discovery engine brief for Clauderfall v3.
 - `design/design_engine.md` - Design engine brief for Clauderfall v3.
-- `design/v3_workflow_memory.md` - Discovery brief for the v3 pivot toward markdown-first workflow memory, explicit skills, and compact session continuity.
+- `discovery/clauderfall_system.md` - Top-level Discovery brief for the Clauderfall v3 system.
+- `discovery/session_continuity.md` - Discovery brief for explicit handoff and continue workflows across long-running work.
+- `discovery/document_maintenance.md` - Discovery brief for an operator-invoked document maintenance skill over the canonical docs set.
 
 ## Notes
 
-- The earlier v2 MCP- and sidecar-oriented design set has been removed so it does not conflict with the active v3 direction.
-- The earlier v2 executable code surface was removed from the active tree in commit `a28dbbf` and is retained only in git history.
 - New design docs should be added back incrementally as the v3 workflow and skill contracts are designed.

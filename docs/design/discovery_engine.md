@@ -87,4 +87,4 @@ Discovery is ready for Design when:
 
 Discovery is not the continuity layer, but its artifacts are part of the durable memory system.
 
-Discovery should produce briefs that remain readable and useful across multi-session work without requiring a parallel structured sidecar to explain them.
+Discovery should produce briefs that remain readable and useful across multi-session work as durable markdown artifacts.

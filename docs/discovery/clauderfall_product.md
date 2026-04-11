@@ -1,12 +1,12 @@
 ---
-title: Clauderfall Product Brief
+title: Clauderfall Product Discovery Brief
 doc_type: brief
 status: stable
 updated: 2026-04-11
-summary: Product brief for Clauderfall v3 focused on professional-quality Discovery, Design, and workflow continuity over multi-week work.
+summary: Top-level product discovery brief for Clauderfall v3 focused on professional-quality Discovery, Design, and workflow continuity over multi-week work.
 ---
 
-# Clauderfall Product Brief
+# Clauderfall Product Discovery Brief
 
 ## Product Definition
 
