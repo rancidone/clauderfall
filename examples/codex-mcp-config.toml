@@ -1,5 +1,0 @@
-[mcp_servers.clauderfall]
-command = "clauderfall-mcp"
-
-# For source-tree development, replace the command with your checkout's virtualenv path:
-# command = "/absolute/path/to/repo/.venv/bin/clauderfall-mcp"

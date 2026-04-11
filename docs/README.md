@@ -46,4 +46,5 @@ Use these values consistently:
 ## Notes
 
 - The earlier v2 MCP- and sidecar-oriented design set has been removed so it does not conflict with the active v3 direction.
+- The earlier v2 executable code surface was removed from the active tree in commit `9ac157f` and is retained only in git history.
 - New design docs should be added back incrementally as the v3 workflow and skill contracts are designed.

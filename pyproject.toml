@@ -7,13 +7,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 dependencies = [
-  "pydantic>=2.11,<3",
-  "PyYAML>=6.0,<7",
-  "tomli-w>=1.2,<2",
 ]
-
-[project.scripts]
-clauderfall-mcp = "clauderfall.mcp.stdio:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]
