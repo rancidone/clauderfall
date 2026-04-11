@@ -30,8 +30,7 @@ You may read a small number of durable artifacts only when:
 * they are directly material to the current objective, or
 * reading them is necessary to avoid materially misstating the handoff
 
-Do not broaden the read surface unnecessarily.
-Do not encourage re-reading old material that is not relevant to the current objective.
+Keep the read surface narrow and tied to the current objective.
 
 If the current session is too weak, contradictory, or incomplete to support a safe handoff, say so explicitly and identify the missing continuity signal rather than inventing one.
 
@@ -83,24 +82,24 @@ Keep working state minimal:
 
 Produce a visible handoff draft before any write.
 
-Do not run an interview, broad shutdown questionnaire, or multi-turn elicitation loop.
+Keep the workflow compact and single-pass.
 
 If the current session contains enough grounded signal, propose a compact handoff draft for review.
 
 If the current session does not contain enough grounded signal, say that the handoff is not safe to write and identify the continuity gap explicitly.
 
-Do not treat uncommitted draft text as settled artifact truth.
+Keep draft text visibly provisional until the operator approves the write.
 
 Write the persisted handoff artifact only when the operator explicitly authorizes it.
 
 ## Boundary Handling
 
-`/handoff` should not:
+`/handoff` remains:
 
-* auto-run at session exit, startup, or on a timer
-* rewrite Discovery briefs or Design docs as if they were continuity records
-* produce a chronological session recap
-* expand next steps into detailed execution planning
-* invent a new objective when the session has actually completed its work
+* explicitly operator-invoked
+* separate from Discovery and Design artifact maintenance
+* focused on current continuity rather than chronological recap
+* concise about next steps
+* willing to say there is no active objective
 
 If the current session reveals durable truth that belongs in a canonical artifact, you may point that out, but do not treat the handoff as the place where shared project truth is maintained.
