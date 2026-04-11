@@ -109,7 +109,7 @@ The canonical markdown artifact should not be rewritten on every turn. It should
 
 Until then, the skill may iterate on working text in chat, but it should not pretend that uncommitted draft text is settled artifact truth.
 
-When the skill does write the canonical markdown artifact, the write should be followed by a document-maintenance script so deterministic frontmatter fields stay in sync.
+When the skill does write the canonical markdown artifact, the write should be followed by the packaged skill-local frontmatter sync script so deterministic frontmatter fields stay in sync.
 
 ### 4. Surface Readiness Honestly
 
@@ -141,6 +141,8 @@ Incompleteness should be represented by document `status` and the `Readiness` se
 ## Persisted Design Document Frontmatter
 
 Persisted design documents use YAML frontmatter.
+
+The Design write path uses the packaged `src/clauderfall/skills/design/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
 
 Allowed fields:
 
@@ -188,7 +190,6 @@ If a parent unit depends on child units, parent readiness must reflect that depe
 ## Unresolved Decisions
 
 - The exact shape of the `/handoff` contract that carries design work across sessions is still outside this unit.
-- The document-maintenance script contract is only defined here at the write-path level, not yet as its own concrete design unit.
 
 ## Readiness
 
