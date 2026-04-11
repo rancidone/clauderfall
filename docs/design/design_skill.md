@@ -140,7 +140,7 @@ Incompleteness should be represented by document `status` and the `Readiness` se
 
 Persisted design documents use YAML frontmatter.
 
-The Design write path uses the packaged `src/clauderfall/skills/design/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
+The Design write path uses the packaged `skills/design/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
 
 Allowed fields:
 

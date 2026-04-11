@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from clauderfall.installer import install_packaged_skills, packaged_skill_names
+from installer import install_packaged_skills, packaged_skill_names
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -39,7 +39,7 @@ def test_install_packaged_skills_replaces_existing_target(tmp_path: Path) -> Non
 
 def test_cli_list_outputs_packaged_skill_names() -> None:
     result = subprocess.run(
-        [sys.executable, "-m", "clauderfall.installer", "--list"],
+        [sys.executable, "-m", "installer", "--list"],
         cwd=REPO_ROOT,
         check=False,
         capture_output=True,
@@ -55,7 +55,7 @@ def test_cli_rejects_unknown_skill(tmp_path: Path) -> None:
         [
             sys.executable,
             "-m",
-            "clauderfall.installer",
+            "installer",
             "--target-dir",
             str(tmp_path / "skills"),
             "unknown",

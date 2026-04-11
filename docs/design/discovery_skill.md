@@ -163,7 +163,7 @@ Readiness is a judgment, not a completeness checklist. Strong-signal gaps should
 
 Discovery briefs use YAML frontmatter.
 
-The Discovery write path uses the packaged `src/clauderfall/skills/discovery/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
+The Discovery write path uses the packaged `skills/discovery/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
 
 Allowed fields:
 

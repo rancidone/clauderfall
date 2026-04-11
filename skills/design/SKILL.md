@@ -122,7 +122,7 @@ When proposing a revision, do not paste the full revised design draft by default
 
 Keep temporary working text in chat only to the minimum needed to make the proposed change reviewable.
 
-When you do write the canonical markdown artifact, follow the write with `scripts/sync_frontmatter.py <path>` so deterministic fields stay in sync.
+When you do write the canonical markdown artifact, run `scripts/sync_frontmatter.py <path>` relative to this `SKILL.md`.
 
 Persisted design documents use YAML frontmatter. Allowed fields are:
 

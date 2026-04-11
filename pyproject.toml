@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-clauderfall-install-skills = "clauderfall.installer:main"
+clauderfall-install-skills = "installer:main"
 
 [build-system]
 requires = ["hatchling>=1.27"]
@@ -25,7 +25,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/clauderfall"]
+include = [
+  "/installer.py",
+  "/skills",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

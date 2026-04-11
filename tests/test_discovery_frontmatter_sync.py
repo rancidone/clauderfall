@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-SCRIPT = Path("src/clauderfall/skills/discovery/scripts/sync_frontmatter.py")
+SCRIPT = Path("skills/discovery/scripts/sync_frontmatter.py")
 
 
 def run_script(tmp_path: Path, contents: str, *args: str) -> subprocess.CompletedProcess[str]:
