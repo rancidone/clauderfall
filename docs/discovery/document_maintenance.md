@@ -1,8 +1,7 @@
 ---
 title: Document Maintenance Discovery Brief
-doc_type: brief
 status: ready
-updated: 2026-04-11
+last_updated: 2026-04-11
 summary: Discovery brief for an operator-invoked document maintenance skill that keeps the canonical docs set coherent, current, and role-clean.
 ---
 

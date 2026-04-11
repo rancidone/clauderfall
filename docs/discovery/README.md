@@ -1,8 +1,7 @@
 ---
 title: Clauderfall Discovery Docs Index
-doc_type: index
 status: stable
-updated: 2026-04-11
+last_updated: 2026-04-11
 summary: Canonical index for the active Clauderfall v3 Discovery briefs.
 ---
 

@@ -1,8 +1,7 @@
 ---
 title: Clauderfall Design Docs Index
-doc_type: index
 status: stable
-updated: 2026-04-11
+last_updated: 2026-04-11
 summary: Canonical index for the active Clauderfall v3 design documentation set.
 ---
 
@@ -14,19 +13,19 @@ This folder contains the active v3 design documentation set.
 
 These docs currently define:
 
-- the expected behavior of the Discovery engine
-- the expected behavior of the Design engine
+- the expected behavior of the Discovery skill
+- the expected behavior of the Design skill
 - the starting point for the next round of v3 design work
 
 ## Read Order
 
-1. `discovery_engine.md`
-2. `design_engine.md`
+1. `discovery_skill.md`
+2. `design_skill.md`
 
 ## Files
 
-- `discovery_engine.md` - Discovery engine brief for Clauderfall v3.
-- `design_engine.md` - Design engine brief for Clauderfall v3.
+- `discovery_skill.md` - Design for the Clauderfall Discovery skill as the interview driver and visible brief editor.
+- `design_skill.md` - Design for the Clauderfall Design skill as the interview driver and visible design-document editor.
 
 ## Notes
 

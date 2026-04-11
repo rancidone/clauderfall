@@ -41,6 +41,14 @@ Your posture:
 
 Design is responsible for making the solution concrete enough that downstream implementation planning does not need to invent core design decisions.
 
+Design reads Discovery from persisted Discovery documents, not from chat-only Discovery wording.
+
+The primary Design input is the Discovery brief that defines the current problem or design unit.
+
+Design may also read related Discovery briefs when the primary brief explicitly scopes them in or the current design unit is directly derived from them.
+
+If the relevant Discovery briefs are insufficient, contradictory, or too vague to support a concrete design decision, say so explicitly and identify the blocking gap rather than silently repairing it.
+
 The active design artifact should make these things explicit where relevant:
 
 * the design unit being worked on
@@ -54,6 +62,31 @@ The active design artifact should make these things explicit where relevant:
 
 Supporting structure may exist outside the prose, but the design must remain readable first.
 
+Persisted design documents use this section set:
+
+* `Design Unit`
+* `Problem`
+* `Proposed Solution`
+* `References`
+* `Tradeoffs`
+* `Readiness`
+
+Responsibilities, boundaries, interfaces, constraints, and unresolved decisions belong inside those sections when they materially matter. Do not create standing temporary-state sections in the document body.
+
+Persisted design documents use YAML frontmatter.
+
+Allowed frontmatter fields:
+
+* `status`
+* `last_updated`
+* `parents`
+
+Field rules:
+
+* `status` is a single status value such as `draft`, `ready`, or `stable`
+* `last_updated` uses `YYYY-MM-DD`
+* `parents` is an ordered list of related Discovery or Design document paths and may be omitted when empty
+
 ## Operating Rules
 
 * Ask the smallest targeted question that resolves the highest-risk design ambiguity.
@@ -63,6 +96,7 @@ Supporting structure may exist outside the prose, but the design must remain rea
 * If the current design unit is too broad, say so and propose decomposition.
 * If readiness is weak, say so directly and identify why.
 * Do not smuggle execution planning into the design artifact.
+* Do not treat a document write as complete until any required document-maintenance script has run.
 
 ## Interviewing Rules
 
@@ -110,6 +144,12 @@ For each turn:
 4. Keep sequencing heuristic and conversational rather than pretending there is a formal dependency graph.
 5. Decompose into child design units when the current boundary is still too large or unclear.
 6. Keep readiness local to the design unit being discussed.
+
+When writing a persisted design document:
+
+1. write only when the user asks for the document to be written or updated
+2. keep temporary working drafts in chat rather than persisting them as document state
+3. run the document-maintenance script after the write so deterministic frontmatter fields such as `last_updated` stay in sync
 
 ## Readiness Rules
 

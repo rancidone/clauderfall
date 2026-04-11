@@ -1,8 +1,7 @@
 ---
 title: Clauderfall Docs Index
-doc_type: index
 status: stable
-updated: 2026-04-11
+last_updated: 2026-04-11
 summary: Top-level index for the active Clauderfall v3 documentation set.
 ---
 
@@ -20,10 +19,11 @@ This folder contains the active Clauderfall v3 documentation set.
 Core docs use the same frontmatter fields:
 
 - `title` - Canonical document title.
-- `doc_type` - Document role, such as `index`, `brief`, `engine-brief`, `design`, or `archive-index`.
 - `status` - Document maturity state. Prefer `draft`, `ready`, or `stable` for active docs, and reserve `archived`, `superseded`, or `deprecated` for inactive docs.
-- `updated` - Date of the last substantive edit in `YYYY-MM-DD` format.
+- `last_updated` - Date of the last substantive edit in `YYYY-MM-DD` format.
 - `summary` - One-line description of the document's purpose.
+
+Document role is inferred from folder structure and document content rather than a dedicated frontmatter field.
 
 ## Status Vocabulary
 
@@ -41,8 +41,8 @@ Use these values consistently:
 - `design/README.md` - Canonical index for the active v3 design documentation set.
 - `discovery/README.md` - Canonical index for the active v3 Discovery briefs.
 - `discovery/clauderfall_product.md` - Top-level product discovery brief for Clauderfall v3.
-- `design/discovery_engine.md` - Discovery engine brief for Clauderfall v3.
-- `design/design_engine.md` - Design engine brief for Clauderfall v3.
+- `design/discovery_skill.md` - Design for the Clauderfall Discovery skill.
+- `design/design_skill.md` - Design for the Clauderfall Design skill.
 - `discovery/clauderfall_system.md` - Top-level Discovery brief for the Clauderfall v3 system.
 - `discovery/session_continuity.md` - Discovery brief for explicit handoff and continue workflows across long-running work.
 - `discovery/document_maintenance.md` - Discovery brief for an operator-invoked document maintenance skill over the canonical docs set.
