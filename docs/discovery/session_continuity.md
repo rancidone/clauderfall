@@ -1,8 +1,6 @@
 ---
-title: Session Continuity Discovery Brief
 status: ready
 last_updated: 2026-04-11
-summary: Discovery brief for explicit handoff and continue workflows that preserve continuity across long-running work without polluting new sessions.
 ---
 
 # Session Continuity Discovery Brief

@@ -1,8 +1,6 @@
 ---
-title: Clauderfall Discovery Skill Design
 status: ready
 last_updated: 2026-04-11
-summary: Design for the Clauderfall Discovery skill as the interview driver and visible brief editor for problem framing.
 ---
 
 # Clauderfall Discovery Skill Design

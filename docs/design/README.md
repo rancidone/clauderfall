@@ -1,8 +1,6 @@
 ---
-title: Clauderfall Design Docs Index
 status: stable
 last_updated: 2026-04-11
-summary: Canonical index for the active Clauderfall v3 design documentation set.
 ---
 
 # Clauderfall Design Docs Index
@@ -15,17 +13,20 @@ These docs currently define:
 
 - the expected behavior of the Discovery skill
 - the expected behavior of the Design skill
+- the expected behavior of the Handoff skill
 - the starting point for the next round of v3 design work
 
 ## Read Order
 
 1. `discovery_skill.md`
 2. `design_skill.md`
+3. `handoff.md`
 
 ## Files
 
 - `discovery_skill.md` - Design for the Clauderfall Discovery skill as the interview driver and visible brief editor.
 - `design_skill.md` - Design for the Clauderfall Design skill as the interview driver and visible design-document editor.
+- `handoff.md` - Design for the Clauderfall handoff skill as the non-interactive continuity writer.
 
 ## Notes
 

@@ -1,8 +1,6 @@
 ---
-title: Clauderfall System Discovery Brief
 status: ready
 last_updated: 2026-04-11
-summary: Top-level Discovery brief for Clauderfall v3 covering the system problem, intended outcomes, and scoped follow-on discovery areas.
 ---
 
 # Clauderfall System Discovery Brief

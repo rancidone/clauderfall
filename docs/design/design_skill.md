@@ -1,8 +1,6 @@
 ---
-title: Clauderfall Design Skill Design
 status: draft
 last_updated: 2026-04-11
-summary: Design for the Clauderfall Design skill as the interview driver and visible design-document editor for solution design.
 ---
 
 # Clauderfall Design Skill Design

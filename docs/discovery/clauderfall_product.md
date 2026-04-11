@@ -1,8 +1,6 @@
 ---
-title: Clauderfall Product Discovery Brief
 status: stable
 last_updated: 2026-04-11
-summary: Top-level product discovery brief for Clauderfall v3 focused on professional-quality Discovery, Design, and workflow continuity over multi-week work.
 ---
 
 # Clauderfall Product Discovery Brief

@@ -1,8 +1,6 @@
 ---
-title: Clauderfall Docs Index
 status: stable
 last_updated: 2026-04-11
-summary: Top-level index for the active Clauderfall v3 documentation set.
 ---
 
 # Docs Index
@@ -16,14 +14,13 @@ This folder contains the active Clauderfall v3 documentation set.
 
 ## Standard Frontmatter
 
-Core docs use the same frontmatter fields:
+Active docs use a minimal shared frontmatter shape:
 
-- `title` - Canonical document title.
 - `status` - Document maturity state. Prefer `draft`, `ready`, or `stable` for active docs, and reserve `archived`, `superseded`, or `deprecated` for inactive docs.
 - `last_updated` - Date of the last substantive edit in `YYYY-MM-DD` format.
-- `summary` - One-line description of the document's purpose.
+- `parents` - Optional ordered list of related document paths for docs that explicitly participate in a parent-child design or discovery relationship.
 
-Document role is inferred from folder structure and document content rather than a dedicated frontmatter field.
+Document role, title, and summary are inferred from folder structure and document content rather than duplicated in frontmatter.
 
 ## Status Vocabulary
 
@@ -43,6 +40,7 @@ Use these values consistently:
 - `discovery/clauderfall_product.md` - Top-level product discovery brief for Clauderfall v3.
 - `design/discovery_skill.md` - Design for the Clauderfall Discovery skill.
 - `design/design_skill.md` - Design for the Clauderfall Design skill.
+- `design/handoff.md` - Design for the Clauderfall Handoff skill.
 - `discovery/clauderfall_system.md` - Top-level Discovery brief for the Clauderfall v3 system.
 - `discovery/session_continuity.md` - Discovery brief for explicit handoff and continue workflows across long-running work.
 - `discovery/document_maintenance.md` - Discovery brief for an operator-invoked document maintenance skill over the canonical docs set.
