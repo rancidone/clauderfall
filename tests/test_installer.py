@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -37,6 +38,19 @@ def test_install_packaged_skills_replaces_existing_target(tmp_path: Path) -> Non
     assert not (existing / "old.txt").exists()
 
 
+def test_install_packaged_skills_replaces_broken_symlink_target(tmp_path: Path) -> None:
+    target = tmp_path / "skills"
+    target.mkdir(parents=True)
+    existing = target / "design"
+    existing.symlink_to(tmp_path / "missing-design")
+
+    install_packaged_skills(target, skill_names=["design"])
+
+    assert existing.is_dir()
+    assert not existing.is_symlink()
+    assert (existing / "SKILL.md").is_file()
+
+
 def test_cli_list_outputs_packaged_skill_names() -> None:
     result = subprocess.run(
         [sys.executable, "-m", "installer", "--list"],
@@ -48,6 +62,44 @@ def test_cli_list_outputs_packaged_skill_names() -> None:
 
     assert result.returncode == 0
     assert result.stdout.splitlines() == ["continue", "design", "discovery", "handoff"]
+
+
+def test_direct_execution_uses_uv_shebang() -> None:
+    result = subprocess.run(
+        [str(REPO_ROOT / "installer.py"), "--list"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0
+    assert result.stdout.splitlines() == ["continue", "design", "discovery", "handoff"]
+
+
+def test_cli_installs_all_packaged_skills_into_codex_and_claude(tmp_path: Path) -> None:
+    codex_home = tmp_path / "codex-home"
+    claude_home = tmp_path / "claude-home"
+    env = os.environ.copy()
+    env["CODEX_HOME"] = str(codex_home)
+    env["CLAUDE_HOME"] = str(claude_home)
+
+    result = subprocess.run(
+        [sys.executable, "-m", "installer"],
+        cwd=REPO_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert result.returncode == 0
+    installed_paths = result.stdout.splitlines()
+    assert len(installed_paths) == 8
+    for home in (codex_home, claude_home):
+        for skill_name in packaged_skill_names():
+            assert str(home / "skills" / skill_name) in installed_paths
+            assert (home / "skills" / skill_name / "SKILL.md").is_file()
 
 
 def test_cli_rejects_unknown_skill(tmp_path: Path) -> None:

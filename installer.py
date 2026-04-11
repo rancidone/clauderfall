@@ -1,3 +1,5 @@
+#!/usr/bin/env -S uv run python
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +27,10 @@ def default_codex_home() -> Path:
     return Path(os.environ.get("CODEX_HOME", Path.home() / ".codex")).expanduser()
 
 
+def default_claude_home() -> Path:
+    return Path(os.environ.get("CLAUDE_HOME", Path.home() / ".claude")).expanduser()
+
+
 def install_packaged_skills(
     target_skills_dir: Path,
     *,
@@ -45,8 +51,11 @@ def install_packaged_skills(
     for name in requested:
         source = source_root / name
         target = target_skills_dir / name
-        if target.exists():
-            shutil.rmtree(target)
+        if target.is_symlink() or target.exists():
+            if target.is_symlink() or target.is_file():
+                target.unlink()
+            else:
+                shutil.rmtree(target)
         shutil.copytree(source, target)
         installed_paths.append(target)
 
@@ -55,7 +64,7 @@ def install_packaged_skills(
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Install Clauderfall packaged skills into a Codex skills directory.",
+        description="Install Clauderfall packaged skills into Codex and Claude skills directories.",
     )
     parser.add_argument(
         "skills",
@@ -65,7 +74,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--target-dir",
         type=Path,
-        help="Explicit target skills directory. Defaults to $CODEX_HOME/skills.",
+        help="Explicit single target skills directory. Overrides the default Codex and Claude targets.",
     )
     parser.add_argument(
         "--list",
@@ -84,10 +93,19 @@ def main(argv: list[str] | None = None) -> int:
             print(name)
         return 0
 
-    target_dir = args.target_dir or (default_codex_home() / "skills")
+    target_dirs = (
+        [args.target_dir]
+        if args.target_dir
+        else [
+            default_codex_home() / "skills",
+            default_claude_home() / "skills",
+        ]
+    )
 
     try:
-        installed = install_packaged_skills(target_dir, skill_names=args.skills)
+        installed: list[Path] = []
+        for target_dir in target_dirs:
+            installed.extend(install_packaged_skills(target_dir, skill_names=args.skills))
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
