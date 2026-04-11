@@ -2,8 +2,8 @@
 title: Clauderfall Design Engine Brief
 doc_type: engine-brief
 status: stable
-updated: 2026-03-27
-summary: Design engine brief for Clauderfall focused on interview-led solution concretization over deterministic stage runtime operations.
+updated: 2026-04-11
+summary: Design engine brief for Clauderfall v3 focused on reviewable solution design before code generation.
 ---
 
 # Clauderfall Design Engine Brief
@@ -12,112 +12,68 @@ summary: Design engine brief for Clauderfall focused on interview-led solution c
 
 The Design engine helps a single senior engineer turn a strong discovery brief into a concrete, reviewable design artifact.
 
-Its job is to make the solution concrete without collapsing immediately into execution planning or hiding unresolved uncertainty.
+Its job is to make the solution work on paper before code generation.
 
 ## Operating Posture
 
-The Design engine should act as an interviewer with this tone:
+The Design engine should act as:
 
-- rigorous and skeptical
-- collaborative and reflective
-- concrete about tradeoffs and unresolved design choices
+- rigorous
+- skeptical
+- collaborative
+- concrete about tradeoffs and unresolved decisions
 
 It should not behave like:
 
-- a passive note-taker
 - a one-shot design generator
 - a task planner pretending to be a design reviewer
+- an implementation assistant that skips design scrutiny
 
 ## Core Responsibilities
 
-- turn a discovery brief into a concrete solution design
-- lead the operator through design work in a logical dependency order
+- turn a discovery brief into a concrete design direction
 - keep the evolving design visible and reviewable
-- make unresolved decisions, assumptions, and tradeoffs explicit
-- identify when the current design unit is still too broad and should be decomposed
-- assign a readiness rating with a brief rationale to each design unit
-
-The Design engine is responsible for interview and design judgment, not for directly enforcing persisted workflow state through prompt discipline alone.
+- expose tradeoffs, unresolved decisions, dependencies, and assumptions
+- identify when the current design boundary is too broad and should be decomposed
+- judge whether the current design unit is ready enough for downstream implementation
 
 ## Scope
-
-Design is the stage where solution structure becomes concrete.
 
 Design may include:
 
 - system structure
-- component or subsystem responsibilities
+- subsystem or component responsibilities
 - interfaces
 - implementation-relevant design detail
 - important tradeoffs and constraints
 
 Design should stop short of:
 
-- pretending every design must be globally complete before useful work can begin
-- forcing one fixed template regardless of problem shape
-- turning design output into execution-oriented task management
+- turning directly into execution-oriented task management
+- pretending unresolved design questions do not matter
+- skipping review because code generation feels easy
 
 ## Design Unit Model
 
 The primary unit of design is a design unit.
 
-A design unit represents a specific system, subsystem, or other concrete design boundary being worked through in Design.
+A design unit represents a concrete design boundary being worked through.
 
-Each design unit should have its own:
+Each design unit should have:
 
-- readable design document
-- supporting structured fields where they materially improve later planning
-- readiness rating
-- brief readiness justification
+- a readable design document
+- explicit unresolved questions or assumptions when they matter
+- a readiness signal
+- a brief readiness rationale
 
-Clear inputs and outputs are useful guidance when they exist, but they are not a universal requirement.
+## Readiness
 
-## Decomposition
+Readiness means confidence that the relevant problem has been solved at the design level well enough for the intended next step.
 
-Design is iterative.
+Strong-signal edge cases and unresolved tradeoffs matter more than superficial completeness.
 
-A design pass may reveal that the current solution boundary is still too large or unclear and should be broken into smaller design units before the design is strong enough.
+## Continuity Relationship
 
-Sometimes that decomposition should create explicit parent-child relationships between design units. Sometimes it should not.
+Design is a first-class working mode, not just an artifact generator.
 
-If a design unit has children, its readiness is not independent of them. Parent readiness should depend in part on the readiness of the child units it relies on.
-
-## Readiness Signal
-
-A design readiness rating should mean confidence that the relevant problem has been solved at the design level.
-
-It is not a claim that every possible edge case has been handled. It is a claim that the design is strong enough on the main problem and the strong-signal edge cases that materially affect correctness, safety, or viability.
-
-The rating should be actionable for build decisions.
-
-High readiness means the design appears to solve the intended problem concretely enough that implementation should not need to guess at major decisions.
-
-Lower readiness means important uncertainty remains about whether the design actually solves the problem, especially around constraints, tradeoffs, or strong-signal edge cases.
-
-Each readiness rating should include a brief justification that explains the main reason the unit is or is not ready.
-
-## Workflow
-
-Design should advance the working draft by default during the interview rather than requiring explicit approval on every revision.
-
-Within an active session, the working design may live in session context. The engine should still flush the current artifact explicitly before context compaction risks losing important progress.
-
-Each successful flush should create a new checkpoint for the same artifact identity rather than replacing history in place.
-
-The operator remains the final review gate for deciding whether a design unit is ready enough to treat as buildable.
-
-The engine should recommend design-unit sequencing heuristically and conversationally rather than through a formal global plan.
-
-Artifact workflow status, design readiness, and explicit build-readiness approval should remain separate concepts.
-
-Those checkpoints and state transitions should ultimately be carried by deterministic backend operations exposed through MCP or an equivalent runtime boundary.
-
-The Design engine should recommend and invoke the appropriate operations while remaining focused on artifact content, tradeoffs, and readiness judgment.
-
-That runtime boundary should be part of Clauderfall's shared stage runtime rather than a Design-only implementation path.
-
-## Open Engine Questions
-
-- Should explicit build-readiness approval eventually become a persisted artifact field, or remain a workflow action outside the required design-unit shape?
-- Should assumptions and open questions in the structured side eventually distinguish operator-confirmed items from interviewer-inferred items?
-- When the design concerns behavior-heavy systems, should the readable document shape standardize a stronger examples-or-flows section?
+Because large design efforts may span many sessions and many units, Design artifacts should stay readable and durable enough to support re-entry through explicit continuity workflows without requiring heavy runtime mediation.
