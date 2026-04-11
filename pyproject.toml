@@ -9,6 +9,9 @@ requires-python = ">=3.12"
 dependencies = [
 ]
 
+[project.scripts]
+clauderfall-install-skills = "clauderfall.installer:main"
+
 [build-system]
 requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
