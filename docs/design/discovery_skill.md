@@ -98,7 +98,7 @@ The canonical markdown artifact should not be rewritten on every turn. It should
 
 Until then, the skill may iterate on working text in chat, but it should not pretend that uncommitted draft text is settled artifact truth.
 
-When the skill does write the canonical markdown artifact, the write should be followed by a document-maintenance script so deterministic frontmatter fields stay in sync.
+When the skill does write the canonical markdown artifact, the write should be followed by the packaged skill-local frontmatter sync script so deterministic frontmatter fields stay in sync.
 
 ### 4. Surface Readiness Honestly
 
@@ -164,6 +164,8 @@ Readiness is a judgment, not a completeness checklist. Strong-signal gaps should
 ## Discovery Document Frontmatter
 
 Discovery briefs use YAML frontmatter.
+
+The Discovery write path uses the packaged `src/clauderfall/skills/discovery/scripts/sync_frontmatter.py` helper to normalize these fields after an authorized write.
 
 Allowed fields:
 
