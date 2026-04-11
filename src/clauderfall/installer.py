@@ -20,6 +20,8 @@ CLAUDE_SKILLS_ROOT = Path(".claude/skills")
 CODEX_SKILLS_ROOT = Path(".codex/skills")
 GLOBAL_INSTALL_ROOT = Path.home() / ".clauderfall"
 INSTALL_TARGETS = ("claude", "codex")
+PACKAGED_SKILL_NAMES = ("design", "discovery")
+STALE_SKILL_NAMES = ("design_status", "session_continue", "session_handoff")
 SKILL_ROOTS = {
     "claude": CLAUDE_SKILLS_ROOT,
     "codex": CODEX_SKILLS_ROOT,
@@ -387,6 +389,7 @@ def install_packaged_skills(*, source_repo_root: Path, destination_root: Path, m
     if not skill_dirs:
         return []
     destination_root.mkdir(parents=True, exist_ok=True)
+    prune_stale_skill_installs(destination_root=destination_root)
 
     installed_names: list[str] = []
     for skill_dir in skill_dirs:
@@ -412,6 +415,11 @@ def remove_packaged_skills(*, source_repo_root: Path, destination_root: Path) ->
         if destination.exists() or destination.is_symlink():
             replace_path(destination)
             removed_names.append(skill_dir.name)
+    for skill_name in STALE_SKILL_NAMES:
+        destination = destination_root / skill_name
+        if destination.exists() or destination.is_symlink():
+            replace_path(destination)
+            removed_names.append(skill_name)
     return removed_names
 
 
@@ -424,8 +432,15 @@ def list_packaged_skill_dirs(*, source_repo_root: Path) -> list[Path]:
     return sorted(
         path
         for path in skills_root.iterdir()
-        if path.is_dir() and (path / "SKILL.md").exists()
+        if path.is_dir() and path.name in PACKAGED_SKILL_NAMES and (path / "SKILL.md").exists()
     )
+
+
+def prune_stale_skill_installs(*, destination_root: Path) -> None:
+    """Remove previously installed skill directories that are no longer supported."""
+
+    for skill_name in STALE_SKILL_NAMES:
+        replace_path(destination_root / skill_name)
 
 
 def replace_path(path: Path) -> None:

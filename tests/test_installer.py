@@ -95,6 +95,8 @@ def test_list_packaged_skill_dirs_discovers_skill_directories(tmp_path: Path) ->
     (skills_root / "design" / "SKILL.md").write_text("# design\n")
     (skills_root / "discovery").mkdir(parents=True)
     (skills_root / "discovery" / "SKILL.md").write_text("# discovery\n")
+    (skills_root / "session_handoff").mkdir(parents=True)
+    (skills_root / "session_handoff" / "SKILL.md").write_text("# session_handoff\n")
     (skills_root / "not-a-skill").mkdir(parents=True)
 
     result = list_packaged_skill_dirs(source_repo_root=tmp_path)
@@ -107,19 +109,24 @@ def test_install_packaged_skills_copies_skill_directories(tmp_path: Path) -> Non
     (skills_root / "design" / "references").mkdir(parents=True)
     (skills_root / "design" / "SKILL.md").write_text("design\n")
     (skills_root / "design" / "references" / "ref.md").write_text("ref\n")
+    destination_root = tmp_path / "home" / ".codex" / "skills"
+    stale_destination = destination_root / "session_handoff"
+    stale_destination.mkdir(parents=True)
+    (stale_destination / "SKILL.md").write_text("stale\n")
 
     installed = install_packaged_skills(
         source_repo_root=tmp_path,
-        destination_root=tmp_path / "home" / ".codex" / "skills",
+        destination_root=destination_root,
         mode="copy",
     )
 
-    destination = tmp_path / "home" / ".codex" / "skills" / "design"
+    destination = destination_root / "design"
     assert installed == ["design"]
     assert destination.is_dir()
     assert not destination.is_symlink()
     assert (destination / "SKILL.md").read_text() == "design\n"
     assert (destination / "references" / "ref.md").read_text() == "ref\n"
+    assert not stale_destination.exists()
 
 
 def test_install_packaged_skills_symlinks_skill_directories(tmp_path: Path) -> None:
@@ -137,6 +144,26 @@ def test_install_packaged_skills_symlinks_skill_directories(tmp_path: Path) -> N
     assert installed == ["design"]
     assert destination.is_symlink()
     assert destination.resolve() == skills_root / "design"
+
+
+def test_remove_packaged_skills_removes_supported_and_stale_skill_dirs(tmp_path: Path) -> None:
+    skills_root = tmp_path / "src" / "clauderfall" / "skills"
+    (skills_root / "design").mkdir(parents=True)
+    (skills_root / "design" / "SKILL.md").write_text("design\n")
+    destination_root = tmp_path / "home" / ".codex" / "skills"
+    (destination_root / "design").mkdir(parents=True)
+    (destination_root / "session_handoff").mkdir(parents=True)
+
+    from clauderfall.installer import remove_packaged_skills
+
+    removed = remove_packaged_skills(
+        source_repo_root=tmp_path,
+        destination_root=destination_root,
+    )
+
+    assert removed == ["design", "session_handoff"]
+    assert not (destination_root / "design").exists()
+    assert not (destination_root / "session_handoff").exists()
 
 
 def test_install_global_clauderfall_installs_shared_runtime_and_skills(tmp_path: Path, monkeypatch) -> None:
