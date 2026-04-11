@@ -41,6 +41,7 @@ Use these values consistently:
 - `design/discovery_skill.md` - Design for the Clauderfall Discovery skill.
 - `design/design_skill.md` - Design for the Clauderfall Design skill.
 - `design/handoff.md` - Design for the Clauderfall Handoff skill.
+- `design/continue.md` - Design for the Clauderfall Continue skill.
 - `discovery/clauderfall_system.md` - Top-level Discovery brief for the Clauderfall v3 system.
 - `discovery/session_continuity.md` - Discovery brief for explicit handoff and continue workflows across long-running work.
 - `discovery/document_maintenance.md` - Discovery brief for an operator-invoked document maintenance skill over the canonical docs set.

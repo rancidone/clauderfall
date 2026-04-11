@@ -14,6 +14,7 @@ These docs currently define:
 - the expected behavior of the Discovery skill
 - the expected behavior of the Design skill
 - the expected behavior of the Handoff skill
+- the expected behavior of the Continue skill
 - the starting point for the next round of v3 design work
 
 ## Read Order
@@ -21,12 +22,14 @@ These docs currently define:
 1. `discovery_skill.md`
 2. `design_skill.md`
 3. `handoff.md`
+4. `continue.md`
 
 ## Files
 
 - `discovery_skill.md` - Design for the Clauderfall Discovery skill as the interview driver and visible brief editor.
 - `design_skill.md` - Design for the Clauderfall Design skill as the interview driver and visible design-document editor.
 - `handoff.md` - Design for the Clauderfall handoff skill as the non-interactive continuity writer.
+- `continue.md` - Design for the Clauderfall continue skill as the non-interactive continuity reader.
 
 ## Notes
 
