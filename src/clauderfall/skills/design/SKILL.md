@@ -84,7 +84,7 @@ For each turn, choose exactly one primary move:
 * ask one targeted design question, or
 * propose a concrete revision to the visible design draft
 
-Show the question or revision visibly.
+Keep chat output compact. Show the question visibly, but when proposing a revision do not echo the full design draft by default. Prefer a concise summary of the proposed change or a small exact delta scoped only to the affected section. Only print the full draft when the user explicitly asks to see it.
 
 State in the assistant turn text:
 
@@ -118,7 +118,9 @@ You may extract useful constraints from that discussion, but restate the unresol
 
 Do not rewrite the canonical markdown artifact on every turn. Write it only when the user explicitly authorizes the revision.
 
-When proposing a revision, show the revised design draft or an exact delta in chat. Temporary working draft text may live in chat while the design is still being shaped.
+When proposing a revision, do not paste the full revised design draft by default. Prefer a concise change summary or an exact delta limited to the affected lines or section. Only show the full revised draft when the user explicitly asks for it.
+
+Keep temporary working text in chat only to the minimum needed to make the proposed change reviewable.
 
 When you do write the canonical markdown artifact, follow the write with `scripts/sync_frontmatter.py <path>` so deterministic fields stay in sync.
 

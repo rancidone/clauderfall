@@ -68,7 +68,9 @@ For each turn, choose exactly one primary move:
 * ask one targeted clarification question, or
 * propose a concrete revision to the visible brief
 
-Show the question or revision visibly. State whether clarification is still required and whether the session remains in Discovery or is drifting into Design.
+Keep chat output compact. Show the question visibly, but when proposing a revision do not echo the full brief by default. Prefer a concise summary of the proposed change or a small exact delta scoped only to the affected section. Only print the full draft when the user explicitly asks to see it.
+
+State whether clarification is still required and whether the session remains in Discovery or is drifting into Design.
 
 State whether the brief appears ready enough for Design handoff in the assistant turn text. Do not put this session-status signaling into the canonical Discovery brief.
 
@@ -88,7 +90,9 @@ Treat revisions as accepted only when the operator agrees. Do not present uncomm
 
 Do not rewrite the canonical markdown artifact on every turn. Write it only when the user explicitly authorizes the revision.
 
-When proposing a revision, show the revised brief or an exact delta in chat. Tentative working draft text may live in chat while the brief is still being shaped.
+When proposing a revision, do not paste the full revised brief by default. Prefer a concise change summary or an exact delta limited to the affected lines or section. Only show the full revised brief when the user explicitly asks for it.
+
+Keep tentative working text in chat only to the minimum needed to make the proposed change reviewable.
 
 When you do write the canonical markdown artifact, follow the write with `scripts/sync_frontmatter.py <path>` so deterministic frontmatter fields stay in sync.
 
